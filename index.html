@@ -4,283 +4,433 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>LIFE RPG — V2.1 FIX</title>
+<meta name="theme-color" content="#080b12">
+<title>LIFE RPG — V3</title>
 <style>
-:root{--bg:#080b12;--panel:#111722;--panel2:#182130;--line:#263348;--text:#eef3ff;--muted:#8d9ab0;--accent:#72f0a8;--gold:#ffd166;--red:#ff6b7a;--blue:#6eb5ff}
+:root{--bg:#070a10;--panel:#111722;--panel2:#182130;--line:#28354a;--text:#eef3ff;--muted:#8f9bb0;--accent:#72f0a8;--gold:#ffd166;--red:#ff6878;--blue:#70b7ff;--purple:#b18cff}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:radial-gradient(circle at top,#152033 0,#080b12 45%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
-button,input,select{font:inherit}
-button{border:0;color:var(--text);cursor:pointer;touch-action:manipulation}
-.app{max-width:900px;margin:auto;padding:14px 12px 90px}
-header{padding:10px 4px 14px}
-h1{font-size:25px;margin:0 0 4px;letter-spacing:.5px}
-.sub{color:var(--muted);font-size:13px}
-.tabs{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;position:sticky;top:0;z-index:10;background:rgba(8,11,18,.94);padding:8px 0;backdrop-filter:blur(12px)}
-.tab{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 3px;font-size:11px}
-.tab.active{border-color:var(--accent);box-shadow:0 0 0 1px rgba(114,240,168,.2) inset}
+body{margin:0;background:radial-gradient(circle at top,#172238 0,#070a10 48%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+button,input,select,textarea{font:inherit} button{border:0;color:var(--text);cursor:pointer;touch-action:manipulation}
+.app{max-width:980px;margin:auto;padding:12px 12px 90px}
+header{padding:8px 4px 12px}
+h1{font-size:26px;margin:0 0 2px}.sub{color:var(--muted);font-size:12px}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;position:sticky;top:0;z-index:5;padding:7px 0;background:rgba(7,10,16,.94);backdrop-filter:blur(10px)}
+.tab{background:#111722;border:1px solid var(--line);border-radius:12px;padding:10px 5px;font-size:11px}.tab.active{border-color:var(--accent);color:var(--accent)}
 .view{display:none}.view.active{display:block}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
-.card{background:linear-gradient(145deg,#121a27,#0e141e);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
-.hero{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.statbig{font-size:29px;font-weight:800}.label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
-.bar{height:8px;background:#202b3d;border-radius:99px;overflow:hidden;margin-top:8px}.fill{height:100%;background:var(--accent);width:0%;transition:.25s}
-.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.quest{border:1px solid var(--line);background:#0e151f;border-radius:14px;padding:12px;margin:9px 0}
-.quest.done{opacity:.55}.qtitle{font-weight:750}.qmeta{font-size:12px;color:var(--muted);margin:5px 0 10px}
-.actions{display:flex;gap:7px;flex-wrap:wrap}
-.primary,.secondary,.danger{border-radius:10px;padding:10px 12px;font-weight:700}
-.primary{background:var(--accent);color:#06100a}.secondary{background:#202c3f}.danger{background:#3b1c25;color:#ffb0b8}
-.primary:disabled,.secondary:disabled{opacity:.45;cursor:not-allowed}
-.zone{min-height:130px;display:flex;flex-direction:column;justify-content:space-between}.locked{filter:grayscale(1);opacity:.5}
-.skill{padding:11px;border:1px solid var(--line);border-radius:12px;margin:7px 0;background:#0d141e}
-.skill.unlocked{border-color:var(--accent)}.skill.locked{opacity:.45}
-.small{font-size:12px;color:var(--muted)}
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:flex-end;justify-content:center;z-index:30;padding:10px}
-.modal.open{display:flex}.modalbox{width:min(620px,100%);background:#101722;border:1px solid var(--line);border-radius:20px;padding:16px}
-input,select{width:100%;background:#0a1018;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px;margin:5px 0 10px;outline:none}
-.notice{background:#111e2d;border:1px solid #29405e;border-radius:12px;padding:11px;font-size:12px;color:#b8c8de;margin-bottom:10px}
-.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:#eafef2;color:#07120b;padding:12px 16px;border-radius:12px;font-weight:800;opacity:0;pointer-events:none;transition:.2s;z-index:50;box-shadow:0 10px 30px #0008}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-@media(max-width:600px){.tabs{grid-template-columns:repeat(3,1fr)}.hero,.grid{grid-template-columns:1fr 1fr}.tab{padding:9px 2px}.app{padding-left:9px;padding-right:9px}}
+.card{background:linear-gradient(180deg,rgba(24,33,48,.96),rgba(14,20,30,.96));border:1px solid var(--line);border-radius:16px;padding:14px;margin:9px 0;box-shadow:0 8px 28px rgba(0,0,0,.16)}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.wrap{flex-wrap:wrap}.muted{color:var(--muted)}.tiny{font-size:11px}.small{font-size:13px}
+h2{font-size:18px;margin:0 0 8px}h3{font-size:15px;margin:0 0 6px}
+.progress{height:9px;background:#080c13;border-radius:99px;overflow:hidden;border:1px solid #202a3a}.bar{height:100%;background:linear-gradient(90deg,var(--accent),#5ec9ff);border-radius:99px}
+.btn{background:#202c3f;border:1px solid #35445d;border-radius:10px;padding:9px 11px;font-size:13px}.btn:hover{filter:brightness(1.1)}
+.btn.primary{background:#173e30;border-color:#3b8d68;color:#baffd8}.btn.gold{background:#403719;border-color:#77682e;color:#ffe69a}.btn.danger{background:#3c1b23;border-color:#71333f;color:#ffb5bf}.btn.blue{background:#192e46;border-color:#315e89;color:#a9d5ff}
+input,select,textarea{width:100%;background:#0b1019;color:var(--text);border:1px solid #304057;border-radius:10px;padding:10px;outline:none}textarea{min-height:72px;resize:vertical}
+label{display:block;font-size:11px;color:var(--muted);margin:8px 0 4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{padding:10px;border:1px solid var(--line);border-radius:12px;background:#0d131d}.stat b{font-size:20px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border-radius:99px;background:#202a3a;color:#cdd7e9;font-size:10px}
+.quest{border:1px solid var(--line);border-radius:13px;padding:11px;margin:8px 0;background:#0d131d}.quest.done{opacity:.55}
+.node{border:1px solid #33425a;border-radius:12px;padding:10px;margin:7px 0;background:#0c121b}.node.child{margin-left:14px;border-left:3px solid #405777}
+.node-head{display:flex;justify-content:space-between;gap:8px;align-items:center}.node-name{font-weight:700}
+.xptext{color:var(--gold);font-size:12px}.level{font-weight:800;color:var(--accent)}
+.empty{padding:22px 8px;text-align:center;color:var(--muted);border:1px dashed #344258;border-radius:12px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.72);display:none;align-items:flex-end;justify-content:center;z-index:20}.modal.show{display:flex}
+.modalbox{width:min(720px,100%);max-height:92vh;overflow:auto;background:#0e141e;border:1px solid #33425a;border-radius:18px 18px 0 0;padding:15px}
+.modal-title{font-size:18px;font-weight:800;margin-bottom:8px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,20px);background:#edf6ff;color:#08101a;padding:10px 14px;border-radius:12px;font-weight:700;opacity:0;pointer-events:none;transition:.2s;z-index:30;max-width:90%}.toast.show{opacity:1;transform:translate(-50%,0)}
+.notice{background:#0b121c;border:1px solid #29384e;padding:11px;border-radius:12px;font-size:12px;line-height:1.45}
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.kpi .stat{text-align:center}
+@media(max-width:560px){.tabs{grid-template-columns:repeat(5,1fr)}.tab{font-size:9px;padding:9px 2px}.grid3{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}.app{padding-left:9px;padding-right:9px}}
 </style>
 </head>
 <body>
 <div class="app">
 <header>
-<h1>⚔️ LIFE RPG</h1>
-<div class="sub">V2.1 — FIXED / mobile build</div>
+  <h1>⚔️ LIFE RPG <span class="muted">V3</span></h1>
+  <div class="sub">Твоя жизнь — игра. Правила создаёшь ты.</div>
 </header>
 
-<div class="tabs" id="tabs">
-<button class="tab active" data-view="character">👤 Герой</button>
-<button class="tab" data-view="world">🗺 Мир</button>
-<button class="tab" data-view="quests">⚔️ Квесты</button>
-<button class="tab" data-view="skills">🌳 Навыки</button>
-<button class="tab" data-view="inventory">🎒 Лут</button>
-<button class="tab" data-view="lore">📜 Лор</button>
-</div>
+<nav class="tabs">
+  <button class="tab active" data-tab="hero">👤 Герой</button>
+  <button class="tab" data-tab="quests">⚔️ Квесты</button>
+  <button class="tab" data-tab="skills">🌳 Навыки</button>
+  <button class="tab" data-tab="lore">📜 ЛОР</button>
+  <button class="tab" data-tab="save">💾 Сейв</button>
+</nav>
 
-<section id="character" class="view active"></section>
-<section id="world" class="view"></section>
+<section id="hero" class="view active"></section>
 <section id="quests" class="view"></section>
 <section id="skills" class="view"></section>
-<section id="inventory" class="view"></section>
 <section id="lore" class="view"></section>
+<section id="save" class="view"></section>
 </div>
 
-<input id="restoreFile" type="file" accept="application/json" style="display:none">
-<div class="modal" id="modal">
-<div class="modalbox">
-<div class="row"><h2 style="margin:0">➕ Новый квест</h2><button class="secondary" id="closeModal">✕</button></div>
-<label>Название<input id="newTitle" placeholder="Например: 20 минут гитары"></label>
-<label>Тип<select id="newType"><option value="SIDE">SIDE QUEST</option><option value="MAIN">MAIN QUEST</option><option value="BOSS">BOSS</option></select></label>
-<label>Категория<select id="newCat"><option value="BODY">BODY</option><option value="MUSIC">MUSIC</option><option value="MONEY">MONEY</option><option value="SOCIAL">SOCIAL</option><option value="KNOWLEDGE">KNOWLEDGE</option></select></label>
-<div class="grid"><label>XP<input id="newXp" type="number" value="50"></label><label>Энергия<input id="newEnergy" type="number" value="10"></label></div>
-<div class="actions"><button class="primary" id="addQuest">СОЗДАТЬ</button><button class="secondary" id="cancelModal">ОТМЕНА</button></div>
-</div>
-</div>
-<div class="toast" id="toast"></div>
+<div id="modal" class="modal"><div class="modalbox">
+  <div class="row"><div id="modalTitle" class="modal-title"></div><button class="btn" data-close>✕</button></div>
+  <div id="modalBody"></div>
+</div></div>
+<div id="toast" class="toast"></div>
 
 <script>
 (function(){
 "use strict";
 
-const KEY="life_rpg_world_v21_fixed";
-const CATS=["BODY","MUSIC","MONEY","SOCIAL","KNOWLEDGE"];
-const CAT_ICON={BODY:"💪",MUSIC:"🎸",MONEY:"💰",SOCIAL:"🗣️",KNOWLEDGE:"🧠"};
+const KEY="life_rpg_v3";
+const MAX=200;
 
-const defaultState={
- level:1,xp:0,energy:100,skillPoints:0,eventDone:false,eventDate:"",
- stats:{BODY:1,MUSIC:1,MONEY:1,SOCIAL:1,KNOWLEDGE:1},
- quests:[
-  {id:"q1",title:"Минимум тела: 10 минут движения",type:"SIDE",cat:"BODY",xp:35,energy:5,done:false},
-  {id:"q2",title:"Гитара: 20 минут",type:"SIDE",cat:"MUSIC",xp:40,energy:8,done:false},
-  {id:"q3",title:"English: 15 минут",type:"SIDE",cat:"KNOWLEDGE",xp:35,energy:5,done:false},
-  {id:"q4",title:"Один нормальный разговор",type:"SIDE",cat:"SOCIAL",xp:45,energy:6,done:false},
-  {id:"q5",title:"Одно действие на деньги",type:"MAIN",cat:"MONEY",xp:70,energy:10,done:false},
-  {id:"q6",title:"Собрать фундамент LIFE RPG",type:"MAIN",cat:"KNOWLEDGE",xp:100,energy:15,done:false}
- ],
-inventory:[],lore:[],achievements:[]
+/*
+  V3 DESIGN:
+  - Никаких стартовых квестов и навыков.
+  - Пользователь сам создаёт направления.
+  - Внутри направления сам строит дерево: ветки → навыки.
+  - Квест может давать XP конкретному навыку.
+  - Максимальный уровень любого навыка/направления = 200.
+  - Кривая XP специально тяжёлая: к 200 уровню нужно очень много опыта.
+*/
+
+const emptyState={
+  createdAt:new Date().toISOString(),
+  hero:{name:"Безымянный герой",level:1,xp:0},
+  directions:[],
+  quests:[],
+  lore:[],
+  stats:{completed:0,totalXp:0}
 };
-
 let state=load();
 
 function load(){
- try{
-  const raw=localStorage.getItem(KEY);
-  if(raw){
-   const s=JSON.parse(raw);
-   return Object.assign(structuredClone(defaultState),s,{stats:Object.assign({},defaultState.stats,s.stats||{})});
-  }
- }catch(e){}
- return structuredClone(defaultState);
+  try{
+    const raw=localStorage.getItem(KEY);
+    if(raw){
+      const s=JSON.parse(raw);
+      return Object.assign(structuredClone(emptyState),s);
+    }
+  }catch(e){}
+  return structuredClone(emptyState);
 }
-function save(){
- try{
-  localStorage.setItem(KEY,JSON.stringify(state));
-  localStorage.setItem(KEY+"_lastSaved",new Date().toISOString());
- }catch(e){}
-}
-function backup(){
- const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
- const a=document.createElement("a");
- a.href=URL.createObjectURL(blob);
- a.download="LIFE_RPG_SAVE_"+today()+".json";
- document.body.appendChild(a);a.click();a.remove();
- setTimeout(()=>URL.revokeObjectURL(a.href),1000);
- toast("💾 Сохранение скачано");
-}
-function restore(){
- document.getElementById("restoreFile").click();
-}
-function esc(x){return String(x).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
-function today(){return new Date().toISOString().slice(0,10)}
-function xpNeed(){return 100+state.level*50}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function esc(x){return String(x??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function uid(p="id"){return p+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7)}
+function fmt(n){return Math.floor(n).toLocaleString("ru-RU")}
 function toast(msg){
- const el=document.getElementById("toast");el.textContent=msg;el.classList.add("show");
- clearTimeout(window.__toast);window.__toast=setTimeout(()=>el.classList.remove("show"),1800);
+ const e=document.getElementById("toast");e.textContent=msg;e.classList.add("show");
+ clearTimeout(window.__t);window.__t=setTimeout(()=>e.classList.remove("show"),1900);
 }
-function levelCheck(){
- let leveled=false;
- while(state.xp>=xpNeed()){state.xp-=xpNeed();state.level++;state.skillPoints++;leveled=true}
- if(leveled){state.lore.push("LVL UP → достигнут уровень "+state.level);toast("🔥 LEVEL UP! LVL "+state.level)}
+function xpForLevel(lvl){
+  if(lvl<=1)return 0;
+  // cumulative XP required to reach this level; deliberately steep
+  return Math.floor(350*Math.pow(lvl-1,2.35));
+}
+function levelFromXp(xp){
+  let lo=1,hi=MAX;
+  while(lo<hi){
+    const mid=Math.ceil((lo+hi)/2);
+    if(xpForLevel(mid)<=xp)lo=mid;else hi=mid-1;
+  }
+  return Math.min(MAX,lo);
+}
+function levelInfo(xp){
+  const lvl=levelFromXp(xp);
+  if(lvl>=MAX)return {lvl,cur:xp,max:xpForLevel(MAX),pct:100,next:null};
+  const a=xpForLevel(lvl),b=xpForLevel(lvl+1);
+  return {lvl,cur:xp-a,max:b-a,pct:Math.max(0,Math.min(100,(xp-a)/(b-a)*100)),next:b};
+}
+function directionXp(d){
+  // Direction XP is the sum of XP earned by its skills.
+  return (d.nodes||[]).reduce((sum,n)=>sum+(n.xp||0),0);
+}
+function allNodes(d){return d.nodes||[]}
+function findDirection(id){return state.directions.find(d=>d.id===id)}
+function findNode(id){
+  for(const d of state.directions){
+    const n=(d.nodes||[]).find(x=>x.id===id);
+    if(n)return {d,n};
+  }
+  return null;
+}
+function nodeChildren(d,parentId){return (d.nodes||[]).filter(n=>(n.parentId||null)===(parentId||null))}
+function addLore(text){state.lore.unshift({id:uid("l"),date:new Date().toLocaleString("ru-RU"),text})}
+
+function addXpToNode(node,xp){
+  node.xp=Math.max(0,Math.min(xpForLevel(MAX), (node.xp||0)+xp));
 }
 function completeQuest(id){
- const q=state.quests.find(x=>x.id===id);
- if(!q||q.done)return;
- if(state.energy<q.energy){toast("⚡ Не хватает энергии");return}
- q.done=true;state.energy-=q.energy;state.xp+=q.xp;state.stats[q.cat]=(state.stats[q.cat]||1)+1;
- state.skillPoints+=1;
- const loot=q.type==="BOSS"?"🏆 Boss Trophy":(CAT_ICON[q.cat]+" "+q.cat+" Token");
- state.inventory.push(loot);
- state.lore.push("Квест выполнен: "+q.title+" (+"+q.xp+" XP)");
- levelCheck();save();renderAll();toast("✅ Квест завершён  +"+q.xp+" XP");
+  const q=state.quests.find(x=>x.id===id);
+  if(!q||q.done)return;
+  const target=findNode(q.nodeId);
+  if(!target){toast("У квеста нет действующего навыка");return}
+  q.done=true;
+  addXpToNode(target.n,q.xp);
+  state.stats.completed++;
+  state.stats.totalXp+=q.xp;
+  const info=levelInfo(target.n.xp);
+  addLore(`Квест «${q.title}» завершён → ${target.d.name} / ${target.n.name} +${q.xp} XP`);
+  if(info.lvl>=MAX)addLore(`🏆 ${target.d.name} / ${target.n.name} достиг уровня 200.`);
+  save();renderAll();toast(`+${q.xp} XP → ${target.n.name}`);
 }
-function resetQuest(id){
- const q=state.quests.find(x=>x.id===id);if(q){q.done=false;save();renderAll()}
+function resetQuest(id){const q=state.quests.find(x=>x.id===id);if(q){q.done=false;save();renderAll()}}
+function deleteQuest(id){state.quests=state.quests.filter(q=>q.id!==id);save();renderAll()}
+function deleteDirection(id){
+  const d=findDirection(id);if(!d)return;
+  state.quests=state.quests.filter(q=>q.dirId!==id);
+  state.directions=state.directions.filter(x=>x.id!==id);
+  addLore(`Направление удалено: ${d.name}`);
+  save();renderAll();
 }
-function deleteQuest(id){
- state.quests=state.quests.filter(q=>q.id!==id);save();renderAll()
-}
-function unlockSkill(cat,idx){
- const costs=[1,2,3];
- const key=cat+"-"+idx;
- const need=idx+1;
- if(state.skillPoints<costs[idx]){toast("🌳 Не хватает очков навыков");return}
- const existing=state.achievements.includes("skill:"+key);
- if(existing){toast("Уже разблокировано");return}
- if(state.stats[cat]<need){toast("🔒 Нужен "+cat+" LVL "+need);return}
- state.skillPoints-=costs[idx];state.achievements.push("skill:"+key);
- state.lore.push("Навык разблокирован: "+cat+" / TIER "+need);
- save();renderAll();toast("🌳 Навык разблокирован");
+function deleteNode(id){
+  const hit=findNode(id);if(!hit)return;
+  const ids=[id,...hit.d.nodes.filter(n=>n.parentId===id).map(n=>n.id)];
+  hit.d.nodes=hit.d.nodes.filter(n=>!ids.includes(n.id));
+  state.quests=state.quests.filter(q=>!ids.includes(q.nodeId));
+  save();renderAll();
 }
 
-function renderCharacter(){
- const total=xpNeed(),pct=Math.min(100,state.xp/total*100);
- document.getElementById("character").innerHTML=`
- <div class="notice">🎮 <b>Главное правило:</b> игра должна обслуживать реальную жизнь. Выполнил действие в мире → получил прогресс здесь.</div>
- <div class="hero">
-  <div class="card"><div class="label">LEVEL</div><div class="statbig">${state.level}</div><div class="bar"><div class="fill" style="width:${pct}%"></div></div><div class="small">${state.xp} / ${total} XP</div></div>
-  <div class="card"><div class="label">ENERGY</div><div class="statbig">⚡ ${state.energy}</div><div class="actions"><button class="secondary" data-action="energy">+20 ENERGY</button></div></div>
- </div>
- <div class="card"><div class="row"><h2 style="margin:0">Характеристики</h2><b>🌟 ${state.skillPoints} SP</b></div>
- ${CATS.map(c=>`<div style="margin:13px 0"><div class="row"><span>${CAT_ICON[c]} ${c}</span><b>LVL ${state.stats[c]}</b></div><div class="bar"><div class="fill" style="width:${Math.min(100,state.stats[c]/10*100)}%"></div></div></div>`).join("")}</div>
- <div class="card"><h2 style="margin-top:0">Сегодня</h2><div class="small">${state.quests.filter(q=>q.done).length} квестов выполнено из ${state.quests.length}</div><div class="actions" style="margin-top:10px"><button class="primary" data-action="quests">⚔️ К КВЕСТАМ</button><button class="secondary" data-action="event">🎲 DAILY EVENT</button><button class="secondary" data-action="backup">💾 СОХРАНИТЬ</button><button class="secondary" data-action="restore">📥 ЗАГРУЗИТЬ</button></div></div>`;
+function openModal(title,body){
+ document.getElementById("modalTitle").textContent=title;
+ document.getElementById("modalBody").innerHTML=body;
+ document.getElementById("modal").classList.add("show");
 }
-function renderWorld(){
- const zones=[
-  ["WILDLANDS","💪","Тело и физическая база",1,"BODY"],
-  ["MUSIC DISTRICT","🎸","Гитара, голос, тексты",2,"MUSIC"],
-  ["ACADEMY","🧠","Университет и знания",1,"KNOWLEDGE"],
-  ["CITY","🗣️","Социальные квесты",2,"SOCIAL"],
-  ["MERCHANT GUILD","💰","Деньги и навыки",2,"MONEY"]
- ];
- document.getElementById("world").innerHTML=`<div class="card"><h2 style="margin-top:0">🗺️ Мир</h2><div class="small">Территории открываются через реальные характеристики.</div></div><div class="grid">${zones.map(z=>{
- const open=state.stats[z[4]]>=z[3];
- return `<div class="card zone ${open?"":"locked"}"><div><div class="label">${open?"UNLOCKED":"LOCKED"}</div><h2>${z[1]} ${z[0]}</h2><div class="small">${z[2]}</div></div><div class="row"><span class="small">${open?"Доступно":"Нужен "+z[4]+" LVL "+z[3]}</span><b>${open?"✓":"🔒"}</b></div></div>`}).join("")}</div>`;
+function closeModal(){document.getElementById("modal").classList.remove("show")}
+function field(id,label,type="text",value="",extra=""){
+ return `<label>${label}</label><input id="${id}" type="${type}" value="${esc(value)}" ${extra}>`;
+}
+
+function openDirectionModal(){
+ openModal("Новое направление",`
+   ${field("dname","Название направления","text","","placeholder='Например: Гитара'")}
+   ${field("ddesc","Описание / зачем оно тебе","text","","placeholder='Что означает прокачка этого направления?'")}
+   <div class="notice">Направление автоматически имеет максимум <b>200 LVL</b>. Его уровень считается по суммарному XP всех навыков внутри.</div>
+   <div style="margin-top:10px"><button class="btn primary" data-create-direction>Создать направление</button></div>
+ `);
+}
+function openNodeModal(dirId,parentId=null){
+ const d=findDirection(dirId);
+ if(!d)return;
+ openModal(parentId?"Новая ветка / навык":"Новая ветка",`
+   <div class="notice">Направление: <b>${esc(d.name)}</b><br>Максимум: <b>200 LVL</b>. Можно строить сколько угодно веток и поднавыков.</div>
+   ${field("nname","Название","text","","placeholder='Например: Бой'")}
+   ${field("ndesc","Описание / критерий прокачки","text","","placeholder='Что именно становится лучше?'")}
+   <div style="margin-top:10px"><button class="btn primary" data-create-node data-dir="${dirId}" data-parent="${parentId||""}">Создать</button></div>
+ `);
+}
+
+function renderHero(){
+ const dirs=state.directions.map(d=>{
+   const xp=directionXp(d),i=levelInfo(xp);
+   return `<div class="card">
+      <div class="row"><div><h3>${esc(d.name)}</h3><div class="muted tiny">${esc(d.desc||"")}</div></div><b class="level">LVL ${i.lvl}</b></div>
+      <div class="progress" style="margin-top:9px"><div class="bar" style="width:${i.pct}%"></div></div>
+      <div class="row tiny muted" style="margin-top:5px"><span>${fmt(xp)} XP</span><span>${i.lvl<MAX?`до ${fmt(xpForLevel(i.lvl+1))} XP`:"MAX LEVEL"}</span></div>
+   </div>`
+ }).join("");
+ document.getElementById("hero").innerHTML=`
+   <div class="card">
+     <div class="row"><div><h2>👤 ${esc(state.hero.name)}</h2><div class="muted">Общий прогресс героя</div></div>
+     <button class="btn" data-edit-hero>✏️</button></div>
+     <div class="kpi" style="margin-top:10px">
+       <div class="stat"><div class="muted tiny">НАПРАВЛЕНИЙ</div><b>${state.directions.length}</b></div>
+       <div class="stat"><div class="muted tiny">КВЕСТОВ</div><b>${state.stats.completed}</b></div>
+       <div class="stat"><div class="muted tiny">XP</div><b>${fmt(state.stats.totalXp)}</b></div>
+     </div>
+   </div>
+   <div class="card">
+     <div class="row"><h2>🗺️ Направления</h2><button class="btn primary" data-add-direction>＋ Добавить</button></div>
+     <div class="notice">Здесь <b>нет готовых направлений</b>. Ты сам решаешь, что существует в твоей игре: гитара, тело, деньги, социальный навык, английский — что угодно.</div>
+     ${dirs||`<div class="empty" style="margin-top:9px">Пока пусто.<br>Создай первое направление — и начнём строить твой мир.</div>`}
+   </div>
+ `;
+}
+
+function questXpByDifficulty(diff){
+ return [0,25,60,140,320,700][Number(diff)||1];
+}
+function openQuestModal(){
+ if(!state.directions.length){toast("Сначала создай направление и навык");return}
+ const opts=state.directions.flatMap(d=>(d.nodes||[]).map(n=>`<option value="${n.id}">${esc(d.name)} → ${esc(n.name)}</option>`)).join("");
+ if(!opts){toast("Сначала создай хотя бы один навык");return}
+ openModal("Новый квест",`
+   ${field("qtitle","Название квеста","text","","placeholder='Например: выучить бой 15 минут'")}
+   <label>Цель квеста</label><select id="qnode">${opts}</select>
+   <div class="grid2">
+     <div><label>Тип</label><select id="qtype"><option value="SIDE">SIDE</option><option value="MAIN">MAIN</option><option value="BOSS">BOSS</option></select></div>
+     <div><label>Сложность</label><select id="qdiff"><option value="1">I — 25 XP</option><option value="2">II — 60 XP</option><option value="3">III — 140 XP</option><option value="4">IV — 320 XP</option><option value="5">V — 700 XP</option></select></div>
+   </div>
+   <label>Заметка / условие победы</label><textarea id="qnote" placeholder="Что считается выполнением?"></textarea>
+   <div class="notice">XP выдаётся по сложности. Это специально сделано так, чтобы нельзя было просто нарисовать себе 100 000 XP.</div>
+   <div style="margin-top:10px"><button class="btn primary" data-create-quest>Создать квест</button></div>
+ `);
 }
 function renderQuests(){
- const sorted=[...state.quests].sort((a,b)=>Number(a.done)-Number(b.done));
- document.getElementById("quests").innerHTML=`<div class="row" style="margin:5px 0 10px"><div><h2 style="margin:0">⚔️ Квесты</h2><div class="small">Делай в реальности → отмечай здесь.</div></div><button class="primary" data-action="openModal">＋</button></div>
- ${sorted.map(q=>`<div class="quest ${q.done?"done":""}">
- <div class="row"><div class="qtitle">${CAT_ICON[q.cat]||"⚔️"} ${esc(q.title)}</div><b>${q.type}</b></div>
- <div class="qmeta">+${q.xp} XP · ⚡${q.energy} · ${q.cat}</div>
- <div class="actions">
- ${q.done?`<button class="secondary" data-action="reset" data-id="${q.id}">↩ СБРОСИТЬ</button>`:`<button class="primary" data-action="complete" data-id="${q.id}" ${state.energy<q.energy?"disabled":""}>✓ ВЫПОЛНИТЬ</button>`}
- <button class="danger" data-action="delete" data-id="${q.id}">Удалить</button>
- </div></div>`).join("")}`;
+ const list=state.quests.map(q=>{
+   const hit=findNode(q.nodeId), node=hit?.n, d=hit?.d;
+   return `<div class="quest ${q.done?"done":""}">
+     <div class="row"><div><b>${esc(q.title)}</b><div class="tiny muted">${d?esc(d.name):"Удалённое направление"} → ${node?esc(node.name):"Удалённый навык"}</div></div><span class="badge">${q.type}</span></div>
+     <div class="row" style="margin-top:8px"><span class="xptext">+${q.xp} XP</span>
+       <div style="display:flex;gap:6px">${q.done?`<button class="btn" data-reset-quest="${q.id}">↩️</button>`:`<button class="btn primary" data-complete-quest="${q.id}">✓ Выполнить</button>`}<button class="btn danger" data-delete-quest="${q.id}">🗑</button></div>
+     </div>
+     ${q.note?`<div class="tiny muted" style="margin-top:7px">${esc(q.note)}</div>`:""}
+   </div>`
+ }).join("");
+ document.getElementById("quests").innerHTML=`
+  <div class="card">
+    <div class="row"><div><h2>⚔️ Квесты</h2><div class="muted small">Ты сам создаёшь все задачи игры.</div></div><button class="btn primary" data-add-quest>＋ Квест</button></div>
+    <div class="notice" style="margin-top:9px">Нет ежедневок, нет «сделай 10 минут тела», нет навязанных целей. <b>Только твои квесты.</b></div>
+  </div>
+  <div class="card">${list||`<div class="empty">Квестов пока нет.<br>Нажми «＋ Квест» и создай первый.</div>`}</div>
+ `;
+}
+
+function renderNode(d,n,depth=0){
+ const i=levelInfo(n.xp||0), children=nodeChildren(d,n.id);
+ return `<div class="node ${depth?"child":""}">
+   <div class="node-head"><div><div class="node-name">${esc(n.name)}</div><div class="tiny muted">${esc(n.desc||"")}</div></div><span class="level">LVL ${i.lvl}</span></div>
+   <div class="progress" style="margin-top:7px"><div class="bar" style="width:${i.pct}%"></div></div>
+   <div class="row tiny" style="margin-top:5px"><span class="xptext">${fmt(n.xp||0)} XP</span><span class="muted">${i.lvl<MAX?`ещё ${fmt((i.next||0)-(n.xp||0))}`:"MAX"}</span></div>
+   <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+     <button class="btn" data-add-child="${n.id}" data-dir="${d.id}">＋ Поднавык</button>
+     <button class="btn danger" data-delete-node="${n.id}">🗑</button>
+   </div>
+   ${children.map(c=>renderNode(d,c,depth+1)).join("")}
+ </div>`
 }
 function renderSkills(){
- document.getElementById("skills").innerHTML=`<div class="card"><div class="row"><h2 style="margin:0">🌳 Дерево навыков</h2><b>${state.skillPoints} SP</b></div><div class="small">Каждый реальный квест даёт 1 SP.</div></div>
- ${CATS.map(c=>`<div class="card"><h2 style="margin:0">${CAT_ICON[c]} ${c} · LVL ${state.stats[c]}</h2>
- ${[1,2,3].map((n,i)=>{
- const unlocked=state.achievements.includes("skill:"+c+"-"+i), cost=[1,2,3][i], ok=state.stats[c]>=n;
- return `<div class="skill ${unlocked?"unlocked":(!ok?"locked":"")}"><div class="row"><b>TIER ${n}</b><span>${unlocked?"✓ OPEN":ok?"READY":"🔒 LVL "+n}</span></div><div class="small">${["Первый перк","Усиленный перк","Эпический перк"][i]} · ${cost} SP</div><div class="actions" style="margin-top:7px"><button class="${ok&&!unlocked?"primary":"secondary"}" data-action="skill" data-cat="${c}" data-idx="${i}" ${(!ok||unlocked)?"disabled":""}>${unlocked?"РАЗБЛОКИРОВАНО":ok?"РАЗБЛОКИРОВАТЬ":"НЕДОСТУПНО"}</button></div></div>`
- }).join("")}</div>`).join("")}`;
+ const dirs=state.directions.map(d=>{
+   const roots=nodeChildren(d,null);
+   const total=directionXp(d),di=levelInfo(total);
+   return `<div class="card">
+     <div class="row"><div><h2>🌳 ${esc(d.name)}</h2><div class="muted tiny">${fmt(total)} XP · ${di.lvl}/200</div></div><button class="btn primary" data-add-node="${d.id}">＋ Ветка</button></div>
+     <div class="progress" style="margin:9px 0"><div class="bar" style="width:${di.pct}%"></div></div>
+     ${roots.map(n=>renderNode(d,n)).join("")||`<div class="empty">Дерево пустое.<br>Например, для «Гитары» ты можешь сам создать:<br><b>Бой → Ритм → Аккорды → Быстрота смены</b> и любые другие ветки.</div>`}
+     <div style="margin-top:8px"><button class="btn danger" data-delete-direction="${d.id}">Удалить направление</button></div>
+   </div>`
+ }).join("");
+ document.getElementById("skills").innerHTML=`
+  <div class="card">
+   <div class="row"><h2>🌳 Деревья навыков</h2><button class="btn primary" data-add-direction>＋ Направление</button></div>
+   <div class="notice">Ты полностью архитектор дерева. Один узел = отдельный навык с собственным <b>LVL 1–200</b>. Чем больше веток ты создашь, тем глубже будет твоя прокачка.</div>
+  </div>
+  ${dirs||`<div class="empty">Сначала создай направление.</div>`}
+ `;
 }
-function renderInventory(){
- document.getElementById("inventory").innerHTML=`<div class="card"><h2 style="margin-top:0">🎒 Инвентарь</h2><div class="small">Лут — следы реальных действий.</div></div>
- <div class="grid">${state.inventory.length?state.inventory.map((x,i)=>`<div class="card"><div style="font-size:28px">${esc(x).slice(0,2)}</div><b>${esc(x)}</b><div class="small">#${i+1}</div></div>`).join(""):`<div class="card"><div class="small">Пока пусто. Первый квест даст первый предмет.</div></div>`}</div>`;
-}
-function renderLore(){
- const evDate=today();
- if(state.eventDate!==evDate){state.eventDone=false;state.eventDate=evDate;save()}
- const events=["NPC EVENT: Напиши человеку, с которым давно не общался.","LORE EVENT: Запиши 3 строки о сегодняшнем дне.","MERCHANT EVENT: Найди одну идею для заработка.","MUSIC EVENT: Сними короткий кусок игры на гитаре.","ACADEMY EVENT: Разбери одну вещь, которую не понимаешь."];
- const idx=new Date().getDate()%events.length;
- document.getElementById("lore").innerHTML=`<div class="card"><h2 style="margin-top:0">💾 Сохранение прогресса</h2><div class="small">Прогресс хранится в браузере. Для железной защиты используй «СОХРАНИТЬ» — это создаёт резервный JSON-файл, который можно загрузить обратно на любом устройстве.</div></div><div class="card"><h2 style="margin-top:0">🎲 Daily Event</h2><p>${events[idx]}</p><button class="primary" data-action="event" ${state.eventDone?"disabled":""}>${state.eventDone?"✓ ЗАВЕРШЕНО":"+30 XP"}</button></div>
- <div class="card"><h2 style="margin-top:0">📜 Хроника</h2>${state.lore.length?state.lore.slice().reverse().map(x=>`<div style="padding:9px 0;border-bottom:1px solid var(--line)">${esc(x)}</div>`).join(""):`<div class="small">История ещё не написана.</div>`}</div>`;
-}
-function dailyEvent(){
- if(state.eventDone){toast("Сегодня событие уже выполнено");return}
- state.eventDone=true;state.xp+=30;state.lore.push("Daily Event выполнен: +30 XP");levelCheck();save();renderAll();toast("🎲 +30 XP");
-}
-function renderAll(){renderCharacter();renderWorld();renderQuests();renderSkills();renderInventory();renderLore()}
 
-document.getElementById("tabs").addEventListener("click",e=>{
- const b=e.target.closest("[data-view]");if(!b)return;
- document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));b.classList.add("active");
- document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
- document.getElementById(b.dataset.view).classList.add("active");
-});
+function renderLore(){
+ const lore=state.lore.map(x=>`<div class="quest"><div class="tiny muted">${esc(x.date)}</div><div style="margin-top:4px">${esc(x.text)}</div></div>`).join("");
+ document.getElementById("lore").innerHTML=`
+ <div class="card"><h2>📜 ЛОР</h2><div class="notice">Здесь остаются реальные события твоей игры: создание направлений, победы над квестами, достижения 200 LVL.</div></div>
+ <div class="card">${lore||`<div class="empty">ЛОР пока пуст.</div>`}</div>
+ `;
+}
+
+function renderSave(){
+ document.getElementById("save").innerHTML=`
+ <div class="card">
+  <h2>💾 Сохранение</h2>
+  <div class="notice">Прогресс хранится в браузере. Для переноса на другой телефон/браузер используй JSON-бэкап.</div>
+  <div class="grid2" style="margin-top:10px">
+    <button class="btn primary" data-backup>💾 Скачать сейв</button>
+    <button class="btn blue" data-restore>📥 Загрузить сейв</button>
+  </div>
+  <input id="restoreFile" type="file" accept=".json,application/json" style="display:none">
+ </div>
+ <div class="card">
+  <h2>⚙️ Правила V3</h2>
+  <div class="notice">
+   <b>MAX LVL: 200</b><br>
+   XP-curve нелинейная и тяжёлая: высокие уровни требуют всё больше опыта.<br><br>
+   <b>Квесты:</b> создаёшь сам. XP определяется сложностью I–V.<br>
+   <b>Деревья:</b> создаёшь сам. Направление → ветки → поднавыки.<br>
+   <b>Нет готовых целей:</b> игра не говорит тебе, кем быть.<br>
+   <b>Ты строишь систему под реальную жизнь.</b>
+  </div>
+ </div>
+ <div class="card">
+  <h2>☠️ Сброс</h2>
+  <div class="notice">Удалит только сейв V3 из этого браузера.</div>
+  <button class="btn danger" style="margin-top:8px" data-reset-all>Сбросить V3</button>
+ </div>
+ `;
+}
+
+function renderAll(){renderHero();renderQuests();renderSkills();renderLore();renderSave()}
 
 document.addEventListener("click",e=>{
- const b=e.target.closest("[data-action]");if(!b)return;
- const a=b.dataset.action;
- if(a==="complete")completeQuest(b.dataset.id);
- else if(a==="reset")resetQuest(b.dataset.id);
- else if(a==="delete"){if(confirm("Удалить этот квест?"))deleteQuest(b.dataset.id)}
- else if(a==="skill")unlockSkill(b.dataset.cat,Number(b.dataset.idx));
- else if(a==="event")dailyEvent();
- else if(a==="energy"){state.energy=Math.min(100,state.energy+20);save();renderAll();toast("⚡ +20 ENERGY")}
- else if(a==="openModal")document.getElementById("modal").classList.add("open");
- else if(a==="quests"){document.querySelector('[data-view="quests"]').click()}
- else if(a==="backup")backup();
- else if(a==="restore")restore();
+ const b=e.target.closest("button");if(!b)return;
+ if(b.matches(".tab")){
+   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+   document.querySelectorAll(".view").forEach(x=>x.classList.remove("active"));
+   b.classList.add("active");document.getElementById(b.dataset.tab).classList.add("active");return;
+ }
+ if(b.matches("[data-close]")){closeModal();return}
+ if(b.matches("[data-add-direction]")){openDirectionModal();return}
+ if(b.matches("[data-add-node]")){openNodeModal(b.dataset.addNode);return}
+ if(b.matches("[data-add-child]")){openNodeModal(b.dataset.dir,b.dataset.addChild);return}
+ if(b.matches("[data-add-quest]")){openQuestModal();return}
+ if(b.matches("[data-complete-quest]")){completeQuest(b.dataset.completeQuest);return}
+ if(b.matches("[data-reset-quest]")){resetQuest(b.dataset.resetQuest);return}
+ if(b.matches("[data-delete-quest]")){deleteQuest(b.dataset.deleteQuest);return}
+ if(b.matches("[data-delete-direction]")){
+   if(confirm("Удалить направление и его квесты?"))deleteDirection(b.dataset.deleteDirection);return;
+ }
+ if(b.matches("[data-delete-node]")){
+   if(confirm("Удалить этот навык и его поднавыки?"))deleteNode(b.dataset.deleteNode);return;
+ }
+ if(b.matches("[data-create-direction]")){
+   const name=document.getElementById("dname").value.trim();
+   const desc=document.getElementById("ddesc").value.trim();
+   if(!name){toast("Нужно название");return}
+   state.directions.push({id:uid("d"),name,desc,nodes:[]});
+   addLore(`Создано направление: ${name}`);
+   save();closeModal();renderAll();toast("⚔️ Направление создано");return;
+ }
+ if(b.matches("[data-create-node]")){
+   const name=document.getElementById("nname").value.trim();
+   const desc=document.getElementById("ndesc").value.trim();
+   const d=findDirection(b.dataset.dir);
+   if(!d||!name){toast("Нужно название");return}
+   d.nodes.push({id:uid("n"),name,desc,parentId:b.dataset.parent||null,xp:0});
+   addLore(`Создан навык: ${d.name} / ${name}`);
+   save();closeModal();renderAll();toast("🌳 Навык создан");return;
+ }
+ if(b.matches("[data-create-quest]")){
+   const title=document.getElementById("qtitle").value.trim();
+   const nodeId=document.getElementById("qnode").value;
+   const type=document.getElementById("qtype").value;
+   const diff=Number(document.getElementById("qdiff").value);
+   const note=document.getElementById("qnote").value.trim();
+   if(!title||!nodeId){toast("Заполни название и цель");return}
+   const hit=findNode(nodeId);
+   state.quests.unshift({id:uid("q"),title,nodeId,dirId:hit.d.id,type,diff,xp:questXpByDifficulty(diff),note,done:false,createdAt:new Date().toISOString()});
+   addLore(`Создан квест: ${title}`);
+   save();closeModal();renderAll();toast("⚔️ Квест создан");return;
+ }
+ if(b.matches("[data-backup]")){
+   const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+   const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="LIFE_RPG_V3_"+new Date().toISOString().slice(0,10)+".json";a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast("💾 Сейв скачан");return;
+ }
+ if(b.matches("[data-restore]")){document.getElementById("restoreFile").click();return}
+ if(b.matches("[data-edit-hero]")){
+   openModal("Герой",`${field("heroname","Имя героя","text",state.hero.name)}<div style="margin-top:10px"><button class="btn primary" data-save-hero>Сохранить</button></div>`);return;
+ }
+ if(b.matches("[data-save-hero]")){
+   const v=document.getElementById("heroname").value.trim()||"Безымянный герой";state.hero.name=v;save();closeModal();renderAll();return;
+ }
+ if(b.matches("[data-reset-all]")){
+   if(confirm("Точно стереть весь V3-сейв?")){localStorage.removeItem(KEY);state=structuredClone(emptyState);renderAll();toast("Сейв V3 сброшен")}
+ }
 });
-document.getElementById("closeModal").onclick=()=>document.getElementById("modal").classList.remove("open");
-document.getElementById("cancelModal").onclick=()=>document.getElementById("modal").classList.remove("open");
-document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")e.target.classList.remove("open")});
-document.getElementById("addQuest").onclick=()=>{
- const title=document.getElementById("newTitle").value.trim();if(!title){toast("Введите название");return}
- state.quests.push({id:"custom_"+Date.now(),title,type:document.getElementById("newType").value,cat:document.getElementById("newCat").value,xp:Math.max(1,Number(document.getElementById("newXp").value)||50),energy:Math.max(0,Number(document.getElementById("newEnergy").value)||10),done:false});
- save();document.getElementById("modal").classList.remove("open");document.getElementById("newTitle").value="";renderAll();toast("⚔️ Квест создан");
-};
-
-document.getElementById("restoreFile").addEventListener("change",function(){
- const file=this.files && this.files[0]; if(!file)return;
- const reader=new FileReader();
- reader.onload=function(){
-  try{
-   const imported=JSON.parse(reader.result);
-   if(!imported || typeof imported!=="object" || !imported.stats || !Array.isArray(imported.quests)){
-    throw new Error("bad save");
-   }
-   state=Object.assign(structuredClone(defaultState),imported,{stats:Object.assign({},defaultState.stats,imported.stats||{})});
-   save();renderAll();toast("📥 Прогресс восстановлен");
-  }catch(e){toast("❌ Файл сохранения повреждён")}
- };
- reader.readAsText(file);this.value="";
+document.addEventListener("change",e=>{
+ if(e.target.id==="restoreFile"&&e.target.files[0]){
+   const r=new FileReader();
+   r.onload=()=>{
+     try{
+       const x=JSON.parse(r.result);
+       if(!x.directions||!x.quests)throw new Error();
+       state=x;save();renderAll();toast("📥 Сейв загружен");
+     }catch(err){toast("❌ Это не сейв LIFE RPG V3")}
+   };
+   r.readAsText(e.target.files[0]);
+ }
 });
+document.getElementById("modal").addEventListener("click",e=>{if(e.target.id==="modal")closeModal()});
 renderAll();
 })();
 </script>
