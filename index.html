@@ -1040,10 +1040,31 @@
     <div class="screen" id="screen-quests">
       <div class="header flex-between">
         <div>
-          <h1>📜 Квесты</h1>
+          <h1>Квесты</h1>
           <p>Задания твоей жизни</p>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="openQuestModal()">+ Квест</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn btn-secondary btn-sm" onclick="openAiQuestPicker()">ИИ</button>
+          <button class="btn btn-primary btn-sm" onclick="openQuestModal()">+ Квест</button>
+        </div>
+      </div>
+      <div class="quick-add" style="display:flex;gap:8px;margin-bottom:12px">
+        <input type="text" id="quickQuestInput" placeholder="Быстрый квест…" maxlength="120"
+          style="flex:1;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.9rem;font-family:inherit;min-height:40px;outline:none"
+          onkeydown="if(event.key==='Enter')quickAddQuest()">
+        <button class="btn btn-primary btn-sm" onclick="quickAddQuest()">+</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <input type="search" id="questSearchInput" placeholder="Поиск…"
+          style="flex:1;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.85rem;font-family:inherit;outline:none"
+          oninput="questSearch=this.value.trim().toLowerCase();renderQuests()">
+        <select id="questSortSelect" onchange="questSort=this.value;renderQuests()"
+          style="padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.8rem;font-family:inherit;outline:none">
+          <option value="default">По умолчанию</option>
+          <option value="xp">По XP</option>
+          <option value="date">По дате</option>
+          <option value="diff">По сложности</option>
+        </select>
       </div>
       <div class="filters" id="questFilters">
         <button class="filter-btn active" data-filter="all">Все</button>
@@ -1052,6 +1073,11 @@
         <button class="filter-btn" data-filter="SIDE">SIDE</button>
         <button class="filter-btn" data-filter="MAIN">MAIN</button>
         <button class="filter-btn" data-filter="BOSS">BOSS</button>
+        <button class="filter-btn" data-filter="tag:home">Дом</button>
+        <button class="filter-btn" data-filter="tag:work">Работа</button>
+        <button class="filter-btn" data-filter="tag:sport">Спорт</button>
+        <button class="filter-btn" data-filter="tag:people">Люди</button>
+        <button class="filter-btn" data-filter="tag:study">Учёба</button>
       </div>
       <div id="questsList"></div>
     </div>
@@ -1110,8 +1136,15 @@
         <div class="save-section">
           <h3>Экспорт / Импорт</h3>
           <button class="btn btn-primary btn-block mb-8" onclick="exportSave()">Экспорт JSON</button>
-          <button class="btn btn-secondary btn-block" onclick="document.getElementById('importFile').click()">Импорт JSON</button>
-          <input type="file" id="importFile" accept=".json,application/json" class="hidden" onchange="importSave(event)">
+          <button class="btn btn-secondary btn-block mb-8" onclick="exportMarkdown()">Экспорт Markdown</button>
+          <button class="btn btn-secondary btn-block mb-8" onclick="document.getElementById('importFile').click()">Импорт (заменить)</button>
+          <button class="btn btn-secondary btn-block" onclick="document.getElementById('importMergeFile').click()">Импорт (добавить к текущему)</button>
+          <input type="file" id="importFile" accept=".json,application/json" class="hidden" onchange="importSave(event, false)">
+          <input type="file" id="importMergeFile" accept=".json,application/json" class="hidden" onchange="importSave(event, true)">
+        </div>
+        <div class="save-section">
+          <h3>Обзор</h3>
+          <button class="btn btn-secondary btn-block" onclick="showWeeklyReview()">Недельный обзор</button>
         </div>
         <div class="save-section">
           <h3>Опасная зона</h3>
@@ -1172,6 +1205,8 @@
   <script>
     // ===================== CONSTANTS & XP =====================
     const STORAGE_KEY = 'life_rpg_v4';
+    const SECRET_KEY = 'life_rpg_v4_secret';
+    const SCHEMA_VERSION = 2;
     const MAX_LEVEL = 200;
 
     const QUEST_XP = {
@@ -1181,6 +1216,14 @@
     };
 
     const DIFF_LABELS = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V' };
+    const QUEST_TAGS = [
+      { id: 'home', label: 'Дом' },
+      { id: 'work', label: 'Работа' },
+      { id: 'sport', label: 'Спорт' },
+      { id: 'people', label: 'Люди' },
+      { id: 'study', label: 'Учёба' },
+      { id: 'other', label: 'Другое' }
+    ];
 
     // ===== TITLES (Identity) =====
     const TITLES = [
@@ -1266,6 +1309,7 @@
 
     // ===================== STATE =====================
     let state = {
+      schemaVersion: SCHEMA_VERSION,
       hero: { name: 'Безымянный герой', xp: 0, titleId: 'newbie' },
       directions: [],
       quests: [],
@@ -1276,28 +1320,130 @@
       unlockedAchievements: [],
       reflections: [],
       ai: {
-        apiKey: '',
         model: 'openai/gpt-oss-20b',
         preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
+      },
+      ui: {
+        lastEveningRitual: null,
+        questSort: 'default'
       }
     };
 
     let currentTreeDirId = null;
     let treeScale = 1;
     let questFilter = 'all';
+    let questSearch = '';
+    let questSort = 'default';
     let editingId = null;
     let editingType = null;
     let skillParentId = null;
     let pendingReflectionQuest = null;
+    let toastQueue = [];
+    let toastShowing = false;
 
     // ===================== PERSISTENCE =====================
+    function todayStr() {
+      const d = new Date();
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+
+    function getApiKey() {
+      try { return localStorage.getItem(SECRET_KEY) || ''; } catch(e) { return ''; }
+    }
+
+    function setApiKey(key) {
+      try {
+        if (key) localStorage.setItem(SECRET_KEY, key);
+        else localStorage.removeItem(SECRET_KEY);
+      } catch(e) {}
+    }
+
     function save() {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        const toSave = JSON.parse(JSON.stringify(state));
+        if (toSave.ai) delete toSave.ai.apiKey;
+        toSave.schemaVersion = SCHEMA_VERSION;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+        maybeDailyBackup(toSave);
       } catch (e) {
         console.warn('Save failed', e);
         toast('Ошибка сохранения', 'error');
       }
+    }
+
+    function maybeDailyBackup(data) {
+      try {
+        const key = 'life_rpg_v4_backup_' + todayStr().replace(/-/g, '');
+        if (!localStorage.getItem(key)) {
+          localStorage.setItem(key, JSON.stringify(data));
+        }
+        // keep last 7 backups
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('life_rpg_v4_backup_')) keys.push(k);
+        }
+        keys.sort().reverse();
+        keys.slice(7).forEach(k => localStorage.removeItem(k));
+      } catch(e) {}
+    }
+
+    function migrateState(data) {
+      const s = {
+        schemaVersion: SCHEMA_VERSION,
+        hero: Object.assign({ name: 'Безымянный герой', xp: 0, titleId: 'newbie' }, data.hero || {}),
+        directions: Array.isArray(data.directions) ? data.directions : [],
+        quests: Array.isArray(data.quests) ? data.quests : [],
+        lore: Array.isArray(data.lore) ? data.lore : [],
+        stats: Object.assign({ completed: 0, totalXp: 0 }, data.stats || {}),
+        streak: Object.assign({ current: 0, longest: 0, lastDate: null }, data.streak || {}),
+        unlockedTitles: Array.isArray(data.unlockedTitles) ? data.unlockedTitles : ['newbie'],
+        unlockedAchievements: Array.isArray(data.unlockedAchievements) ? data.unlockedAchievements : [],
+        reflections: Array.isArray(data.reflections) ? data.reflections : [],
+        ai: Object.assign({
+          model: 'openai/gpt-oss-20b',
+          preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
+        }, data.ai || {}),
+        ui: Object.assign({ lastEveningRitual: null, questSort: 'default' }, data.ui || {})
+      };
+      // migrate api key out of state
+      if (s.ai.apiKey) {
+        if (!getApiKey()) setApiKey(s.ai.apiKey);
+        delete s.ai.apiKey;
+      }
+      const deprecated = {
+        'llama-3.3-70b-versatile': 'openai/gpt-oss-120b',
+        'llama-3.1-8b-instant': 'openai/gpt-oss-20b',
+        'gemma2-9b-it': 'openai/gpt-oss-20b',
+        'llama-3.1-70b-versatile': 'openai/gpt-oss-120b'
+      };
+      if (deprecated[s.ai.model]) s.ai.model = deprecated[s.ai.model];
+      if (!s.ai.model) s.ai.model = 'openai/gpt-oss-20b';
+      if (!s.ai.preferredDifficulty) s.ai.preferredDifficulty = { SIDE: 2, MAIN: 3, BOSS: 2 };
+
+      s.directions.forEach(d => {
+        d.xp = d.xp || 0;
+        if (!Array.isArray(d.nodes)) d.nodes = [];
+        d.nodes.forEach(n => { n.xp = n.xp || 0; });
+      });
+      s.quests.forEach(q => {
+        if (typeof q.done !== 'boolean') q.done = !!q.done;
+        if (!q.type || !QUEST_XP[q.type]) q.type = 'SIDE';
+        if (!(q.difficulty >= 1 && q.difficulty <= 5)) q.difficulty = 2;
+        if (!q.xp) q.xp = QUEST_XP[q.type][q.difficulty] || 50;
+      });
+      if (!Array.isArray(s.unlockedTitles) || !s.unlockedTitles.length) s.unlockedTitles = ['newbie'];
+      return s;
+    }
+
+    function validateImport(data) {
+      if (!data || typeof data !== 'object') return 'Не объект';
+      if (!data.hero || typeof data.hero !== 'object') return 'Нет hero';
+      if (data.hero.xp != null && typeof data.hero.xp !== 'number') return 'hero.xp не число';
+      if (data.directions && !Array.isArray(data.directions)) return 'directions не массив';
+      if (data.quests && !Array.isArray(data.quests)) return 'quests не массив';
+      if (data.lore && !Array.isArray(data.lore)) return 'lore не массив';
+      return null;
     }
 
     function load() {
@@ -1305,27 +1451,11 @@
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
           const data = JSON.parse(raw);
-          if (data && data.hero) {
-            state = {
-              hero: Object.assign({ name: 'Безымянный герой', xp: 0, titleId: 'newbie' }, data.hero),
-              directions: Array.isArray(data.directions) ? data.directions : [],
-              quests: Array.isArray(data.quests) ? data.quests : [],
-              lore: Array.isArray(data.lore) ? data.lore : [],
-              stats: data.stats || { completed: 0, totalXp: 0 },
-              streak: data.streak || { current: 0, longest: 0, lastDate: null },
-              unlockedTitles: Array.isArray(data.unlockedTitles) ? data.unlockedTitles : ['newbie'],
-              unlockedAchievements: Array.isArray(data.unlockedAchievements) ? data.unlockedAchievements : [],
-              reflections: Array.isArray(data.reflections) ? data.reflections : [],
-              ai: Object.assign({
-                apiKey: '',
-                model: 'openai/gpt-oss-20b',
-                preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
-              }, data.ai || {})
-            };
-            state.directions.forEach(d => {
-              d.xp = d.xp || 0;
-              (d.nodes || []).forEach(n => { n.xp = n.xp || 0; });
-            });
+          const err = validateImport(data);
+          if (!err) {
+            state = migrateState(data);
+          } else {
+            console.warn('Invalid save:', err);
           }
         }
       } catch (e) {
@@ -1335,14 +1465,29 @@
 
     // ===================== TOASTS & LEVEL UP =====================
     function toast(msg, type = '') {
+      toastQueue.push({ msg, type });
+      if (!toastShowing) processToastQueue();
+    }
+
+    function processToastQueue() {
+      if (!toastQueue.length) { toastShowing = false; return; }
+      toastShowing = true;
+      const { msg, type } = toastQueue.shift();
       const el = document.createElement('div');
       el.className = 'toast' + (type ? ' ' + type : '');
       el.textContent = msg;
       document.getElementById('toasts').appendChild(el);
       setTimeout(() => {
         el.style.animation = 'toastOut 0.3s ease forwards';
-        setTimeout(() => el.remove(), 300);
-      }, 2600);
+        setTimeout(() => {
+          el.remove();
+          setTimeout(processToastQueue, 400);
+        }, 280);
+      }, 2400);
+    }
+
+    function haptic() {
+      try { if (navigator.vibrate) navigator.vibrate(12); } catch(e) {}
     }
 
     function showLevelUp(from, to) {
@@ -1373,24 +1518,139 @@
     }
 
     // ===================== PSYCHOLOGICAL SYSTEMS =====================
-    function todayStr() {
-      return new Date().toISOString().slice(0, 10);
+    function isoWeekKey(d = new Date()) {
+      const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      const dayNum = date.getUTCDay() || 7;
+      date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+      const week = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+      return date.getUTCFullYear() + '-W' + String(week).padStart(2, '0');
     }
 
     function updateStreak() {
       const today = todayStr();
       const s = state.streak;
-      if (s.lastDate === today) return; // already counted today
+      if (!s) return;
+      if (s.lastDate === today) return;
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const yStr = yesterday.toISOString().slice(0, 10);
-      if (s.lastDate === yStr) {
-        s.current += 1;
+      // rest day counts as continuity bridge
+      const restBridge = s.restDate === yStr || s.restDate === today;
+      if (s.lastDate === yStr || restBridge) {
+        s.current = (s.current || 0) + 1;
       } else {
         s.current = 1;
       }
       s.lastDate = today;
-      if (s.current > s.longest) s.longest = s.current;
+      if (s.current > (s.longest || 0)) s.longest = s.current;
+    }
+
+    function canTakeRestDay() {
+      if (!state.ui) state.ui = {};
+      return state.ui.lastRestWeek !== isoWeekKey();
+    }
+
+    function takeRestDay() {
+      if (!canTakeRestDay()) {
+        toast('Отдых уже взят на этой неделе', 'error');
+        return;
+      }
+      if (!confirm('Взять день отдыха? Серия не сгорит, но квесты сегодня не обязательны.')) return;
+      if (!state.streak) state.streak = { current: 0, longest: 0, lastDate: null };
+      const today = todayStr();
+      state.streak.restDate = today;
+      // keep streak continuity without requiring a quest
+      if (state.streak.lastDate !== today) {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yStr = yesterday.toISOString().slice(0, 10);
+        if (state.streak.lastDate === yStr || state.streak.lastDate === today) {
+          /* keep current */
+        } else if (!state.streak.lastDate) {
+          state.streak.current = Math.max(1, state.streak.current || 0);
+        }
+        // mark today as "covered" for streak purposes without incrementing twice
+        if (state.streak.lastDate !== today) {
+          state.streak.lastDate = today;
+        }
+      }
+      if (!state.ui) state.ui = {};
+      state.ui.lastRestWeek = isoWeekKey();
+      addAutoLore('🛋 День отдыха. Серия сохранена.');
+      save();
+      renderHero();
+      toast('День отдыха активирован', 'success');
+    }
+
+    function getDeadSkills() {
+      const now = Date.now();
+      const day = 86400000;
+      const dead = [];
+      state.directions.forEach(d => {
+        (d.nodes || []).forEach(n => {
+          const last = n.lastActiveAt || 0;
+          if (!last || (now - last) > 30 * day) {
+            dead.push({ dirId: d.id, dirName: d.name, node: n, days: last ? Math.floor((now - last) / day) : null });
+          }
+        });
+      });
+      return dead;
+    }
+
+    function showWeeklyReview() {
+      const weekAgo = Date.now() - 7 * 86400000;
+      const done = state.quests.filter(q => q.done && (q.completedAt || 0) >= weekAgo);
+      const xp = done.reduce((s, q) => s + (q.xp || 0), 0);
+      // top skills by recent activity
+      const skillGain = {};
+      done.forEach(q => {
+        if (q.targetType === 'SKILL' && q.targetId) {
+          skillGain[q.targetId] = (skillGain[q.targetId] || 0) + (q.xp || 0);
+        }
+      });
+      const skillList = [];
+      state.directions.forEach(d => {
+        (d.nodes || []).forEach(n => {
+          if (skillGain[n.id]) skillList.push({ name: n.name, dir: d.name, xp: skillGain[n.id] });
+        });
+      });
+      skillList.sort((a, b) => b.xp - a.xp);
+      const top = skillList.slice(0, 3);
+      const dead = getDeadSkills().slice(0, 5);
+
+      document.getElementById('modalContent').innerHTML = `
+        <h2>Недельный обзор</h2>
+        <div class="stats-grid" style="margin:12px 0">
+          <div class="stat-box"><div class="val">${done.length}</div><div class="lbl">Квестов</div></div>
+          <div class="stat-box"><div class="val">${formatNum(xp)}</div><div class="lbl">XP за неделю</div></div>
+          <div class="stat-box"><div class="val">${state.streak?.current || 0}</div><div class="lbl">Серия</div></div>
+          <div class="stat-box"><div class="val">${state.streak?.longest || 0}</div><div class="lbl">Рекорд</div></div>
+        </div>
+        <div class="tip-box"><strong>Топ навыков недели</strong><br>
+          ${top.length ? top.map(s => `• ${escapeHtml(s.name)} (${escapeHtml(s.dir)}) +${s.xp} XP`).join('<br>') : 'Пока нет привязанных к навыкам квестов'}
+        </div>
+        ${dead.length ? `<div class="tip-box"><strong>Мягкий сигнал</strong><br>Давно не качались:<br>${dead.map(d => `• ${escapeHtml(d.node.name)} <span class="text-dim">(${escapeHtml(d.dirName)}${d.days != null ? ', ' + d.days + 'д' : ''})</span>`).join('<br>')}<br><span class="text-dim">Можно отпустить или вернуть в фокус.</span></div>` : ''}
+        <div class="modal-actions">
+          <button class="btn btn-secondary btn-block" onclick="closeModal()">Закрыть</button>
+        </div>
+      `;
+      openModal();
+    }
+
+    function maybeSundayReview() {
+      try {
+        if (new Date().getDay() !== 0) return; // Sunday
+        if (!state.ui) state.ui = {};
+        const key = isoWeekKey();
+        if (state.ui.lastWeeklyReview === key) return;
+        setTimeout(() => {
+          if (state.ui.lastWeeklyReview === key) return;
+          state.ui.lastWeeklyReview = key;
+          save();
+          showWeeklyReview();
+        }, 1800);
+      } catch(e) {}
     }
 
     function getTitle(id) {
@@ -1791,7 +2051,6 @@
     function ensureAi() {
       if (!state.ai) {
         state.ai = {
-          apiKey: '',
           model: 'openai/gpt-oss-20b',
           preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
         };
@@ -1799,16 +2058,17 @@
       if (!state.ai.preferredDifficulty) {
         state.ai.preferredDifficulty = { SIDE: 2, MAIN: 3, BOSS: 2 };
       }
-      // migrate deprecated Groq models (shutdown Aug 2026 for free tier)
+      if (state.ai.apiKey) {
+        if (!getApiKey()) setApiKey(state.ai.apiKey);
+        delete state.ai.apiKey;
+      }
       const deprecated = {
         'llama-3.3-70b-versatile': 'openai/gpt-oss-120b',
         'llama-3.1-8b-instant': 'openai/gpt-oss-20b',
         'gemma2-9b-it': 'openai/gpt-oss-20b',
         'llama-3.1-70b-versatile': 'openai/gpt-oss-120b'
       };
-      if (deprecated[state.ai.model]) {
-        state.ai.model = deprecated[state.ai.model];
-      }
+      if (deprecated[state.ai.model]) state.ai.model = deprecated[state.ai.model];
       if (!state.ai.model) state.ai.model = 'openai/gpt-oss-20b';
     }
 
@@ -1816,7 +2076,7 @@
       ensureAi();
       const keyEl = document.getElementById('aiApiKey');
       const modelEl = document.getElementById('aiModel');
-      if (keyEl) keyEl.value = state.ai.apiKey || '';
+      if (keyEl) keyEl.value = getApiKey();
       if (modelEl) modelEl.value = state.ai.model || 'openai/gpt-oss-20b';
     }
 
@@ -1824,15 +2084,16 @@
       ensureAi();
       const key = (document.getElementById('aiApiKey')?.value || '').trim();
       const model = document.getElementById('aiModel')?.value || 'openai/gpt-oss-20b';
-      state.ai.apiKey = key;
+      setApiKey(key);
       state.ai.model = model;
+      if (state.ai.apiKey) delete state.ai.apiKey;
       save();
       toast(key ? 'Настройки ИИ сохранены' : 'Ключ очищен — ИИ выключен');
     }
 
     async function testGroqConnection() {
       ensureAi();
-      const key = (document.getElementById('aiApiKey')?.value || state.ai.apiKey || '').trim();
+      const key = (document.getElementById('aiApiKey')?.value || getApiKey() || '').trim();
       if (!key) { toast('Сначала вставь API-ключ', 'error'); return; }
       toast('Проверяю соединение…');
       try {
@@ -1862,7 +2123,7 @@
 
     async function callGroq(systemPrompt, userPrompt) {
       ensureAi();
-      const key = (state.ai.apiKey || '').trim();
+      const key = (getApiKey() || '').trim();
       if (!key) throw new Error('Нет API-ключа. Добавь в Сейв → ИИ');
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -1901,7 +2162,7 @@
 
     async function generateQuestsForDirection(dirId) {
       ensureAi();
-      if (!(state.ai.apiKey || '').trim()) {
+      if (!(getApiKey() || '').trim()) {
         toast('Добавь API-ключ Groq во вкладке Сейв', 'error');
         switchScreen('save');
         populateAiSettings();
@@ -2038,7 +2299,7 @@
 
     async function generateSkillIdeas(dirId) {
       ensureAi();
-      if (!(state.ai.apiKey || '').trim()) {
+      if (!(getApiKey() || '').trim()) {
         toast('Добавь API-ключ Groq во вкладке Сейв', 'error');
         switchScreen('save');
         populateAiSettings();
@@ -2122,6 +2383,7 @@
         if (dir) {
           const old = levelFromXp(dir.xp);
           dir.xp += amount;
+          dir.lastActiveAt = Date.now();
           const neu = levelFromXp(dir.xp);
           if (neu > old) toast(`${dir.name}: LVL ${neu}!`, 'levelup');
         }
@@ -2131,6 +2393,7 @@
           if (node) {
             const oldN = levelFromXp(node.xp);
             node.xp += amount;
+            node.lastActiveAt = Date.now();
             const neuN = levelFromXp(node.xp);
             if (neuN > oldN) toast(`${node.name}: LVL ${neuN}!`, 'levelup');
             const oldD = levelFromXp(dir.xp);
@@ -2174,6 +2437,16 @@
       const title = getTitle(h.titleId || 'newbie');
       const nearMiss = prog.percent >= 85 && prog.level < MAX_LEVEL;
       const streak = state.streak || { current: 0, longest: 0 };
+      const today = todayStr();
+      const doneToday = state.quests.filter(q => q.done && q.completedAt && new Date(q.completedAt).toISOString().slice(0,10) === today).length;
+      // Today picks: active quests sorted by priority MAIN/BOSS first, then low difficulty, then oldest
+      const todayPicks = state.quests.filter(q => !q.done).slice().sort((a, b) => {
+        const prio = { BOSS: 0, MAIN: 1, SIDE: 2 };
+        const pa = prio[a.type] ?? 3, pb = prio[b.type] ?? 3;
+        if (pa !== pb) return pa - pb;
+        if ((a.difficulty || 3) !== (b.difficulty || 3)) return (a.difficulty || 3) - (b.difficulty || 3);
+        return (a.createdAt || 0) - (b.createdAt || 0);
+      }).slice(0, 5);
 
       const el = document.getElementById('heroContent');
       el.innerHTML = `
@@ -2192,15 +2465,32 @@
             <span>${formatNum(h.xp)}</span> XP
             ${prog.level < MAX_LEVEL ? ` · до след. уровня: <span>${formatNum(prog.needed - prog.current)}</span>` : ' · MAX LEVEL'}
           </div>
-          ${nearMiss ? `<div style="margin-top:10px;color:var(--gold);font-weight:800;font-size:0.9rem;animation:pulse 1.2s ease infinite alternate">⚡ Почти новый уровень!</div>` : ''}
+          ${nearMiss ? `<div style="margin-top:10px;color:var(--gold);font-weight:600;font-size:0.88rem">⚡ Почти новый уровень</div>` : ''}
         </div>
 
         <div class="stats-grid">
-          <div class="stat-box"><div class="val">${doneQuests}</div><div class="lbl">Квестов ✓</div></div>
-          <div class="stat-box"><div class="val">${totalQuests}</div><div class="lbl">Всего квестов</div></div>
+          <div class="stat-box"><div class="val">${doneToday}</div><div class="lbl">Сегодня ✓</div></div>
+          <div class="stat-box"><div class="val">${doneQuests}</div><div class="lbl">Всего ✓</div></div>
           <div class="stat-box"><div class="val">${totalDirs}</div><div class="lbl">Направлений</div></div>
           <div class="stat-box"><div class="val">${totalSkills}</div><div class="lbl">Навыков</div></div>
         </div>
+
+        ${todayPicks.length ? `
+        <div class="card mt-12">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <div style="font-size:0.75rem;color:var(--text-muted);letter-spacing:0.3px;font-weight:600">СЕГОДНЯ</div>
+            <button class="btn btn-secondary btn-sm" onclick="switchScreen('quests')" style="min-height:30px;padding:4px 10px;font-size:0.75rem">Все</button>
+          </div>
+          ${todayPicks.map(q => `
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border)">
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(q.title)}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted)">${q.type} · ${DIFF_LABELS[q.difficulty] || ''} · +${q.xp} XP</div>
+              </div>
+              <button class="btn btn-success btn-sm" onclick="completeQuest('${q.id}')" style="min-height:32px">✓</button>
+            </div>
+          `).join('')}
+        </div>` : ''}
 
         <div class="card mt-12" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
           <div>
@@ -2211,8 +2501,10 @@
             <div class="text-dim" style="font-size:0.75rem">Рекорд: ${streak.longest} дн.</div>
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-secondary btn-sm" onclick="openTitlePicker()">🎖 Титулы</button>
+            <button class="btn btn-secondary btn-sm" onclick="openTitlePicker()">Титулы</button>
             <button class="btn btn-secondary btn-sm" onclick="openAchievements()">🏆 ${state.unlockedAchievements.length}</button>
+            <button class="btn btn-secondary btn-sm" onclick="showWeeklyReview()">Обзор</button>
+            <button class="btn btn-secondary btn-sm" onclick="takeRestDay()" ${!canTakeRestDay() ? 'disabled style="opacity:0.45"' : ''}>Отдых</button>
           </div>
         </div>
 
@@ -2259,32 +2551,66 @@
     }
 
     // ===================== QUESTS =====================
+    function xpToNextLevel() {
+      const prog = xpProgress(state.hero.xp || 0);
+      if (prog.level >= MAX_LEVEL) return 0;
+      return Math.max(0, prog.needed - prog.current);
+    }
+
+    function questWouldLevel(q) {
+      if (q.done) return false;
+      const need = xpToNextLevel();
+      if (need <= 0) return false;
+      const prog = xpProgress(state.hero.xp || 0);
+      // near-miss: less than 15% remaining OR this quest alone finishes the level
+      const remainPct = prog.needed > 0 ? (need / prog.needed) * 100 : 100;
+      return q.xp >= need || remainPct < 15 && q.xp >= need * 0.5;
+    }
+
     function renderQuests() {
       const list = document.getElementById('questsList');
-      let quests = [...state.quests].reverse();
+      if (!list) return;
+      let quests = [...state.quests];
 
       if (questFilter === 'active') quests = quests.filter(q => !q.done);
       else if (questFilter === 'done') quests = quests.filter(q => q.done);
       else if (['SIDE', 'MAIN', 'BOSS'].includes(questFilter)) quests = quests.filter(q => q.type === questFilter);
+      else if (questFilter.startsWith('tag:')) {
+        const tag = questFilter.slice(4);
+        quests = quests.filter(q => Array.isArray(q.tags) && q.tags.includes(tag));
+      }
+
+      if (questSearch) {
+        quests = quests.filter(q =>
+          (q.title || '').toLowerCase().includes(questSearch) ||
+          (q.description || '').toLowerCase().includes(questSearch)
+        );
+      }
+
+      if (questSort === 'xp') quests.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+      else if (questSort === 'date') quests.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      else if (questSort === 'diff') quests.sort((a, b) => (b.difficulty || 0) - (a.difficulty || 0));
+      else quests.reverse();
 
       if (quests.length === 0) {
         list.innerHTML = `
           <div class="empty-state">
             <div class="big-icon">📜</div>
-            <h3>${questFilter === 'all' ? 'Нет квестов' : 'Ничего не найдено'}</h3>
+            <h3>${questFilter === 'all' && !questSearch ? 'Нет квестов' : 'Ничего не найдено'}</h3>
             <p>SIDE — повседневное. MAIN — важное. BOSS — серьёзное испытание.</p>
-            <div class="tip-box" style="text-align:left;max-width:300px;margin:0 auto 16px">
-              <strong>Совет:</strong> начни с простого SIDE, привязанного к навыку. XP пойдёт и герою, и навыку.
+            <div style="display:flex;flex-direction:column;gap:8px;max-width:280px;margin:0 auto">
+              <button class="btn btn-primary" onclick="openQuestModal()">+ Создать квест</button>
+              <button class="btn btn-secondary" onclick="openAiQuestPicker()">ИИ: предложить квесты</button>
             </div>
-            <button class="btn btn-primary" onclick="openQuestModal()">+ Создать квест</button>
           </div>`;
         return;
       }
 
       list.innerHTML = quests.map(q => {
         const targetLabel = getQuestTargetLabel(q);
+        const near = !q.done && questWouldLevel(q);
         return `
-          <div class="card quest-card ${q.done ? 'done' : ''} ${q.type === 'BOSS' ? 'boss-card' : ''}">
+          <div class="card quest-card ${q.done ? 'done' : ''} ${q.type === 'BOSS' ? 'boss-card' : ''}" style="${near ? 'border-color:rgba(212,165,116,0.55)' : ''}">
             <div class="quest-header">
               <div class="quest-title">${escapeHtml(q.title)}</div>
               <div class="quest-xp">+${formatNum(q.xp)} XP</div>
@@ -2293,17 +2619,96 @@
               <span class="badge badge-${q.type.toLowerCase()}">${q.type === 'BOSS' ? '☠ ' : ''}${q.type}</span>
               <span class="badge badge-diff">${DIFF_LABELS[q.difficulty] || q.difficulty}</span>
               ${q.done ? '<span class="badge badge-done">✓ Выполнен</span>' : ''}
+              ${near ? '<span class="badge" style="color:var(--gold);border-color:rgba(212,165,116,0.4)">⚡ Закроет уровень</span>' : ''}
+              ${(q.tags||[]).map(tg => {
+                const meta = QUEST_TAGS.find(x => x.id === tg);
+                return meta ? `<span class="badge">${meta.label}</span>` : '';
+              }).join('')}
             </div>
             ${q.description ? `<div class="quest-desc">${escapeHtml(q.description)}</div>` : ''}
             ${targetLabel ? `<div class="quest-target">🎯 ${escapeHtml(targetLabel)}</div>` : ''}
             <div class="quest-actions">
-              ${!q.done ? `<button class="btn btn-success btn-sm" onclick="completeQuest('${q.id}')">✓ Выполнить</button>` : ''}
+              ${!q.done ? `<button class="btn btn-success btn-sm" onclick="completeQuest('${q.id}')">✓</button>` : ''}
               ${!q.done ? `<button class="btn btn-secondary btn-sm" onclick="openQuestModal('${q.id}')">✎</button>` : ''}
+              <button class="btn btn-secondary btn-sm" onclick="copyQuest('${q.id}')" title="Копировать">⧉</button>
               <button class="btn btn-danger btn-sm" onclick="deleteQuest('${q.id}')">✕</button>
             </div>
           </div>
         `;
       }).join('');
+    }
+
+    function quickAddQuest() {
+      const input = document.getElementById('quickQuestInput');
+      const title = (input?.value || '').trim();
+      if (!title) { toast('Введи название', 'error'); return; }
+      ensureAi();
+      const type = 'SIDE';
+      const difficulty = state.ai.preferredDifficulty?.SIDE || 2;
+      state.quests.push({
+        id: uid(),
+        title: title.slice(0, 120),
+        type,
+        difficulty,
+        xp: QUEST_XP[type][difficulty],
+        description: '',
+        targetType: 'GENERAL',
+        targetId: null,
+        done: false,
+        createdAt: Date.now()
+      });
+      if (input) input.value = '';
+      save();
+      renderQuests();
+      renderHero();
+      toast('Квест добавлен', 'success');
+      haptic();
+    }
+
+    function copyQuest(id) {
+      const q = state.quests.find(x => x.id === id);
+      if (!q) return;
+      state.quests.push({
+        id: uid(),
+        title: q.title,
+        type: q.type,
+        difficulty: q.difficulty,
+        xp: QUEST_XP[q.type][q.difficulty],
+        description: q.description || '',
+        targetType: q.targetType || 'GENERAL',
+        targetId: q.targetId || null,
+        done: false,
+        createdAt: Date.now()
+      });
+      save();
+      renderQuests();
+      toast('Квест скопирован', 'success');
+    }
+
+    function openAiQuestPicker() {
+      ensureAi();
+      if (!(getApiKey() || '').trim()) {
+        toast('Добавь API-ключ в Сейв → ИИ', 'error');
+        switchScreen('save');
+        populateAiSettings();
+        return;
+      }
+      const dirs = state.directions;
+      document.getElementById('modalContent').innerHTML = `
+        <h2>ИИ: квесты</h2>
+        <p class="text-dim" style="margin-bottom:14px;font-size:0.88rem">Выбери направление — ИИ предложит квесты под него.</p>
+        <div class="form-group">
+          <label>Направление</label>
+          <select id="aiQuestDir">
+            ${dirs.length ? dirs.map(d => `<option value="${d.id}">${escapeHtml(d.name)}</option>`).join('') : '<option value="">Сначала создай направление</option>'}
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="const id=document.getElementById('aiQuestDir').value;if(id){closeModal();generateQuestsForDirection(id)}else toast('Нет направления','error')">Сгенерировать</button>
+        </div>
+      `;
+      openModal();
     }
 
     function getQuestTargetLabel(q) {
@@ -2341,6 +2746,7 @@
       ensureAi();
       const type = q ? q.type : 'SIDE';
       const diff = q ? q.difficulty : (state.ai.preferredDifficulty?.[type] || 3);
+      const tags = (q && Array.isArray(q.tags)) ? q.tags : [];
 
       document.getElementById('modalContent').innerHTML = `
         <h2>${q ? 'Редактировать квест' : 'Новый квест'}</h2>
@@ -2367,6 +2773,16 @@
         <div class="xp-preview">
           <div class="val" id="xpPreviewVal">+${QUEST_XP[type][diff]} XP</div>
           <div class="lbl">Награда (автоматически)</div>
+        </div>
+        <div class="form-group">
+          <label>Теги</label>
+          <div style="display:flex;flex-wrap:wrap;gap:6px" id="qTags">
+            ${QUEST_TAGS.map(tg => `
+              <label style="display:flex;align-items:center;gap:4px;font-size:0.82rem;border:1px solid var(--border);padding:6px 10px;border-radius:99px;cursor:pointer">
+                <input type="checkbox" value="${tg.id}" ${tags.includes(tg.id)?'checked':''} style="width:14px;height:14px"> ${tg.label}
+              </label>
+            `).join('')}
+          </div>
         </div>
         <div class="form-group">
           <label>Описание</label>
@@ -2406,6 +2822,7 @@
       const description = document.getElementById('qDesc').value.trim();
       const targetRaw = document.getElementById('qTarget').value;
       const xp = QUEST_XP[type][difficulty];
+      const tags = Array.from(document.querySelectorAll('#qTags input:checked')).map(el => el.value);
 
       let targetType = 'GENERAL';
       let targetId = null;
@@ -2427,6 +2844,7 @@
           q.description = description;
           q.targetType = targetType;
           q.targetId = targetId;
+          q.tags = tags;
           toast('Квест обновлён');
         }
       } else {
@@ -2439,6 +2857,7 @@
           description,
           targetType,
           targetId,
+          tags,
           done: false,
           createdAt: Date.now()
         });
@@ -2460,6 +2879,7 @@
       q.done = true;
       q.completedAt = Date.now();
       state.stats.completed = (state.stats.completed || 0) + 1;
+      haptic();
 
       // Streak
       updateStreak();
@@ -2524,7 +2944,16 @@
         return;
       }
 
-      list.innerHTML = state.directions.map(d => {
+      const deadAll = getDeadSkills();
+      const deadBanner = deadAll.length ? `
+        <div class="tip-box">
+          <strong>Мягкий сигнал</strong><br>
+          ${deadAll.slice(0,3).map(d => escapeHtml(d.node.name) + ' (' + escapeHtml(d.dirName) + ')').join(' · ')}
+          ${deadAll.length > 3 ? ' и ещё ' + (deadAll.length-3) : ''}
+          <br><span class="text-dim">Давно без прогресса — можно отпустить или вернуть в фокус.</span>
+        </div>` : '';
+
+      list.innerHTML = deadBanner + state.directions.map(d => {
         const prog = xpProgress(d.xp || 0);
         const skillCount = (d.nodes || []).length;
         return `
@@ -2979,50 +3408,111 @@
 
     // ===================== SAVE / EXPORT / IMPORT =====================
     function exportSave() {
-      const data = JSON.stringify(state, null, 2);
-      const blob = new Blob([data], { type: 'application/json' });
+      const data = JSON.parse(JSON.stringify(state));
+      if (data.ai) delete data.ai.apiKey;
+      data.schemaVersion = SCHEMA_VERSION;
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = 'life-rpg-v4-save.json';
       a.click();
       URL.revokeObjectURL(url);
-      toast('Сейв экспортирован');
+      toast('Сейв экспортирован (без API-ключа)');
     }
 
-    function importSave(e) {
+    function exportMarkdown() {
+      const lines = [];
+      lines.push('# LIFE RPG — экспорт');
+      lines.push('');
+      lines.push('Герой: **' + (state.hero.name || '') + '** · LVL ' + levelFromXp(state.hero.xp || 0));
+      lines.push('Серия: ' + (state.streak?.current || 0) + ' (рекорд ' + (state.streak?.longest || 0) + ')');
+      lines.push('');
+      lines.push('## Лор');
+      lines.push('');
+      (state.lore || []).slice().reverse().forEach(l => {
+        lines.push('### ' + (l.date || ''));
+        lines.push((l.text || '').trim());
+        lines.push('');
+      });
+      lines.push('## Рефлексии');
+      lines.push('');
+      (state.reflections || []).slice().reverse().forEach(r => {
+        if (r.type === 'evening') {
+          lines.push('- Вечерний: ' + [r.did, r.felt, r.next].filter(Boolean).join(' / '));
+        } else {
+          lines.push('- ' + (r.text || JSON.stringify(r)));
+        }
+      });
+      lines.push('');
+      lines.push('## Квесты (выполненные)');
+      lines.push('');
+      state.quests.filter(q => q.done).forEach(q => {
+        lines.push('- [x] **' + q.title + '** (' + q.type + ' ' + (DIFF_LABELS[q.difficulty]||'') + ', +' + q.xp + ' XP)');
+      });
+      const blob = new Blob([lines.join('\n')], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'life-rpg-export.md';
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('Markdown экспортирован');
+    }
+
+    function mergeImportedState(incoming) {
+      const src = migrateState(incoming);
+      // merge directions by name
+      src.directions.forEach(d => {
+        const existing = state.directions.find(x => x.name === d.name);
+        if (!existing) {
+          state.directions.push(d);
+        } else {
+          (d.nodes || []).forEach(n => {
+            if (!(existing.nodes || []).some(en => en.name === n.name && en.parentId === n.parentId)) {
+              if (!existing.nodes) existing.nodes = [];
+              existing.nodes.push(n);
+            }
+          });
+        }
+      });
+      // merge quests by title+done uniqueness soft
+      src.quests.forEach(q => {
+        const exists = state.quests.some(x => x.title === q.title && x.done === q.done && x.type === q.type);
+        if (!exists) state.quests.push(q);
+      });
+      src.lore.forEach(l => {
+        const exists = state.lore.some(x => x.text === l.text && x.date === l.date);
+        if (!exists) state.lore.push(l);
+      });
+      (src.reflections || []).forEach(r => state.reflections.push(r));
+      // keep higher XP hero
+      if ((src.hero.xp || 0) > (state.hero.xp || 0)) {
+        state.hero.xp = src.hero.xp;
+        if (src.hero.name) state.hero.name = src.hero.name;
+      }
+    }
+
+    function importSave(e, merge) {
       const file = e.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
         try {
           const data = JSON.parse(ev.target.result);
-          if (!data || !data.hero) throw new Error('Invalid');
-          state = {
-            hero: Object.assign({ name: 'Безымянный герой', xp: 0, titleId: 'newbie' }, data.hero),
-            directions: Array.isArray(data.directions) ? data.directions : [],
-            quests: Array.isArray(data.quests) ? data.quests : [],
-            lore: Array.isArray(data.lore) ? data.lore : [],
-            stats: data.stats || { completed: 0, totalXp: 0 },
-            streak: data.streak || { current: 0, longest: 0, lastDate: null },
-            unlockedTitles: Array.isArray(data.unlockedTitles) ? data.unlockedTitles : ['newbie'],
-            unlockedAchievements: Array.isArray(data.unlockedAchievements) ? data.unlockedAchievements : [],
-            reflections: Array.isArray(data.reflections) ? data.reflections : [],
-            ai: Object.assign({
-              apiKey: '',
-              model: 'openai/gpt-oss-20b',
-              preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
-            }, data.ai || {})
-          };
-          state.directions.forEach(d => {
-            d.xp = d.xp || 0;
-            (d.nodes || []).forEach(n => { n.xp = n.xp || 0; });
-          });
+          const err = validateImport(data);
+          if (err) throw new Error(err);
+          if (merge) {
+            mergeImportedState(data);
+            toast('Данные добавлены к текущим', 'success');
+          } else {
+            state = migrateState(data);
+            toast('Сохранение загружено', 'success');
+          }
           save();
           renderAll();
-          toast('Сохранение загружено', 'success');
         } catch (err) {
-          toast('Некорректный JSON', 'error');
+          toast('Импорт: ' + (err.message || 'некорректный JSON'), 'error');
         }
       };
       reader.readAsText(file);
@@ -3032,8 +3522,9 @@
     function resetAll() {
       if (!confirm('Сбросить ВЕСЬ прогресс? Это нельзя отменить.')) return;
       if (!confirm('Точно? Все квесты, навыки и лор будут удалены.')) return;
-      const keepAi = state.ai ? { ...state.ai } : null;
-      state = {
+      const keepModel = state.ai?.model;
+      const keepDiff = state.ai?.preferredDifficulty;
+      state = migrateState({
         hero: { name: 'Безымянный герой', xp: 0, titleId: 'newbie' },
         directions: [],
         quests: [],
@@ -3043,12 +3534,8 @@
         unlockedTitles: ['newbie'],
         unlockedAchievements: [],
         reflections: [],
-        ai: keepAi || {
-          apiKey: '',
-          model: 'openai/gpt-oss-20b',
-          preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
-        }
-      };
+        ai: { model: keepModel || 'openai/gpt-oss-20b', preferredDifficulty: keepDiff }
+      });
       save();
       closeTreeView();
       renderAll();
@@ -3104,13 +3591,87 @@
       renderLore();
     }
 
+    // ===================== EVENING RITUAL =====================
+    function maybeEveningRitual() {
+      try {
+        if (!state.ui) state.ui = { lastEveningRitual: null };
+        const hour = new Date().getHours();
+        if (hour < 20) return;
+        const today = todayStr();
+        if (state.ui.lastEveningRitual === today) return;
+        // delay so it doesn't clash with onboarding
+        setTimeout(() => {
+          if (state.ui.lastEveningRitual === today) return;
+          showEveningRitual();
+        }, 1200);
+      } catch(e) {}
+    }
+
+    function showEveningRitual() {
+      document.getElementById('modalContent').innerHTML = `
+        <h2>Вечерний ритуал</h2>
+        <p class="text-dim" style="margin-bottom:14px;font-size:0.9rem">Коротко зафиксируй день. Можно пропустить.</p>
+        <div class="form-group">
+          <label>Что сделал?</label>
+          <textarea id="erDid" placeholder="Главное действие дня" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Что почувствовал?</label>
+          <textarea id="erFelt" placeholder="Ощущение, настроение" rows="2"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Что завтра?</label>
+          <textarea id="erNext" placeholder="Один шаг на завтра" rows="2"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="skipEveningRitual()">Пропустить</button>
+          <button class="btn btn-primary" onclick="saveEveningRitual()">Сохранить</button>
+        </div>
+      `;
+      openModal();
+    }
+
+    function skipEveningRitual() {
+      if (!state.ui) state.ui = {};
+      state.ui.lastEveningRitual = todayStr();
+      save();
+      closeModal();
+    }
+
+    function saveEveningRitual() {
+      const did = (document.getElementById('erDid')?.value || '').trim();
+      const felt = (document.getElementById('erFelt')?.value || '').trim();
+      const next = (document.getElementById('erNext')?.value || '').trim();
+      if (!state.ui) state.ui = {};
+      state.ui.lastEveningRitual = todayStr();
+      if (did || felt || next) {
+        let text = '🌙 Вечерний ритуал\n';
+        if (did) text += 'Сделал: ' + did + '\n';
+        if (felt) text += 'Почувствовал: ' + felt + '\n';
+        if (next) text += 'Завтра: ' + next;
+        addAutoLore(text.trim());
+        state.reflections.push({ id: uid(), type: 'evening', did, felt, next, at: Date.now() });
+      }
+      save();
+      closeModal();
+      renderLore();
+      toast('Ритуал сохранён', 'success');
+    }
+
     // ===================== INIT =====================
     load();
-    checkTitlesAndAchievements();
+    try {
+      checkTitlesAndAchievements();
+    } catch (e) {
+      console.warn('checkTitles failed', e);
+    }
     renderAll();
     try {
       if (!localStorage.getItem('life_rpg_v4_onboarded')) {
         setTimeout(showOnboarding, 400);
+      } else {
+        maybeEveningRitual();
+        maybeSundayReview();
       }
     } catch(e) {}
 
