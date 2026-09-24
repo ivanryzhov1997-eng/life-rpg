@@ -8,26 +8,26 @@
   <title>LIFE RPG V4</title>
   <style>
     :root {
-      --bg: #07080f;
-      --bg2: #0d0f1a;
-      --panel: rgba(16, 18, 30, 0.88);
-      --panel-border: rgba(120, 140, 255, 0.14);
-      --cyan: #22d3ee;
-      --violet: #c084fc;
-      --gold: #fbbf24;
-      --green: #34d399;
-      --red: #f87171;
-      --pink: #f472b6;
-      --text: #f1f5f9;
-      --text-dim: #94a3b8;
-      --text-muted: #64748b;
-      --radius: 16px;
-      --radius-sm: 12px;
-      --nav-h: 66px;
+      --bg: #0c0c0e;
+      --bg2: #141416;
+      --panel: #161618;
+      --panel-hover: #1c1c1f;
+      --border: #27272a;
+      --border-light: #3f3f46;
+      --accent: #e4e4e7;
+      --accent-dim: #a1a1aa;
+      --gold: #d4a574;
+      --gold-dim: #a67c52;
+      --green: #6b9b7a;
+      --red: #c47a7a;
+      --blue: #7a9bb8;
+      --text: #fafafa;
+      --text-dim: #a1a1aa;
+      --text-muted: #52525b;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --nav-h: 60px;
       --safe-bottom: env(safe-area-inset-bottom, 0px);
-      --glow-cyan: 0 0 24px rgba(34, 211, 238, 0.22);
-      --glow-violet: 0 0 24px rgba(192, 132, 252, 0.28);
-      --glow-gold: 0 0 20px rgba(251, 191, 36, 0.3);
     }
 
     * {
@@ -40,20 +40,17 @@
     html, body {
       height: 100%;
       overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
-      line-height: 1.45;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
     body {
       display: flex;
       flex-direction: column;
-      background:
-        radial-gradient(ellipse 100% 70% at 50% -30%, rgba(34, 211, 238, 0.09), transparent 55%),
-        radial-gradient(ellipse 70% 50% at 100% 100%, rgba(192, 132, 252, 0.07), transparent 50%),
-        radial-gradient(ellipse 50% 40% at 0% 80%, rgba(251, 191, 36, 0.03), transparent 40%),
-        var(--bg);
+      background: var(--bg);
     }
 
     /* ===== NAV ===== */
@@ -64,13 +61,10 @@
       right: 0;
       height: calc(var(--nav-h) + var(--safe-bottom));
       padding-bottom: var(--safe-bottom);
-      background: rgba(10, 11, 18, 0.95);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-top: 1px solid var(--panel-border);
+      background: var(--bg);
+      border-top: 1px solid var(--border);
       display: flex;
       z-index: 1000;
-      box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
     }
 
     .nav-btn {
@@ -84,31 +78,30 @@
       border: none;
       color: var(--text-muted);
       font-size: 10px;
-      font-weight: 600;
-      letter-spacing: 0.3px;
+      font-weight: 500;
+      letter-spacing: 0.2px;
       cursor: pointer;
-      transition: color 0.2s, transform 0.15s;
-      padding: 8px 2px;
-      min-height: 48px;
+      transition: color 0.15s;
+      padding: 6px 2px;
+      min-height: 44px;
     }
 
     .nav-btn .icon {
-      font-size: 22px;
+      font-size: 18px;
       line-height: 1;
-      transition: transform 0.2s;
+      opacity: 0.7;
     }
 
     .nav-btn.active {
-      color: var(--cyan);
+      color: var(--text);
     }
 
     .nav-btn.active .icon {
-      transform: scale(1.12);
-      filter: drop-shadow(0 0 8px rgba(0, 229, 255, 0.5));
+      opacity: 1;
     }
 
     .nav-btn:active {
-      transform: scale(0.94);
+      opacity: 0.7;
     }
 
     /* ===== SCREENS ===== */
@@ -140,40 +133,35 @@
 
     /* ===== COMMON UI ===== */
     .header {
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
     .header h1 {
-      font-size: 1.55rem;
-      font-weight: 800;
+      font-size: 1.35rem;
+      font-weight: 600;
       letter-spacing: -0.3px;
-      background: linear-gradient(135deg, var(--cyan), var(--violet));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: var(--text);
     }
 
     .header p {
-      color: var(--text-dim);
-      font-size: 0.88rem;
-      margin-top: 4px;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      margin-top: 3px;
+      font-weight: 400;
     }
 
     .card {
       background: var(--panel);
-      border: 1px solid var(--panel-border);
+      border: 1px solid var(--border);
       border-radius: var(--radius);
       padding: 16px;
-      margin-bottom: 12px;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      transition: border-color 0.2s, box-shadow 0.25s, transform 0.15s;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+      margin-bottom: 10px;
+      transition: background 0.15s, border-color 0.15s;
     }
 
     .card:hover {
-      border-color: rgba(34, 211, 238, 0.28);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.2), var(--glow-cyan);
+      background: var(--panel-hover);
+      border-color: var(--border-light);
     }
 
     .btn {
@@ -181,66 +169,71 @@
       align-items: center;
       justify-content: center;
       gap: 6px;
-      padding: 12px 18px;
+      padding: 11px 16px;
       border-radius: var(--radius-sm);
       border: none;
-      font-size: 0.92rem;
-      font-weight: 700;
+      font-size: 0.875rem;
+      font-weight: 550;
       cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
-      min-height: 46px;
-      letter-spacing: 0.2px;
+      transition: background 0.15s, opacity 0.15s, border-color 0.15s;
+      min-height: 42px;
+      letter-spacing: -0.1px;
+      font-family: inherit;
     }
 
     .btn:active {
-      transform: scale(0.96);
+      opacity: 0.75;
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #00c4e0, #7c3aed);
-      color: #fff;
-      box-shadow: 0 4px 20px rgba(0, 196, 224, 0.25);
+      background: var(--text);
+      color: var(--bg);
     }
 
     .btn-primary:hover {
-      box-shadow: 0 6px 28px rgba(0, 196, 224, 0.4);
+      background: #e4e4e7;
     }
 
     .btn-secondary {
-      background: rgba(255, 255, 255, 0.06);
+      background: transparent;
       color: var(--text);
-      border: 1px solid var(--panel-border);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--border-light);
+      background: var(--panel);
     }
 
     .btn-danger {
-      background: rgba(239, 68, 68, 0.15);
+      background: transparent;
       color: var(--red);
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      border: 1px solid rgba(196, 122, 122, 0.3);
     }
 
     .btn-success {
-      background: rgba(34, 197, 94, 0.15);
+      background: transparent;
       color: var(--green);
-      border: 1px solid rgba(34, 197, 94, 0.35);
+      border: 1px solid rgba(107, 155, 122, 0.35);
     }
 
     .btn-gold {
-      background: linear-gradient(135deg, #b45309, #d97706);
-      color: #fff;
+      background: var(--gold);
+      color: #1a1410;
     }
 
     .btn-sm {
-      padding: 8px 12px;
-      font-size: 0.82rem;
-      min-height: 38px;
+      padding: 7px 12px;
+      font-size: 0.8rem;
+      min-height: 34px;
     }
 
     .btn-icon {
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       padding: 0;
-      border-radius: 10px;
-      font-size: 1.1rem;
+      border-radius: var(--radius-sm);
+      font-size: 1rem;
     }
 
     .btn-block {
@@ -254,146 +247,137 @@
     }
 
     .empty-state .big-icon {
-      font-size: 3.2rem;
-      margin-bottom: 12px;
-      opacity: 0.5;
+      font-size: 2rem;
+      margin-bottom: 14px;
+      opacity: 0.4;
     }
 
     .empty-state h3 {
-      font-size: 1.15rem;
+      font-size: 1.05rem;
+      font-weight: 600;
       color: var(--text);
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .empty-state p {
-      font-size: 0.9rem;
+      font-size: 0.875rem;
       max-width: 280px;
-      margin: 0 auto 20px;
+      margin: 0 auto 18px;
       line-height: 1.5;
+      color: var(--text-muted);
     }
 
     /* Progress bar */
     .progress-wrap {
-      height: 8px;
-      background: rgba(255, 255, 255, 0.06);
+      height: 3px;
+      background: var(--border);
       border-radius: 99px;
       overflow: hidden;
-      margin: 8px 0;
+      margin: 10px 0;
     }
 
     .progress-bar {
       height: 100%;
       border-radius: 99px;
-      background: linear-gradient(90deg, var(--cyan), var(--violet));
-      transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
-      box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
+      background: var(--text);
+      transition: width 0.4s ease;
     }
 
     .progress-bar.gold {
-      background: linear-gradient(90deg, #f59e0b, var(--gold));
-      box-shadow: var(--glow-gold);
+      background: var(--gold);
     }
 
     .progress-bar.green {
-      background: linear-gradient(90deg, #16a34a, var(--green));
+      background: var(--green);
     }
 
     /* Badges */
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: 3px 9px;
-      border-radius: 6px;
-      font-size: 0.72rem;
-      font-weight: 800;
-      letter-spacing: 0.4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
       text-transform: uppercase;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      background: transparent;
     }
 
-    .badge-side { background: rgba(0, 229, 255, 0.15); color: var(--cyan); }
-    .badge-main { background: rgba(168, 85, 247, 0.2); color: #c084fc; }
-    .badge-boss { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
-    .badge-diff { background: rgba(255, 215, 0, 0.12); color: var(--gold); }
-    .badge-done { background: rgba(34, 197, 94, 0.18); color: var(--green); }
+    .badge-side { color: var(--blue); border-color: rgba(122, 155, 184, 0.3); }
+    .badge-main { color: var(--accent-dim); border-color: var(--border-light); }
+    .badge-boss { color: var(--red); border-color: rgba(196, 122, 122, 0.35); }
+    .badge-diff { color: var(--gold); border-color: rgba(212, 165, 116, 0.3); }
+    .badge-done { color: var(--green); border-color: rgba(107, 155, 122, 0.3); }
 
     /* ===== HERO SCREEN ===== */
     .hero-card {
-      text-align: center;
-      padding: 28px 20px;
-      background: linear-gradient(160deg, rgba(0, 229, 255, 0.08), rgba(168, 85, 247, 0.08));
-      border: 1px solid rgba(0, 229, 255, 0.2);
-      border-radius: 20px;
-      margin-bottom: 20px;
+      text-align: left;
+      padding: 24px 20px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
       position: relative;
-      overflow: hidden;
-    }
-
-    .hero-card::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle at 30% 30%, rgba(0, 229, 255, 0.06), transparent 50%);
-      pointer-events: none;
     }
 
     .hero-name {
-      font-size: 1.6rem;
-      font-weight: 800;
-      margin-bottom: 4px;
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 2px;
+      letter-spacing: -0.2px;
     }
 
     .hero-lvl {
-      font-size: 2.8rem;
-      font-weight: 900;
-      background: linear-gradient(135deg, var(--gold), #f59e0b);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      font-size: 2.75rem;
+      font-weight: 700;
+      color: var(--text);
       line-height: 1.1;
-      text-shadow: 0 0 40px rgba(255, 215, 0, 0.3);
+      letter-spacing: -1.5px;
+      margin: 12px 0 4px;
+      font-variant-numeric: tabular-nums;
     }
 
     .hero-xp {
-      color: var(--text-dim);
-      font-size: 0.9rem;
-      margin: 8px 0 4px;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      margin: 6px 0 0;
     }
 
     .hero-xp span {
       color: var(--gold);
-      font-weight: 700;
+      font-weight: 600;
     }
 
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 16px;
+      gap: 8px;
+      margin-top: 12px;
     }
 
     .stat-box {
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--panel-border);
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       padding: 14px 12px;
-      text-align: center;
+      text-align: left;
     }
 
     .stat-box .val {
-      font-size: 1.4rem;
-      font-weight: 800;
-      color: var(--cyan);
+      font-size: 1.35rem;
+      font-weight: 650;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
     }
 
     .stat-box .lbl {
-      font-size: 0.75rem;
+      font-size: 0.72rem;
       color: var(--text-muted);
       margin-top: 2px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+      font-weight: 450;
     }
 
     /* ===== QUESTS ===== */
@@ -454,9 +438,9 @@
     }
 
     .quest-xp {
-      font-weight: 800;
+      font-weight: 600;
       color: var(--gold);
-      font-size: 0.95rem;
+      font-size: 0.875rem;
     }
 
     /* ===== DIRECTIONS / SKILLS ===== */
@@ -470,8 +454,7 @@
     }
 
     .dir-card:hover {
-      border-color: rgba(0, 229, 255, 0.4);
-      box-shadow: var(--glow-cyan);
+      border-color: var(--border-light);
     }
 
     .dir-top {
@@ -482,17 +465,17 @@
     }
 
     .dir-name {
-      font-size: 1.15rem;
-      font-weight: 800;
+      font-size: 1.05rem;
+      font-weight: 600;
     }
 
     .dir-lvl {
-      font-size: 0.85rem;
-      font-weight: 800;
+      font-size: 0.8rem;
+      font-weight: 600;
       color: var(--gold);
-      background: rgba(255, 215, 0, 0.1);
-      padding: 3px 10px;
-      border-radius: 8px;
+      padding: 2px 8px;
+      border: 1px solid rgba(212, 165, 116, 0.25);
+      border-radius: 4px;
     }
 
     .dir-meta {
@@ -522,7 +505,7 @@
       align-items: center;
       gap: 12px;
       padding: 12px 16px;
-      border-bottom: 1px solid var(--panel-border);
+      border-bottom: 1px solid var(--border);
       background: rgba(10, 11, 18, 0.95);
       flex-shrink: 0;
     }
@@ -546,10 +529,7 @@
       overflow: auto;
       -webkit-overflow-scrolling: touch;
       position: relative;
-      background:
-        radial-gradient(circle at 20% 30%, rgba(0, 229, 255, 0.03), transparent 40%),
-        radial-gradient(circle at 80% 70%, rgba(168, 85, 247, 0.03), transparent 40%),
-        var(--bg2);
+      background: var(--bg);
     }
 
     .tree-canvas {
@@ -569,26 +549,25 @@
 
     .skill-node {
       position: absolute;
-      width: 150px;
+      width: 146px;
       background: var(--panel);
-      border: 1px solid var(--panel-border);
-      border-radius: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
       padding: 12px;
       cursor: pointer;
-      transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+      transition: border-color 0.15s, background 0.15s;
       z-index: 2;
       user-select: none;
     }
 
     .skill-node:hover {
-      border-color: rgba(0, 229, 255, 0.5);
-      box-shadow: var(--glow-cyan);
+      border-color: var(--border-light);
+      background: var(--panel-hover);
       z-index: 3;
     }
 
     .skill-node.root {
-      border-color: rgba(168, 85, 247, 0.4);
-      background: linear-gradient(160deg, rgba(168, 85, 247, 0.12), rgba(18, 20, 32, 0.95));
+      border-color: var(--border-light);
     }
 
     .skill-node .sn-name {
@@ -632,8 +611,8 @@
     /* ===== LORE ===== */
     .lore-card .lore-date {
       font-size: 0.78rem;
-      color: var(--cyan);
-      font-weight: 700;
+      color: var(--gold);
+      font-weight: 600;
       margin-bottom: 6px;
     }
 
@@ -658,9 +637,7 @@
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
+      background: rgba(0, 0, 0, 0.65);
       z-index: 2000;
       display: none;
       align-items: flex-end;
@@ -670,19 +647,19 @@
 
     .modal-overlay.open {
       display: flex;
-      animation: fadeIn 0.2s ease;
+      animation: fadeIn 0.15s ease;
     }
 
     .modal {
       background: var(--bg2);
-      border: 1px solid var(--panel-border);
-      border-radius: 20px 20px 0 0;
+      border: 1px solid var(--border);
+      border-radius: 16px 16px 0 0;
       width: 100%;
-      max-width: 520px;
+      max-width: 480px;
       max-height: 90vh;
       overflow-y: auto;
       padding: 24px 20px calc(24px + var(--safe-bottom));
-      animation: slideUp 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+      animation: slideUp 0.22s ease;
     }
 
     @keyframes slideUp {
@@ -725,23 +702,22 @@
     .form-group textarea,
     .form-group select {
       width: 100%;
-      padding: 12px 14px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--panel-border);
+      padding: 11px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       color: var(--text);
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-family: inherit;
       outline: none;
-      transition: border-color 0.2s;
-      min-height: 46px;
+      transition: border-color 0.15s;
+      min-height: 42px;
     }
 
     .form-group input:focus,
     .form-group textarea:focus,
     .form-group select:focus {
-      border-color: var(--cyan);
-      box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.12);
+      border-color: var(--border-light);
     }
 
     .form-group textarea {
@@ -756,23 +732,24 @@
     }
 
     .xp-preview {
-      background: rgba(255, 215, 0, 0.08);
-      border: 1px solid rgba(255, 215, 0, 0.25);
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 12px 14px;
+      padding: 14px;
       text-align: center;
       margin-bottom: 16px;
     }
 
     .xp-preview .val {
-      font-size: 1.5rem;
-      font-weight: 900;
+      font-size: 1.4rem;
+      font-weight: 650;
       color: var(--gold);
     }
 
     .xp-preview .lbl {
-      font-size: 0.78rem;
+      font-size: 0.75rem;
       color: var(--text-muted);
+      margin-top: 2px;
     }
 
     .modal-actions {
@@ -800,30 +777,27 @@
     }
 
     .toast {
-      background: rgba(18, 20, 32, 0.96);
-      border: 1px solid rgba(0, 229, 255, 0.3);
-      border-radius: 12px;
-      padding: 14px 18px;
-      font-size: 0.92rem;
-      font-weight: 600;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      font-size: 0.875rem;
+      font-weight: 500;
       text-align: center;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), var(--glow-cyan);
-      animation: toastIn 0.35s cubic-bezier(0.22, 1, 0.36, 1);
-      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      animation: toastIn 0.25s ease;
     }
 
     .toast.levelup {
-      border-color: rgba(255, 215, 0, 0.5);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), var(--glow-gold);
-      background: linear-gradient(135deg, rgba(255, 215, 0, 0.12), rgba(18, 20, 32, 0.96));
+      border-color: rgba(212, 165, 116, 0.4);
     }
 
     .toast.success {
-      border-color: rgba(34, 197, 94, 0.4);
+      border-color: rgba(107, 155, 122, 0.4);
     }
 
     .toast.error {
-      border-color: rgba(239, 68, 68, 0.4);
+      border-color: rgba(196, 122, 122, 0.4);
     }
 
     @keyframes toastIn {
@@ -886,22 +860,23 @@
 
     .filter-btn {
       flex-shrink: 0;
-      padding: 8px 14px;
+      padding: 7px 12px;
       border-radius: 99px;
-      border: 1px solid var(--panel-border);
+      border: 1px solid var(--border);
       background: transparent;
-      color: var(--text-dim);
-      font-size: 0.82rem;
-      font-weight: 700;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 500;
       cursor: pointer;
-      transition: all 0.2s;
-      min-height: 38px;
+      transition: all 0.15s;
+      min-height: 34px;
+      font-family: inherit;
     }
 
     .filter-btn.active {
-      background: rgba(0, 229, 255, 0.12);
-      border-color: var(--cyan);
-      color: var(--cyan);
+      background: var(--text);
+      border-color: var(--text);
+      color: var(--bg);
     }
 
     /* Utility */
@@ -940,85 +915,85 @@
     .onboard-overlay.open { display: flex; animation: fadeIn 0.3s ease; }
     .onboard-card {
       background: var(--bg2);
-      border: 1px solid rgba(34, 211, 238, 0.25);
-      border-radius: 24px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
       padding: 28px 22px;
       max-width: 400px;
       width: 100%;
       max-height: 85vh;
       overflow-y: auto;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5), var(--glow-cyan);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5);
     }
     .onboard-card h2 {
-      font-size: 1.4rem;
-      font-weight: 900;
-      background: linear-gradient(135deg, var(--cyan), var(--violet));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 8px;
+      font-size: 1.25rem;
+      font-weight: 650;
+      color: var(--text);
+      margin-bottom: 10px;
+      letter-spacing: -0.3px;
     }
     .onboard-step { display: none; }
-    .onboard-step.active { display: block; animation: fadeIn 0.25s ease; }
-    .onboard-card p { color: var(--text-dim); font-size: 0.92rem; line-height: 1.55; margin-bottom: 14px; }
+    .onboard-step.active { display: block; animation: fadeIn 0.2s ease; }
+    .onboard-card p { color: var(--text-dim); font-size: 0.9rem; line-height: 1.55; margin-bottom: 12px; }
     .onboard-card .highlight {
-      background: rgba(34, 211, 238, 0.08);
-      border-left: 3px solid var(--cyan);
+      background: var(--bg);
+      border-left: 2px solid var(--gold);
       padding: 10px 12px;
-      border-radius: 0 10px 10px 0;
+      border-radius: 0 8px 8px 0;
       margin: 12px 0;
-      font-size: 0.88rem;
+      font-size: 0.86rem;
+      color: var(--text-dim);
     }
     .tip-box {
-      background: linear-gradient(135deg, rgba(34,211,238,0.06), rgba(192,132,252,0.06));
-      border: 1px solid rgba(34,211,238,0.18);
+      background: var(--bg);
+      border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 14px 16px;
-      margin-bottom: 14px;
-      font-size: 0.86rem;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      font-size: 0.84rem;
       color: var(--text-dim);
       line-height: 1.5;
     }
-    .tip-box strong { color: var(--cyan); }
+    .tip-box strong { color: var(--text); font-weight: 600; }
     .help-fab {
       position: fixed;
       bottom: calc(var(--nav-h) + var(--safe-bottom) + 16px);
       right: 16px;
-      width: 48px;
-      height: 48px;
+      width: 42px;
+      height: 42px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #0891b2, #7c3aed);
-      border: none;
-      color: #fff;
-      font-size: 1.3rem;
-      font-weight: 800;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 1rem;
+      font-weight: 600;
       cursor: pointer;
       z-index: 900;
-      box-shadow: 0 6px 24px rgba(8,145,178,0.4);
-      transition: transform 0.15s;
+      transition: border-color 0.15s, color 0.15s;
+      font-family: inherit;
     }
-    .help-fab:active { transform: scale(0.92); }
+    .help-fab:active { opacity: 0.7; }
+    .help-fab:hover { border-color: var(--border-light); color: var(--text); }
     .skill-node.key-skill {
-      border-color: rgba(251, 191, 36, 0.55);
-      box-shadow: 0 0 16px rgba(251, 191, 36, 0.2);
+      border-color: rgba(212, 165, 116, 0.5);
     }
     .skill-node.key-skill::after {
       content: '★';
       position: absolute;
       top: 6px;
       right: 8px;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       color: var(--gold);
     }
     .example-card {
       background: rgba(255,255,255,0.03);
-      border: 1px solid var(--panel-border);
+      border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       padding: 12px 14px;
       margin-bottom: 10px;
       cursor: pointer;
       transition: border-color 0.2s;
     }
-    .example-card:hover { border-color: rgba(34,211,238,0.4); }
+    .example-card:hover { border-color: var(--border-light); }
     .example-card h4 { font-size: 0.95rem; margin-bottom: 4px; }
     .example-card pre {
       font-size: 0.72rem;
@@ -1102,14 +1077,35 @@
     <!-- SAVE -->
     <div class="screen" id="screen-save">
       <div class="header">
-        <h1>💾 Сейв</h1>
-        <p>Сохранение и перенос данных</p>
+        <h1>Сейв</h1>
+        <p>Сохранение, ИИ и перенос данных</p>
       </div>
       <div class="card">
         <div class="save-section">
+          <h3>ИИ (Groq)</h3>
+          <p class="text-dim" style="font-size:0.82rem;margin-bottom:12px;line-height:1.45">
+            Ключ хранится только на этом устройстве. Без ключа приложение работает офлайн как раньше.
+            Ключ: <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="color:var(--gold)">console.groq.com</a>
+          </p>
+          <div class="form-group">
+            <label>API-ключ Groq</label>
+            <input type="password" id="aiApiKey" placeholder="gsk_..." autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Модель</label>
+            <select id="aiModel">
+              <option value="llama-3.3-70b-versatile">Llama 3.3 70B (качество)</option>
+              <option value="llama-3.1-8b-instant">Llama 3.1 8B (быстро)</option>
+              <option value="gemma2-9b-it">Gemma 2 9B</option>
+            </select>
+          </div>
+          <button class="btn btn-primary btn-block mb-8" onclick="saveAiSettings()">Сохранить настройки ИИ</button>
+          <button class="btn btn-secondary btn-block" onclick="testGroqConnection()">Проверить соединение</button>
+        </div>
+        <div class="save-section">
           <h3>Экспорт / Импорт</h3>
-          <button class="btn btn-primary btn-block mb-8" onclick="exportSave()">⬇ Экспорт JSON</button>
-          <button class="btn btn-secondary btn-block" onclick="document.getElementById('importFile').click()">⬆ Импорт JSON</button>
+          <button class="btn btn-primary btn-block mb-8" onclick="exportSave()">Экспорт JSON</button>
+          <button class="btn btn-secondary btn-block" onclick="document.getElementById('importFile').click()">Импорт JSON</button>
           <input type="file" id="importFile" accept=".json,application/json" class="hidden" onchange="importSave(event)">
         </div>
         <div class="save-section">
@@ -1117,7 +1113,7 @@
           <button class="btn btn-danger btn-block" onclick="resetAll()">Сбросить весь прогресс</button>
         </div>
         <div class="text-dim" style="font-size:0.8rem;margin-top:16px;text-align:center;">
-          Автосохранение включено · Ключ: life_rpg_v4
+          Автосохранение · life_rpg_v4
         </div>
       </div>
     </div>
@@ -1273,7 +1269,12 @@
       streak: { current: 0, longest: 0, lastDate: null },
       unlockedTitles: ['newbie'],
       unlockedAchievements: [],
-      reflections: []
+      reflections: [],
+      ai: {
+        apiKey: '',
+        model: 'llama-3.3-70b-versatile',
+        preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
+      }
     };
 
     let currentTreeDirId = null;
@@ -1309,7 +1310,12 @@
               streak: data.streak || { current: 0, longest: 0, lastDate: null },
               unlockedTitles: Array.isArray(data.unlockedTitles) ? data.unlockedTitles : ['newbie'],
               unlockedAchievements: Array.isArray(data.unlockedAchievements) ? data.unlockedAchievements : [],
-              reflections: Array.isArray(data.reflections) ? data.reflections : []
+              reflections: Array.isArray(data.reflections) ? data.reflections : [],
+              ai: Object.assign({
+                apiKey: '',
+                model: 'llama-3.3-70b-versatile',
+                preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
+              }, data.ai || {})
             };
             state.directions.forEach(d => {
               d.xp = d.xp || 0;
@@ -1738,9 +1744,10 @@
           <strong>Принцип:</strong> корень → столпы → конкретика. Глубина важнее ширины.
         </div>
         <div class="modal-actions">
-          <button class="btn btn-secondary btn-block" onclick="openHelp()">← Назад</button>
+          <button class="btn btn-secondary btn-block" onclick="closeModal()">Закрыть</button>
         </div>
       `;
+      openModal();
     }
 
     function showPhilosophy() {
@@ -1773,6 +1780,309 @@
       save();
       renderTree(currentTreeDirId);
       toast(node.isKey ? '★ Ключевой навык' : 'Метка снята');
+    }
+
+    // ===================== GROQ AI =====================
+    function ensureAi() {
+      if (!state.ai) {
+        state.ai = {
+          apiKey: '',
+          model: 'llama-3.3-70b-versatile',
+          preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
+        };
+      }
+      if (!state.ai.preferredDifficulty) {
+        state.ai.preferredDifficulty = { SIDE: 2, MAIN: 3, BOSS: 2 };
+      }
+    }
+
+    function populateAiSettings() {
+      ensureAi();
+      const keyEl = document.getElementById('aiApiKey');
+      const modelEl = document.getElementById('aiModel');
+      if (keyEl) keyEl.value = state.ai.apiKey || '';
+      if (modelEl) modelEl.value = state.ai.model || 'llama-3.3-70b-versatile';
+    }
+
+    function saveAiSettings() {
+      ensureAi();
+      const key = (document.getElementById('aiApiKey')?.value || '').trim();
+      const model = document.getElementById('aiModel')?.value || 'llama-3.3-70b-versatile';
+      state.ai.apiKey = key;
+      state.ai.model = model;
+      save();
+      toast(key ? 'Настройки ИИ сохранены' : 'Ключ очищен — ИИ выключен');
+    }
+
+    async function testGroqConnection() {
+      ensureAi();
+      const key = (document.getElementById('aiApiKey')?.value || state.ai.apiKey || '').trim();
+      if (!key) { toast('Сначала вставь API-ключ', 'error'); return; }
+      toast('Проверяю соединение…');
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + key
+          },
+          body: JSON.stringify({
+            model: document.getElementById('aiModel')?.value || state.ai.model || 'llama-3.1-8b-instant',
+            messages: [{ role: 'user', content: 'Ответь одним словом: ок' }],
+            max_tokens: 10,
+            temperature: 0
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error?.message || ('HTTP ' + res.status));
+        }
+        toast('Groq подключен', 'success');
+        saveAiSettings();
+      } catch (e) {
+        toast('Ошибка: ' + (e.message || 'нет связи'), 'error');
+      }
+    }
+
+    async function callGroq(systemPrompt, userPrompt) {
+      ensureAi();
+      const key = (state.ai.apiKey || '').trim();
+      if (!key) throw new Error('Нет API-ключа. Добавь в Сейв → ИИ');
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + key
+        },
+        body: JSON.stringify({
+          model: state.ai.model || 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 1200
+        })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || ('HTTP ' + res.status));
+      }
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content || '';
+    }
+
+    function parseJsonFromAi(text) {
+      if (!text) return null;
+      let t = text.trim();
+      const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+      if (fence) t = fence[1].trim();
+      const start = t.indexOf('[');
+      const end = t.lastIndexOf(']');
+      if (start >= 0 && end > start) t = t.slice(start, end + 1);
+      return JSON.parse(t);
+    }
+
+    async function generateQuestsForDirection(dirId) {
+      ensureAi();
+      if (!(state.ai.apiKey || '').trim()) {
+        toast('Добавь API-ключ Groq во вкладке Сейв', 'error');
+        switchScreen('save');
+        populateAiSettings();
+        return;
+      }
+      const dir = state.directions.find(d => d.id === dirId);
+      if (!dir) return;
+
+      const skills = (dir.nodes || []).map(n => n.name).slice(0, 20);
+      const pref = state.ai.preferredDifficulty || { SIDE: 2, MAIN: 3, BOSS: 2 };
+      const existing = state.quests
+        .filter(q => !q.done && (q.targetType === 'DIRECTION' && q.targetId === dirId ||
+          (q.targetType === 'SKILL' && (dir.nodes || []).some(n => n.id === q.targetId))))
+        .map(q => q.title)
+        .slice(0, 10);
+
+      toast('Генерирую квесты…');
+      document.getElementById('modalContent').innerHTML = `
+        <h2>ИИ-квесты</h2>
+        <p class="text-dim" style="margin-bottom:16px">Генерация для «${escapeHtml(dir.name)}»…</p>
+        <div style="text-align:center;padding:24px;color:var(--text-muted)">Жди несколько секунд</div>
+      `;
+      openModal();
+
+      try {
+        const system = `Ты помощник в life-RPG. Пользователь сам создаёт мир. Предложи 5 конкретных реальных квестов на русском.
+Ответь ТОЛЬКО JSON-массивом без пояснений:
+[{"title":"...","type":"SIDE|MAIN|BOSS","difficulty":1-5,"description":"..."}]
+Правила:
+- SIDE = повседневное действие (20-60 мин)
+- MAIN = важная цель на дни/недели
+- BOSS = серьёзное испытание
+- Конкретно, без воды и мотивационных лозунгов
+- Не дублируй уже существующие квесты
+- Учитывай навыки пользователя`;
+
+        const user = `Направление: ${dir.name}
+Описание: ${dir.description || 'нет'}
+Навыки: ${skills.length ? skills.join(', ') : 'пока нет'}
+Уже есть активные квесты: ${existing.length ? existing.join('; ') : 'нет'}
+Предпочтительная сложность: SIDE=${pref.SIDE}, MAIN=${pref.MAIN}, BOSS=${pref.BOSS}
+Дай микс: 3 SIDE, 1 MAIN, 1 BOSS.`;
+
+        const raw = await callGroq(system, user);
+        let list = parseJsonFromAi(raw);
+        if (!Array.isArray(list) || !list.length) throw new Error('Пустой ответ ИИ');
+
+        list = list.slice(0, 6).map(q => {
+          let type = String(q.type || 'SIDE').toUpperCase();
+          if (!['SIDE', 'MAIN', 'BOSS'].includes(type)) type = 'SIDE';
+          let difficulty = parseInt(q.difficulty, 10);
+          if (!(difficulty >= 1 && difficulty <= 5)) difficulty = pref[type] || 2;
+          return {
+            title: String(q.title || 'Квест').slice(0, 120),
+            type,
+            difficulty,
+            description: String(q.description || '').slice(0, 300),
+            xp: QUEST_XP[type][difficulty]
+          };
+        });
+
+        showAiQuestSuggestions(dirId, list);
+      } catch (e) {
+        closeModal();
+        toast('ИИ: ' + (e.message || 'ошибка'), 'error');
+      }
+    }
+
+    function showAiQuestSuggestions(dirId, list) {
+      const dir = state.directions.find(d => d.id === dirId);
+      document.getElementById('modalContent').innerHTML = `
+        <h2>Идеи квестов</h2>
+        <p class="text-dim" style="margin-bottom:12px;font-size:0.85rem">Для «${escapeHtml(dir?.name || '')}». Выбери, что добавить. Можно править после создания.</p>
+        <div id="aiQuestList" style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto">
+          ${list.map((q, i) => `
+            <label class="card" style="padding:12px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;margin:0">
+              <input type="checkbox" class="ai-q-check" data-i="${i}" checked style="margin-top:4px;width:18px;height:18px">
+              <div style="flex:1">
+                <div style="font-weight:600;margin-bottom:4px">${escapeHtml(q.title)}</div>
+                <div class="quest-meta" style="margin-bottom:4px">
+                  <span class="badge badge-${q.type.toLowerCase()}">${q.type}</span>
+                  <span class="badge badge-diff">${DIFF_LABELS[q.difficulty]}</span>
+                  <span class="quest-xp">+${q.xp} XP</span>
+                </div>
+                ${q.description ? `<div class="text-dim" style="font-size:0.82rem">${escapeHtml(q.description)}</div>` : ''}
+              </div>
+            </label>
+          `).join('')}
+        </div>
+        <div class="modal-actions mt-16">
+          <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="acceptAiQuests('${dirId}')">Добавить выбранные</button>
+        </div>
+      `;
+      window._aiQuestDrafts = list;
+      openModal();
+    }
+
+    function acceptAiQuests(dirId) {
+      const drafts = window._aiQuestDrafts || [];
+      const checks = document.querySelectorAll('.ai-q-check:checked');
+      if (!checks.length) { toast('Ничего не выбрано', 'error'); return; }
+      ensureAi();
+      let added = 0;
+      checks.forEach(ch => {
+        const i = parseInt(ch.dataset.i, 10);
+        const q = drafts[i];
+        if (!q) return;
+        state.quests.push({
+          id: uid(),
+          title: q.title,
+          type: q.type,
+          difficulty: q.difficulty,
+          xp: QUEST_XP[q.type][q.difficulty],
+          description: q.description || '',
+          targetType: 'DIRECTION',
+          targetId: dirId,
+          done: false,
+          createdAt: Date.now(),
+          fromAi: true
+        });
+        // remember preferred difficulty
+        if (!state.ai.preferredDifficulty) state.ai.preferredDifficulty = {};
+        state.ai.preferredDifficulty[q.type] = q.difficulty;
+        added++;
+      });
+      save();
+      closeModal();
+      toast(`Добавлено квестов: ${added}`, 'success');
+      renderQuests();
+      renderHero();
+      renderDirections();
+    }
+
+    async function generateSkillIdeas(dirId) {
+      ensureAi();
+      if (!(state.ai.apiKey || '').trim()) {
+        toast('Добавь API-ключ Groq во вкладке Сейв', 'error');
+        switchScreen('save');
+        populateAiSettings();
+        return;
+      }
+      const dir = state.directions.find(d => d.id === dirId);
+      if (!dir) return;
+      const existing = (dir.nodes || []).map(n => n.name);
+
+      toast('Генерирую ветки…');
+      try {
+        const system = `Ты помощник по skill-tree в life-RPG. Ответь ТОЛЬКО JSON-массивом строк — названия возможных корневых или дочерних навыков на русском, 5-8 штук, коротко, конкретно. Без пояснений.`;
+        const user = `Направление: ${dir.name}. Уже есть: ${existing.length ? existing.join(', ') : 'пусто'}. Предложи навыки, которых ещё нет.`;
+        const raw = await callGroq(system, user);
+        let list = parseJsonFromAi(raw);
+        if (!Array.isArray(list)) throw new Error('Неверный формат');
+        list = list.map(x => String(x).slice(0, 60)).filter(Boolean).slice(0, 10);
+
+        document.getElementById('modalContent').innerHTML = `
+          <h2>Идеи навыков</h2>
+          <p class="text-dim" style="margin-bottom:12px;font-size:0.85rem">Для «${escapeHtml(dir.name)}». Выбери, что добавить как корневые навыки.</p>
+          <div style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto">
+            ${list.map((name, i) => `
+              <label class="card" style="padding:12px;display:flex;gap:10px;align-items:center;cursor:pointer;margin:0">
+                <input type="checkbox" class="ai-s-check" data-i="${i}" checked style="width:18px;height:18px">
+                <span style="font-weight:600">${escapeHtml(name)}</span>
+              </label>
+            `).join('')}
+          </div>
+          <div class="modal-actions mt-16">
+            <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+            <button class="btn btn-primary" onclick="acceptAiSkills('${dirId}')">Добавить</button>
+          </div>
+        `;
+        window._aiSkillDrafts = list;
+        openModal();
+      } catch (e) {
+        toast('ИИ: ' + (e.message || 'ошибка'), 'error');
+      }
+    }
+
+    function acceptAiSkills(dirId) {
+      const dir = state.directions.find(d => d.id === dirId);
+      if (!dir) return;
+      if (!dir.nodes) dir.nodes = [];
+      const drafts = window._aiSkillDrafts || [];
+      let added = 0;
+      document.querySelectorAll('.ai-s-check:checked').forEach(ch => {
+        const i = parseInt(ch.dataset.i, 10);
+        const name = drafts[i];
+        if (!name) return;
+        dir.nodes.push({ id: uid(), name, description: '', parentId: null, xp: 0 });
+        added++;
+      });
+      save();
+      closeModal();
+      toast(`Добавлено навыков: ${added}`, 'success');
+      if (currentTreeDirId === dirId) renderTree(dirId);
+      renderDirections();
+      renderHero();
     }
 
     // ===================== XP APPLICATION =====================
@@ -1854,8 +2164,8 @@
         <div class="hero-card">
           <div class="hero-name" onclick="editHeroName()" style="cursor:pointer" title="Нажми чтобы изменить">${escapeHtml(h.name)}</div>
           <div onclick="openTitlePicker()" style="cursor:pointer;margin:4px 0 8px;display:inline-block">
-            <span class="badge" style="background:linear-gradient(135deg,rgba(168,85,247,0.25),rgba(0,229,255,0.15));color:#e0d4ff;font-size:0.8rem;padding:5px 12px;border:1px solid rgba(168,85,247,0.35)">
-              🎖 ${escapeHtml(title.name)}
+            <span class="badge" style="font-size:0.78rem;padding:4px 10px;color:var(--gold);border-color:rgba(212,165,116,0.35)">
+              ${escapeHtml(title.name)}
             </span>
           </div>
           <div class="hero-lvl">LVL ${prog.level}</div>
@@ -1898,9 +2208,9 @@
             <button class="btn btn-primary" onclick="switchScreen('skills')">Создать направление</button>
           </div>
         ` : `
-          <div class="card mt-12" style="background:linear-gradient(135deg,rgba(0,229,255,0.06),rgba(168,85,247,0.06))">
-            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px">ЛЁГКИЙ СТАРТ</div>
-            <button class="btn btn-primary btn-block btn-sm" onclick="easyStart()">Что я могу сделать прямо сейчас?</button>
+          <div class="card mt-12">
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:8px;letter-spacing:0.3px">ЛЁГКИЙ СТАРТ</div>
+            <button class="btn btn-primary btn-block btn-sm" onclick="easyStart()">Что сделать прямо сейчас?</button>
           </div>
         `}
       `;
@@ -2012,8 +2322,9 @@
         });
       });
 
+      ensureAi();
       const type = q ? q.type : 'SIDE';
-      const diff = q ? q.difficulty : 3;
+      const diff = q ? q.difficulty : (state.ai.preferredDifficulty?.[type] || 3);
 
       document.getElementById('modalContent').innerHTML = `
         <h2>${q ? 'Редактировать квест' : 'Новый квест'}</h2>
@@ -2117,6 +2428,9 @@
         });
         toast('Квест создан');
       }
+      ensureAi();
+      if (!state.ai.preferredDifficulty) state.ai.preferredDifficulty = {};
+      state.ai.preferredDifficulty[type] = difficulty;
       save();
       closeModal();
       renderQuests();
@@ -2211,7 +2525,9 @@
               <span>${formatNum(d.xp || 0)} XP</span>
               <span>Навыков: ${skillCount}</span>
             </div>
-            <div class="quest-actions mt-12" onclick="event.stopPropagation()">
+            <div class="quest-actions mt-12" onclick="event.stopPropagation()" style="flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" onclick="generateQuestsForDirection('${d.id}')">ИИ квесты</button>
+              <button class="btn btn-secondary btn-sm" onclick="generateSkillIdeas('${d.id}')">ИИ навыки</button>
               <button class="btn btn-secondary btn-sm" onclick="openDirectionModal('${d.id}')">✎</button>
               <button class="btn btn-danger btn-sm" onclick="deleteDirection('${d.id}')">✕</button>
             </div>
@@ -2425,7 +2741,7 @@
           const x2 = c.x + NODE_W / 2;
           const y2 = c.y + 4;
           const midY = (y1 + y2) / 2;
-          svgLines += `<path d="M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}" fill="none" stroke="rgba(0,229,255,0.35)" stroke-width="2"/>`;
+          svgLines += `<path d="M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>`;
         }
       });
 
@@ -2581,7 +2897,7 @@
         <div class="card lore-card">
           <div class="lore-date">
             ${escapeHtml(l.date)}
-            ${l.auto ? '<span class="badge" style="margin-left:8px;background:rgba(0,229,255,0.12);color:var(--cyan);font-size:0.65rem">АВТО</span>' : ''}
+            ${l.auto ? '<span class="badge" style="margin-left:8px;font-size:0.65rem">АВТО</span>' : ''}
           </div>
           <div class="lore-text">${escapeHtml(l.text)}</div>
           <div class="quest-actions mt-12">
@@ -2675,7 +2991,12 @@
             streak: data.streak || { current: 0, longest: 0, lastDate: null },
             unlockedTitles: Array.isArray(data.unlockedTitles) ? data.unlockedTitles : ['newbie'],
             unlockedAchievements: Array.isArray(data.unlockedAchievements) ? data.unlockedAchievements : [],
-            reflections: Array.isArray(data.reflections) ? data.reflections : []
+            reflections: Array.isArray(data.reflections) ? data.reflections : [],
+            ai: Object.assign({
+              apiKey: '',
+              model: 'llama-3.3-70b-versatile',
+              preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
+            }, data.ai || {})
           };
           state.directions.forEach(d => {
             d.xp = d.xp || 0;
@@ -2695,6 +3016,7 @@
     function resetAll() {
       if (!confirm('Сбросить ВЕСЬ прогресс? Это нельзя отменить.')) return;
       if (!confirm('Точно? Все квесты, навыки и лор будут удалены.')) return;
+      const keepAi = state.ai ? { ...state.ai } : null;
       state = {
         hero: { name: 'Безымянный герой', xp: 0, titleId: 'newbie' },
         directions: [],
@@ -2704,7 +3026,12 @@
         streak: { current: 0, longest: 0, lastDate: null },
         unlockedTitles: ['newbie'],
         unlockedAchievements: [],
-        reflections: []
+        reflections: [],
+        ai: keepAi || {
+          apiKey: '',
+          model: 'llama-3.3-70b-versatile',
+          preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
+        }
       };
       save();
       closeTreeView();
@@ -2738,6 +3065,7 @@
       if (name === 'quests') renderQuests();
       if (name === 'skills') renderDirections();
       if (name === 'lore') renderLore();
+      if (name === 'save') populateAiSettings();
     }
 
     document.querySelectorAll('.nav-btn').forEach(btn => {
