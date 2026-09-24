@@ -1094,9 +1094,8 @@
           <div class="form-group">
             <label>Модель</label>
             <select id="aiModel">
-              <option value="llama-3.3-70b-versatile">Llama 3.3 70B (качество)</option>
-              <option value="llama-3.1-8b-instant">Llama 3.1 8B (быстро)</option>
-              <option value="gemma2-9b-it">Gemma 2 9B</option>
+              <option value="openai/gpt-oss-20b">GPT-OSS 20B (быстро)</option>
+              <option value="openai/gpt-oss-120b">GPT-OSS 120B (качество)</option>
             </select>
           </div>
           <button class="btn btn-primary btn-block mb-8" onclick="saveAiSettings()">Сохранить настройки ИИ</button>
@@ -1272,7 +1271,7 @@
       reflections: [],
       ai: {
         apiKey: '',
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-20b',
         preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
       }
     };
@@ -1313,7 +1312,7 @@
               reflections: Array.isArray(data.reflections) ? data.reflections : [],
               ai: Object.assign({
                 apiKey: '',
-                model: 'llama-3.3-70b-versatile',
+                model: 'openai/gpt-oss-20b',
                 preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
               }, data.ai || {})
             };
@@ -1787,13 +1786,24 @@
       if (!state.ai) {
         state.ai = {
           apiKey: '',
-          model: 'llama-3.3-70b-versatile',
+          model: 'openai/gpt-oss-20b',
           preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
         };
       }
       if (!state.ai.preferredDifficulty) {
         state.ai.preferredDifficulty = { SIDE: 2, MAIN: 3, BOSS: 2 };
       }
+      // migrate deprecated Groq models (shutdown Aug 2026 for free tier)
+      const deprecated = {
+        'llama-3.3-70b-versatile': 'openai/gpt-oss-120b',
+        'llama-3.1-8b-instant': 'openai/gpt-oss-20b',
+        'gemma2-9b-it': 'openai/gpt-oss-20b',
+        'llama-3.1-70b-versatile': 'openai/gpt-oss-120b'
+      };
+      if (deprecated[state.ai.model]) {
+        state.ai.model = deprecated[state.ai.model];
+      }
+      if (!state.ai.model) state.ai.model = 'openai/gpt-oss-20b';
     }
 
     function populateAiSettings() {
@@ -1801,13 +1811,13 @@
       const keyEl = document.getElementById('aiApiKey');
       const modelEl = document.getElementById('aiModel');
       if (keyEl) keyEl.value = state.ai.apiKey || '';
-      if (modelEl) modelEl.value = state.ai.model || 'llama-3.3-70b-versatile';
+      if (modelEl) modelEl.value = state.ai.model || 'openai/gpt-oss-20b';
     }
 
     function saveAiSettings() {
       ensureAi();
       const key = (document.getElementById('aiApiKey')?.value || '').trim();
-      const model = document.getElementById('aiModel')?.value || 'llama-3.3-70b-versatile';
+      const model = document.getElementById('aiModel')?.value || 'openai/gpt-oss-20b';
       state.ai.apiKey = key;
       state.ai.model = model;
       save();
@@ -1827,7 +1837,7 @@
             'Authorization': 'Bearer ' + key
           },
           body: JSON.stringify({
-            model: document.getElementById('aiModel')?.value || state.ai.model || 'llama-3.1-8b-instant',
+            model: document.getElementById('aiModel')?.value || state.ai.model || 'openai/gpt-oss-20b',
             messages: [{ role: 'user', content: 'Ответь одним словом: ок' }],
             max_tokens: 10,
             temperature: 0
@@ -1855,7 +1865,7 @@
           'Authorization': 'Bearer ' + key
         },
         body: JSON.stringify({
-          model: state.ai.model || 'llama-3.3-70b-versatile',
+          model: state.ai.model || 'openai/gpt-oss-20b',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
@@ -2994,7 +3004,7 @@
             reflections: Array.isArray(data.reflections) ? data.reflections : [],
             ai: Object.assign({
               apiKey: '',
-              model: 'llama-3.3-70b-versatile',
+              model: 'openai/gpt-oss-20b',
               preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
             }, data.ai || {})
           };
@@ -3029,7 +3039,7 @@
         reflections: [],
         ai: keepAi || {
           apiKey: '',
-          model: 'llama-3.3-70b-versatile',
+          model: 'openai/gpt-oss-20b',
           preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
         }
       };
