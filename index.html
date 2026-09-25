@@ -5,31 +5,149 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>LIFE RPG V4</title>
+  <meta name="theme-color" content="#141210" id="metaThemeColor">
+  <meta name="description" content="LIFE RPG — преврати реальные цели в квесты, навыки и прогресс героя.">
+  <title>LIFE RPG</title>
   <style>
     :root {
-      --bg: #0c0c0e;
-      --bg2: #141416;
-      --panel: #161618;
-      --panel-hover: #1c1c1f;
-      --border: #27272a;
-      --border-light: #3f3f46;
-      --accent: #e4e4e7;
-      --accent-dim: #a1a1aa;
-      --gold: #d4a574;
-      --gold-dim: #a67c52;
-      --green: #6b9b7a;
-      --red: #c47a7a;
-      --blue: #7a9bb8;
-      --text: #fafafa;
-      --text-dim: #a1a1aa;
-      --text-muted: #52525b;
-      --radius: 12px;
-      --radius-sm: 8px;
-      --nav-h: 56px;
+      /* Warm night palette — easier on eyes than pure black/white */
+      --bg: #141210;
+      --bg2: #1c1916;
+      --panel: #1f1c19;
+      --panel-hover: #282420;
+      --border: rgba(255, 236, 210, 0.08);
+      --border-light: rgba(255, 236, 210, 0.14);
+      --accent: #f0e6d6;
+      --accent-dim: #c4b5a0;
+      --gold: #e0b878;
+      --gold-dim: #b8925a;
+      --green: #8fbc9a;
+      --red: #d4918a;
+      --blue: #8fadc4;
+      --text: #f3ebe1;
+      --text-dim: #c9bdb0;
+      --text-muted: #8a7f72;
+      --radius: 16px;
+      --radius-sm: 12px;
+      --radius-pill: 999px;
+      --nav-h: 58px;
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --shadow-soft: 0 4px 24px rgba(0, 0, 0, 0.25);
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
     }
+
+    /* ===== LIGHT THEME (commercial / daytime) ===== */
+    [data-theme="light"] {
+      --bg: #f6f1ea;
+      --bg2: #fffdfb;
+      --panel: #ffffff;
+      --panel-hover: #faf6f1;
+      --border: rgba(60, 40, 20, 0.1);
+      --border-light: rgba(60, 40, 20, 0.16);
+      --accent: #2c241c;
+      --accent-dim: #5c5046;
+      --gold: #b8863a;
+      --gold-dim: #9a7030;
+      --green: #3d8b5f;
+      --red: #c45c52;
+      --blue: #4a7a9b;
+      --text: #1c1712;
+      --text-dim: #5a4f44;
+      --text-muted: #8a7d70;
+      --shadow-soft: 0 4px 24px rgba(60, 40, 20, 0.08);
+    }
+
+    [data-theme="light"] body {
+      background:
+        radial-gradient(ellipse 120% 70% at 50% -15%, rgba(224, 184, 120, 0.18), transparent 50%),
+        var(--bg);
+    }
+
+    [data-theme="light"] .nav {
+      background: rgba(255, 253, 251, 0.92);
+    }
+
+    [data-theme="light"] .btn-primary {
+      background: linear-gradient(180deg, #2c241c 0%, #1c1712 100%);
+      color: #f6f1ea;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.08) inset, 0 4px 14px rgba(28, 23, 18, 0.15);
+    }
+
+    [data-theme="light"] .btn-primary:hover {
+      background: linear-gradient(180deg, #3a3028 0%, #2c241c 100%);
+    }
+
+    [data-theme="light"] .filter-btn.active {
+      background: rgba(184, 134, 58, 0.14);
+      border-color: rgba(184, 134, 58, 0.35);
+      color: var(--gold);
+    }
+
+    [data-theme="light"] .progress-bar {
+      background: linear-gradient(90deg, #c49a5c, #b8863a);
+    }
+
+    [data-theme="light"] .hero-card {
+      background: linear-gradient(165deg, rgba(224, 184, 120, 0.12) 0%, var(--panel) 45%);
+      box-shadow: var(--shadow-soft);
+    }
+
+    [data-theme="light"] .modal-overlay {
+      background: rgba(40, 30, 20, 0.4);
+    }
+
+    [data-theme="light"] .toast {
+      background: rgba(255, 253, 251, 0.98);
+    }
+
+    [data-theme="light"] .help-fab {
+      background: linear-gradient(180deg, #fff, #f6f1ea);
+      border-color: rgba(184, 134, 58, 0.3);
+      color: var(--gold);
+    }
+
+    [data-theme="light"] .nav-btn.active {
+      color: var(--gold);
+    }
+
+    .nav-btn .icon svg {
+      width: 22px;
+      height: 22px;
+      display: block;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: inherit;
+    }
+
+    .theme-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-light);
+      background: rgba(255, 236, 210, 0.06);
+      color: var(--text-dim);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      min-height: 36px;
+    }
+    .theme-toggle:active { opacity: 0.85; }
+
+    .brand-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 4px;
+    }
+    .brand-row h1 { margin: 0; }
 
     * {
       box-sizing: border-box;
@@ -45,14 +163,17 @@
       font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
-      line-height: 1.5;
+      line-height: 1.55;
       -webkit-font-smoothing: antialiased;
+      letter-spacing: -0.01em;
     }
 
     body {
       display: flex;
       flex-direction: column;
-      background: var(--bg);
+      background:
+        radial-gradient(ellipse 120% 80% at 50% -20%, rgba(224, 184, 120, 0.07), transparent 55%),
+        var(--bg);
       padding-top: var(--safe-top);
     }
 
@@ -64,7 +185,9 @@
       right: 0;
       height: calc(var(--nav-h) + var(--safe-bottom));
       padding-bottom: var(--safe-bottom);
-      background: var(--bg);
+      background: rgba(20, 18, 16, 0.92);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       border-top: 1px solid var(--border);
       display: flex;
       z-index: 1000;
@@ -76,35 +199,41 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 3px;
+      gap: 4px;
       background: none;
       border: none;
       color: var(--text-muted);
       font-size: 10px;
       font-weight: 500;
-      letter-spacing: 0.2px;
+      letter-spacing: 0.15px;
       cursor: pointer;
-      transition: color 0.15s;
+      transition: color 0.2s var(--ease), transform 0.15s var(--ease);
       padding: 6px 2px;
       min-height: 44px;
+      border-radius: var(--radius-sm);
     }
 
     .nav-btn .icon {
-      font-size: 18px;
+      font-size: 20px;
       line-height: 1;
-      opacity: 0.7;
+      opacity: 0.5;
+      transition: opacity 0.2s var(--ease), transform 0.2s var(--ease);
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .nav-btn.active {
-      color: var(--text);
+      color: var(--gold);
     }
 
     .nav-btn.active .icon {
       opacity: 1;
+      transform: translateY(-1px);
     }
 
     .nav-btn:active {
-      opacity: 0.7;
+      transform: scale(0.96);
     }
 
     /* ===== SCREENS ===== */
@@ -141,9 +270,9 @@
     }
 
     .header h1 {
-      font-size: 1.35rem;
-      font-weight: 600;
-      letter-spacing: -0.3px;
+      font-size: 1.4rem;
+      font-weight: 650;
+      letter-spacing: -0.4px;
       color: var(--text);
     }
 
@@ -158,9 +287,10 @@
       background: var(--panel);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 16px;
-      margin-bottom: 10px;
-      transition: background 0.15s, border-color 0.15s;
+      padding: 18px;
+      margin-bottom: 12px;
+      transition: background 0.2s var(--ease), border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+      box-shadow: 0 1px 0 rgba(255, 236, 210, 0.03);
     }
 
     .card:hover {
@@ -172,71 +302,75 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      padding: 11px 16px;
+      gap: 7px;
+      padding: 12px 18px;
       border-radius: var(--radius-sm);
       border: none;
-      font-size: 0.875rem;
-      font-weight: 550;
+      font-size: 0.9rem;
+      font-weight: 600;
       cursor: pointer;
-      transition: background 0.15s, opacity 0.15s, border-color 0.15s;
-      min-height: 42px;
-      letter-spacing: -0.1px;
+      transition: background 0.2s var(--ease), opacity 0.15s, border-color 0.2s, transform 0.15s var(--ease), box-shadow 0.2s;
+      min-height: 44px;
+      letter-spacing: -0.15px;
       font-family: inherit;
     }
 
     .btn:active {
-      opacity: 0.75;
+      transform: scale(0.97);
+      opacity: 0.92;
     }
 
     .btn-primary {
-      background: var(--text);
-      color: var(--bg);
+      background: linear-gradient(180deg, #f0e6d6 0%, #e4d5c0 100%);
+      color: #1a1510;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.2) inset, 0 4px 14px rgba(0,0,0,0.2);
     }
 
     .btn-primary:hover {
-      background: #e4e4e7;
+      background: linear-gradient(180deg, #f5ede3 0%, #eadcc8 100%);
     }
 
     .btn-secondary {
-      background: transparent;
+      background: rgba(255, 236, 210, 0.04);
       color: var(--text);
-      border: 1px solid var(--border);
+      border: 1px solid var(--border-light);
     }
 
     .btn-secondary:hover {
-      border-color: var(--border-light);
-      background: var(--panel);
+      border-color: rgba(255, 236, 210, 0.22);
+      background: rgba(255, 236, 210, 0.07);
     }
 
     .btn-danger {
-      background: transparent;
+      background: rgba(212, 145, 138, 0.08);
       color: var(--red);
-      border: 1px solid rgba(196, 122, 122, 0.3);
+      border: 1px solid rgba(212, 145, 138, 0.28);
     }
 
     .btn-success {
-      background: transparent;
+      background: rgba(143, 188, 154, 0.12);
       color: var(--green);
-      border: 1px solid rgba(107, 155, 122, 0.35);
+      border: 1px solid rgba(143, 188, 154, 0.32);
     }
 
     .btn-gold {
-      background: var(--gold);
+      background: linear-gradient(180deg, #e8c48a 0%, #d4a574 100%);
       color: #1a1410;
+      box-shadow: 0 4px 14px rgba(212, 165, 116, 0.25);
     }
 
     .btn-sm {
-      padding: 7px 12px;
-      font-size: 0.8rem;
-      min-height: 34px;
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      min-height: 36px;
+      border-radius: 10px;
     }
 
     .btn-icon {
-      width: 36px;
-      height: 36px;
+      width: 40px;
+      height: 40px;
       padding: 0;
-      border-radius: var(--radius-sm);
+      border-radius: 12px;
       font-size: 1rem;
     }
 
@@ -271,117 +405,120 @@
       color: var(--text-muted);
     }
 
-    /* Progress bar */
+    /* Progress bar — soft, rounded, warm */
     .progress-wrap {
-      height: 3px;
-      background: var(--border);
-      border-radius: 99px;
+      height: 6px;
+      background: rgba(255, 236, 210, 0.08);
+      border-radius: var(--radius-pill);
       overflow: hidden;
-      margin: 10px 0;
+      margin: 12px 0;
     }
 
     .progress-bar {
       height: 100%;
-      border-radius: 99px;
-      background: var(--text);
-      transition: width 0.4s ease;
+      border-radius: var(--radius-pill);
+      background: linear-gradient(90deg, #c9b5a0, #e0b878);
+      transition: width 0.5s var(--ease);
     }
 
     .progress-bar.gold {
-      background: var(--gold);
+      background: linear-gradient(90deg, #c49a5c, #e8c48a);
     }
 
     .progress-bar.green {
-      background: var(--green);
+      background: linear-gradient(90deg, #6a9b78, #8fbc9a);
     }
 
-    /* Badges */
+    /* Badges — soft pills */
     .badge {
       display: inline-flex;
       align-items: center;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 0.7rem;
-      font-weight: 600;
-      letter-spacing: 0.3px;
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      font-size: 0.68rem;
+      font-weight: 650;
+      letter-spacing: 0.35px;
       text-transform: uppercase;
-      border: 1px solid var(--border);
+      border: 1px solid transparent;
       color: var(--text-dim);
-      background: transparent;
+      background: rgba(255, 236, 210, 0.06);
     }
 
-    .badge-side { color: var(--blue); border-color: rgba(122, 155, 184, 0.3); }
-    .badge-main { color: var(--accent-dim); border-color: var(--border-light); }
-    .badge-boss { color: var(--red); border-color: rgba(196, 122, 122, 0.35); }
-    .badge-diff { color: var(--gold); border-color: rgba(212, 165, 116, 0.3); }
-    .badge-done { color: var(--green); border-color: rgba(107, 155, 122, 0.3); }
+    .badge-side { color: #a8c4d6; background: rgba(143, 173, 196, 0.12); }
+    .badge-main { color: var(--accent-dim); background: rgba(255, 236, 210, 0.08); }
+    .badge-boss { color: #e0a8a2; background: rgba(212, 145, 138, 0.12); }
+    .badge-diff { color: var(--gold); background: rgba(224, 184, 120, 0.12); }
+    .badge-done { color: var(--green); background: rgba(143, 188, 154, 0.12); }
 
     /* ===== HERO SCREEN ===== */
     .hero-card {
       text-align: left;
-      padding: 24px 20px;
-      background: var(--panel);
+      padding: 26px 22px;
+      background: linear-gradient(165deg, rgba(224, 184, 120, 0.07) 0%, var(--panel) 42%);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: calc(var(--radius) + 4px);
       margin-bottom: 16px;
       position: relative;
+      box-shadow: var(--shadow-soft);
     }
 
     .hero-name {
-      font-size: 1.15rem;
+      font-size: 1.12rem;
       font-weight: 600;
       margin-bottom: 2px;
-      letter-spacing: -0.2px;
+      letter-spacing: -0.25px;
+      color: var(--text);
     }
 
     .hero-lvl {
-      font-size: 2.75rem;
+      font-size: 2.85rem;
       font-weight: 700;
       color: var(--text);
-      line-height: 1.1;
-      letter-spacing: -1.5px;
-      margin: 12px 0 4px;
+      line-height: 1.05;
+      letter-spacing: -1.8px;
+      margin: 14px 0 6px;
       font-variant-numeric: tabular-nums;
     }
 
     .hero-xp {
       color: var(--text-muted);
-      font-size: 0.84rem;
+      font-size: 0.86rem;
       margin: 6px 0 0;
     }
 
     .hero-xp span {
       color: var(--gold);
-      font-weight: 600;
+      font-weight: 650;
     }
 
     .stats-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 10px;
+      margin-top: 14px;
     }
 
     .stat-box {
-      background: var(--bg);
+      background: rgba(255, 236, 210, 0.03);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 14px 12px;
+      padding: 16px 14px;
       text-align: left;
     }
 
     .stat-box .val {
-      font-size: 1.35rem;
-      font-weight: 650;
+      font-size: 1.4rem;
+      font-weight: 700;
       color: var(--text);
       font-variant-numeric: tabular-nums;
+      letter-spacing: -0.5px;
     }
 
     .stat-box .lbl {
       font-size: 0.72rem;
       color: var(--text-muted);
-      margin-top: 2px;
-      font-weight: 450;
+      margin-top: 3px;
+      font-weight: 500;
     }
 
     /* ===== QUESTS ===== */
@@ -406,10 +543,11 @@
     }
 
     .quest-title {
-      font-size: 1.05rem;
-      font-weight: 700;
+      font-size: 1.02rem;
+      font-weight: 650;
       flex: 1;
-      line-height: 1.3;
+      line-height: 1.35;
+      letter-spacing: -0.2px;
     }
 
     .quest-meta {
@@ -423,7 +561,9 @@
       font-size: 0.88rem;
       color: var(--text-dim);
       margin-bottom: 12px;
-      line-height: 1.45;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
     .quest-target {
@@ -866,23 +1006,23 @@
 
     .filter-btn {
       flex-shrink: 0;
-      padding: 7px 12px;
-      border-radius: 99px;
+      padding: 8px 14px;
+      border-radius: var(--radius-pill);
       border: 1px solid var(--border);
-      background: transparent;
+      background: rgba(255, 236, 210, 0.03);
       color: var(--text-muted);
       font-size: 0.8rem;
-      font-weight: 500;
+      font-weight: 550;
       cursor: pointer;
-      transition: all 0.15s;
-      min-height: 34px;
+      transition: all 0.2s var(--ease);
+      min-height: 36px;
       font-family: inherit;
     }
 
     .filter-btn.active {
-      background: var(--text);
-      border-color: var(--text);
-      color: var(--bg);
+      background: rgba(224, 184, 120, 0.18);
+      border-color: rgba(224, 184, 120, 0.35);
+      color: var(--gold);
     }
 
     /* Utility */
@@ -921,14 +1061,14 @@
     .onboard-overlay.open { display: flex; animation: fadeIn 0.3s ease; }
     .onboard-card {
       background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 16px;
+      border: 1px solid var(--border-light);
+      border-radius: 22px;
       padding: 28px 22px;
       max-width: 400px;
       width: 100%;
       max-height: 85vh;
       overflow-y: auto;
-      box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+      box-shadow: var(--shadow-soft);
     }
     .onboard-card h2 {
       font-size: 1.25rem;
@@ -950,35 +1090,36 @@
       color: var(--text-dim);
     }
     .tip-box {
-      background: var(--bg);
-      border: 1px solid var(--border);
+      background: rgba(224, 184, 120, 0.06);
+      border: 1px solid rgba(224, 184, 120, 0.12);
       border-radius: var(--radius-sm);
-      padding: 12px 14px;
+      padding: 14px 16px;
       margin-bottom: 12px;
-      font-size: 0.84rem;
+      font-size: 0.86rem;
       color: var(--text-dim);
-      line-height: 1.5;
+      line-height: 1.55;
     }
     .tip-box strong { color: var(--text); font-weight: 600; }
     .help-fab {
       position: fixed;
-      bottom: calc(var(--nav-h) + var(--safe-bottom) + 12px);
+      bottom: calc(var(--nav-h) + var(--safe-bottom) + 14px);
       right: 16px;
-      width: 42px;
-      height: 42px;
+      width: 46px;
+      height: 46px;
       border-radius: 50%;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      color: var(--text-dim);
-      font-size: 1rem;
-      font-weight: 600;
+      background: linear-gradient(180deg, #2a2622, #1f1c19);
+      border: 1px solid rgba(224, 184, 120, 0.25);
+      color: var(--gold);
+      font-size: 1.05rem;
+      font-weight: 650;
       cursor: pointer;
       z-index: 900;
-      transition: border-color 0.15s, color 0.15s;
+      transition: transform 0.2s var(--ease), box-shadow 0.2s;
       font-family: inherit;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
     }
-    .help-fab:active { opacity: 0.7; }
-    .help-fab:hover { border-color: var(--border-light); color: var(--text); }
+    .help-fab:active { transform: scale(0.94); }
+    .help-fab:hover { box-shadow: 0 6px 20px rgba(224, 184, 120, 0.15); }
     .skill-node.key-skill {
       border-color: rgba(212, 165, 116, 0.5);
     }
@@ -1030,8 +1171,13 @@
     <!-- HERO -->
     <div class="screen active" id="screen-hero">
       <div class="header">
-        <h1>⚔️ Герой</h1>
-        <p>Твой персонаж в игре жизни</p>
+        <div class="brand-row">
+          <div>
+            <h1>LIFE RPG</h1>
+            <p>Реальные цели → квесты и прогресс</p>
+          </div>
+          <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Тема">Тема</button>
+        </div>
       </div>
       <div id="heroContent"></div>
     </div>
@@ -1044,8 +1190,8 @@
           <p>Задания твоей жизни</p>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-          <button class="btn btn-secondary btn-sm" onclick="openAiQuestPicker()">ИИ</button>
-          <button class="btn btn-primary btn-sm" onclick="openQuestModal()">+ Квест</button>
+          <button class="btn btn-primary btn-sm" onclick="generateDailyQuests()">На день</button>
+          <button class="btn btn-secondary btn-sm" onclick="openQuestModal()">+</button>
         </div>
       </div>
       <div class="quick-add" style="display:flex;gap:8px;margin-bottom:12px">
@@ -1069,15 +1215,10 @@
       <div class="filters" id="questFilters">
         <button class="filter-btn active" data-filter="all">Все</button>
         <button class="filter-btn" data-filter="active">Активные</button>
-        <button class="filter-btn" data-filter="done">Выполненные</button>
+        <button class="filter-btn" data-filter="done">Готово</button>
         <button class="filter-btn" data-filter="SIDE">SIDE</button>
         <button class="filter-btn" data-filter="MAIN">MAIN</button>
         <button class="filter-btn" data-filter="BOSS">BOSS</button>
-        <button class="filter-btn" data-filter="tag:home">Дом</button>
-        <button class="filter-btn" data-filter="tag:work">Работа</button>
-        <button class="filter-btn" data-filter="tag:sport">Спорт</button>
-        <button class="filter-btn" data-filter="tag:people">Люди</button>
-        <button class="filter-btn" data-filter="tag:study">Учёба</button>
       </div>
       <div id="questsList"></div>
     </div>
@@ -1086,8 +1227,8 @@
     <div class="screen" id="screen-skills">
       <div class="header flex-between">
         <div>
-          <h1>🌳 Навыки</h1>
-          <p>Направления и деревья</p>
+          <h1>Навыки</h1>
+          <p>Направления · уровень в теме · дерево</p>
         </div>
         <button class="btn btn-primary btn-sm" onclick="openDirectionModal()">+ Направление</button>
       </div>
@@ -1109,18 +1250,30 @@
     <!-- SAVE -->
     <div class="screen" id="screen-save">
       <div class="header">
-        <h1>Сейв</h1>
-        <p>Сохранение, ИИ и перенос данных</p>
+        <h1>Настройки</h1>
+        <p>Тема, ИИ, данные, сброс</p>
       </div>
       <div class="card">
         <div class="save-section">
-          <h3>ИИ (Groq)</h3>
+          <h3>Оформление</h3>
+          <p class="text-dim" style="font-size:0.82rem;margin-bottom:12px;line-height:1.45">Светлая — днём. Тёмная — вечером. Сохраняется на этом устройстве.</p>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn-secondary" onclick="setTheme('light')">Светлая</button>
+            <button type="button" class="btn btn-secondary" onclick="setTheme('dark')">Тёмная</button>
+            <button type="button" class="btn btn-secondary" onclick="setTheme('system')">Как в системе</button>
+          </div>
+        </div>
+        <div class="save-section">
+          <h3>ИИ для квестов</h3>
           <p class="text-dim" style="font-size:0.82rem;margin-bottom:12px;line-height:1.45">
-            Ключ хранится только на этом устройстве. Без ключа приложение работает офлайн как раньше.
-            Ключ: <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="color:var(--gold)">console.groq.com</a>
+            Нужен, чтобы кнопки «На день» и «ИИ» работали. Без этого приложение полностью офлайн.
           </p>
           <div class="form-group">
-            <label>API-ключ Groq</label>
+            <label>Proxy URL (если есть)</label>
+            <input type="url" id="aiProxyUrl" placeholder="https://….workers.dev" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Или личный ключ Groq</label>
             <input type="password" id="aiApiKey" placeholder="gsk_..." autocomplete="off">
           </div>
           <div class="form-group">
@@ -1130,28 +1283,28 @@
               <option value="openai/gpt-oss-120b">GPT-OSS 120B (качество)</option>
             </select>
           </div>
-          <button class="btn btn-primary btn-block mb-8" onclick="saveAiSettings()">Сохранить настройки ИИ</button>
-          <button class="btn btn-secondary btn-block" onclick="testGroqConnection()">Проверить соединение</button>
+          <button class="btn btn-primary btn-block mb-8" onclick="saveAiSettings()">Сохранить</button>
+          <button class="btn btn-secondary btn-block" onclick="testGroqConnection()">Проверить</button>
         </div>
         <div class="save-section">
-          <h3>Экспорт / Импорт</h3>
+          <h3>Данные</h3>
           <button class="btn btn-primary btn-block mb-8" onclick="exportSave()">Экспорт JSON</button>
-          <button class="btn btn-secondary btn-block mb-8" onclick="exportMarkdown()">Экспорт Markdown</button>
           <button class="btn btn-secondary btn-block mb-8" onclick="document.getElementById('importFile').click()">Импорт (заменить)</button>
-          <button class="btn btn-secondary btn-block" onclick="document.getElementById('importMergeFile').click()">Импорт (добавить к текущему)</button>
+          <details style="margin-top:8px">
+            <summary style="cursor:pointer;color:var(--text-muted);font-size:0.85rem;padding:8px 0">Дополнительно</summary>
+            <button class="btn btn-secondary btn-block mb-8" onclick="exportMarkdown()">Экспорт Markdown</button>
+            <button class="btn btn-secondary btn-block mb-8" onclick="document.getElementById('importMergeFile').click()">Импорт (добавить)</button>
+            <button class="btn btn-secondary btn-block mb-8" onclick="showWeeklyReview()">Недельный обзор</button>
+          </details>
           <input type="file" id="importFile" accept=".json,application/json" class="hidden" onchange="importSave(event, false)">
           <input type="file" id="importMergeFile" accept=".json,application/json" class="hidden" onchange="importSave(event, true)">
-        </div>
-        <div class="save-section">
-          <h3>Обзор</h3>
-          <button class="btn btn-secondary btn-block" onclick="showWeeklyReview()">Недельный обзор</button>
         </div>
         <div class="save-section">
           <h3>Опасная зона</h3>
           <button class="btn btn-danger btn-block" onclick="resetAll()">Сбросить весь прогресс</button>
         </div>
         <div class="text-dim" style="font-size:0.8rem;margin-top:16px;text-align:center;">
-          Автосохранение · life_rpg_v4
+          Автосохранение на этом устройстве
         </div>
       </div>
     </div>
@@ -1160,24 +1313,24 @@
   <!-- NAV -->
   <nav class="nav">
     <button class="nav-btn active" data-screen="hero">
-      <span class="icon">⚔️</span>
+      <span class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M6 19c0-3.2 2.7-5.5 6-5.5s6 2.3 6 5.5"/></svg></span>
       <span>Герой</span>
     </button>
     <button class="nav-btn" data-screen="quests">
-      <span class="icon">📜</span>
+      <span class="icon"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M5 6h.01M5 12h.01M5 18h.01"/></svg></span>
       <span>Квесты</span>
     </button>
     <button class="nav-btn" data-screen="skills">
-      <span class="icon">🌳</span>
+      <span class="icon"><svg viewBox="0 0 24 24"><path d="M12 3v18M12 8c-3 0-5 1.5-5 4s2 3 5 3 5-.8 5-3-2-4-5-4z"/><path d="M12 15c-2.5 0-4 1-4 2.5S10 20 12 20s4-.8 4-2.5-1.5-2.5-4-2.5z"/></svg></span>
       <span>Навыки</span>
     </button>
     <button class="nav-btn" data-screen="lore">
-      <span class="icon">📖</span>
+      <span class="icon"><svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 00-3 3V4z"/><path d="M5 4v16"/></svg></span>
       <span>Лор</span>
     </button>
     <button class="nav-btn" data-screen="save">
-      <span class="icon">💾</span>
-      <span>Сейв</span>
+      <span class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"/></svg></span>
+      <span>Ещё</span>
     </button>
   </nav>
 
@@ -1189,6 +1342,7 @@
       <div class="tree-controls">
         <button class="btn btn-secondary btn-icon" onclick="treeZoom(-0.1)">−</button>
         <button class="btn btn-secondary btn-icon" onclick="treeZoom(0.1)">+</button>
+        <button class="btn btn-secondary btn-sm" onclick="if(currentTreeDirId)generateSkillTree(currentTreeDirId)">Дерево ИИ</button>
         <button class="btn btn-primary btn-sm" onclick="openSkillModal(null)">+ Корень</button>
       </div>
     </div>
@@ -1206,8 +1360,12 @@
     // ===================== CONSTANTS & XP =====================
     const STORAGE_KEY = 'life_rpg_v4';
     const SECRET_KEY = 'life_rpg_v4_secret';
+    const PROXY_KEY = 'life_rpg_v4_proxy';
     const SCHEMA_VERSION = 2;
     const MAX_LEVEL = 200;
+    // Optional: hardcode your Worker URL after deploy so users need nothing:
+    // const DEFAULT_PROXY_URL = 'https://life-rpg-groq.YOUR_SUBDOMAIN.workers.dev';
+    const DEFAULT_PROXY_URL = '';
 
     const QUEST_XP = {
       SIDE:  { 1: 20,  2: 50,  3: 120, 4: 280,  5: 650  },
@@ -1224,6 +1382,69 @@
       { id: 'study', label: 'Учёба' },
       { id: 'other', label: 'Другое' }
     ];
+
+    const DIR_STAGES = [
+      { id: 'beginner', label: 'Новичок', hint: 'первые шаги, 10–30 мин' },
+      { id: 'intermediate', label: 'Средний', hint: 'уже есть база' },
+      { id: 'advanced', label: 'Продвинутый', hint: 'уверенная практика' },
+      { id: 'pro', label: 'Профи', hint: 'высокие цели и BOSS' }
+    ];
+
+    function stageLabel(id) {
+      return (DIR_STAGES.find(s => s.id === id) || DIR_STAGES[0]).label;
+    }
+
+    function stageRules(stage) {
+      const s = stage || 'beginner';
+      if (s === 'beginner') return {
+        maxDiff: { SIDE: 2, MAIN: 1, BOSS: 0 },
+        allowBoss: false,
+        allowMain: false,
+        prompt: 'Уровень НОВИЧОК. Только простые SIDE (сложность 1–2). Никаких выступлений, концертов, экзаменов, клиентов, публикации «на аудиторию». Только домашняя практика, основы, короткие упражнения 10–30 минут.'
+      };
+      if (s === 'intermediate') return {
+        maxDiff: { SIDE: 3, MAIN: 2, BOSS: 0 },
+        allowBoss: false,
+        allowMain: true,
+        prompt: 'Уровень СРЕДНИЙ. SIDE 1–3, изредка лёгкий MAIN (1–2). Без крупных публичных событий. Фокус на регулярной практике и понятных мини-целях.'
+      };
+      if (s === 'advanced') return {
+        maxDiff: { SIDE: 4, MAIN: 3, BOSS: 2 },
+        allowBoss: true,
+        allowMain: true,
+        prompt: 'Уровень ПРОДВИНУТЫЙ. Можно SIDE/MAIN, редкий небольшой BOSS. Задачи сложнее, но реалистичные для одного человека.'
+      };
+      return {
+        maxDiff: { SIDE: 5, MAIN: 5, BOSS: 5 },
+        allowBoss: true,
+        allowMain: true,
+        prompt: 'Уровень ПРОФИ. Допустимы сложные MAIN и BOSS, если они конкретны и выполнимы.'
+      };
+    }
+
+    function clampQuestToStage(q, stage) {
+      const rules = stageRules(stage);
+      let type = String(q.type || 'SIDE').toUpperCase();
+      if (!['SIDE', 'MAIN', 'BOSS'].includes(type)) type = 'SIDE';
+      if (type === 'BOSS' && !rules.allowBoss) type = 'SIDE';
+      if (type === 'MAIN' && !rules.allowMain) type = 'SIDE';
+      let difficulty = parseInt(q.difficulty, 10);
+      if (!(difficulty >= 1 && difficulty <= 5)) difficulty = 2;
+      const maxD = rules.maxDiff[type] || 2;
+      if (maxD <= 0) { type = 'SIDE'; difficulty = Math.min(difficulty, rules.maxDiff.SIDE || 2); }
+      else difficulty = Math.min(difficulty, maxD);
+      let minutes = parseInt(q.minutes, 10);
+      if (!(minutes > 0 && minutes <= 300)) minutes = null;
+      return {
+        title: String(q.title || 'Квест').slice(0, 120),
+        type,
+        difficulty,
+        description: String(q.description || '').slice(0, 900),
+        minutes,
+        skillName: String(q.skillName || q.targetSkill || '').slice(0, 60) || null,
+        xp: QUEST_XP[type][difficulty]
+      };
+    }
 
     // ===== TITLES (Identity) =====
     const TITLES = [
@@ -1358,6 +1579,41 @@
       } catch(e) {}
     }
 
+    function getProxyUrl() {
+      try {
+        const u = (localStorage.getItem(PROXY_KEY) || DEFAULT_PROXY_URL || '').trim();
+        return u.replace(/\/$/, '');
+      } catch(e) { return (DEFAULT_PROXY_URL || '').replace(/\/$/, ''); }
+    }
+
+    function setProxyUrl(url) {
+      try {
+        const u = (url || '').trim().replace(/\/$/, '');
+        if (u) localStorage.setItem(PROXY_KEY, u);
+        else localStorage.removeItem(PROXY_KEY);
+      } catch(e) {}
+    }
+
+    function aiEndpoint() {
+      const proxy = getProxyUrl();
+      if (proxy) return proxy; // worker root accepts POST
+      return 'https://api.groq.com/openai/v1/chat/completions';
+    }
+
+    function aiAuthHeaders() {
+      const proxy = getProxyUrl();
+      if (proxy) return { 'Content-Type': 'application/json' }; // key on worker
+      const key = getApiKey();
+      return {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + key
+      };
+    }
+
+    function hasAiAccess() {
+      return !!(getProxyUrl() || getApiKey());
+    }
+
     function save() {
       try {
         const toSave = JSON.parse(JSON.stringify(state));
@@ -1404,7 +1660,7 @@
           model: 'openai/gpt-oss-20b',
           preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
         }, data.ai || {}),
-        ui: Object.assign({ lastEveningRitual: null, questSort: 'default' }, data.ui || {})
+        ui: Object.assign({ lastEveningRitual: null, questSort: 'default', dailyCapacity: 60 }, data.ui || {})
       };
       // migrate api key out of state
       if (s.ai.apiKey) {
@@ -1423,6 +1679,7 @@
 
       s.directions.forEach(d => {
         d.xp = d.xp || 0;
+        if (!d.stage) d.stage = 'beginner';
         if (!Array.isArray(d.nodes)) d.nodes = [];
         d.nodes.forEach(n => { n.xp = n.xp || 0; });
       });
@@ -1500,22 +1757,140 @@
       setTimeout(() => ov.classList.remove('show'), isMilestone ? 3200 : 2200);
       addAutoLore(isMilestone
         ? `⭐ ГЛАВА ЗАВЕРШЕНА! Достигнут легендарный LVL ${to}`
-        : `⚔️ LEVEL UP! Достигнут LVL ${to}`);
+        : `⚔️ LEVEL UP! Достигнут LVL ${to}`, 'level');
       checkTitlesAndAchievements();
     }
 
-    function addAutoLore(text) {
+    function addAutoLore(text, kind) {
       if (!text || !text.trim()) return;
+      kind = kind || 'event';
+      // Throttle SIDE noise: max 1 generic side-summary per day unless MAIN/BOSS/level/ritual
+      if (kind === 'side') {
+        const day = todayStr();
+        const already = (state.lore || []).some(l => l.auto && l.kind === 'side' && l.dayKey === day);
+        if (already) return;
+        // collapse to short daily line
+        text = '✓ День: закрыты SIDE-квесты';
+      }
       const today = new Date().toLocaleDateString('ru-RU');
       state.lore.push({
         id: uid(),
         date: today,
+        dayKey: todayStr(),
         text: text.trim(),
         createdAt: Date.now(),
-        auto: true
+        auto: true,
+        kind
       });
       if (state.lore.length > 400) state.lore = state.lore.slice(-400);
     }
+
+    // Undo last AI batch (quests or skills)
+    let undoTimer = null;
+    function pushUndo(snapshot, label) {
+      window._undo = { snapshot, label, at: Date.now() };
+      if (undoTimer) clearTimeout(undoTimer);
+      undoTimer = setTimeout(() => { window._undo = null; }, 12000);
+      toast(label + ' · Отменить?', 'success');
+      // show quick undo via second toast path - use confirm-less: dedicated toast button hard in pure DOM
+      showUndoBar(label);
+    }
+    function showUndoBar(label) {
+      let bar = document.getElementById('undoBar');
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'undoBar';
+        bar.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(70px + env(safe-area-inset-bottom,0px));z-index:2500;background:#1c1c1f;border:1px solid #3f3f46;border-radius:12px;padding:10px 14px;display:flex;gap:10px;align-items:center;max-width:92vw;box-shadow:0 8px 30px rgba(0,0,0,.4)';
+        document.body.appendChild(bar);
+      }
+      bar.innerHTML = '<span style="font-size:0.85rem;color:#a1a1aa">' + escapeHtml(label) + '</span>' +
+        '<button type="button" id="undoBtn" style="border:none;background:#fafafa;color:#0c0c0e;font-weight:700;border-radius:8px;padding:8px 12px;font-size:0.85rem;cursor:pointer">Отменить</button>';
+      bar.style.display = 'flex';
+      document.getElementById('undoBtn').onclick = () => {
+        if (!window._undo) return;
+        state = window._undo.snapshot;
+        window._undo = null;
+        save();
+        renderAll();
+        if (currentTreeDirId) renderTree(currentTreeDirId);
+        bar.style.display = 'none';
+        toast('Отменено', 'success');
+      };
+      setTimeout(() => { if (bar) bar.style.display = 'none'; }, 12000);
+    }
+    function snapshotState() {
+      return JSON.parse(JSON.stringify(state));
+    }
+
+    function openAssistant() {
+      ensureAi();
+      const aiOk = hasAiAccess();
+      document.getElementById('modalContent').innerHTML = `
+        <h2>Помощник</h2>
+        <p class="text-dim" style="margin-bottom:14px;font-size:0.9rem">Один вход в ИИ. Выбери, что нужно.</p>
+        ${!aiOk ? `<div class="tip-box warn" style="margin-bottom:12px"><strong>ИИ не подключён.</strong> Сейв → укажи Proxy или ключ Groq.</div>
+          <button class="btn btn-primary btn-block" onclick="closeModal();switchScreen('save');populateAiSettings()">Подключить ИИ</button>
+          <button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="closeModal()">Закрыть</button>` : `
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn btn-primary btn-block" onclick="closeModal();generateDailyQuests()">Квесты на день</button>
+            <button class="btn btn-secondary btn-block" onclick="closeModal();openAiQuestPicker()">Квесты для направления</button>
+            <button class="btn btn-secondary btn-block" onclick="closeModal();openAiTreePicker()">Собрать дерево навыков</button>
+          </div>
+          <button class="btn btn-secondary btn-block" style="margin-top:12px" onclick="closeModal()">Закрыть</button>`}
+      `;
+      openModal();
+    }
+
+    function openAiTreePicker() {
+      if (!state.directions.length) {
+        toast('Сначала создай направление', 'error');
+        switchScreen('skills');
+        return;
+      }
+      if (state.directions.length === 1) {
+        generateSkillTree(state.directions[0].id);
+        return;
+      }
+      document.getElementById('modalContent').innerHTML = `
+        <h2>Дерево навыков</h2>
+        <p class="text-dim" style="margin-bottom:12px;font-size:0.88rem">Для какого направления собрать дерево?</p>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          ${state.directions.map(d => `
+            <button class="btn btn-secondary btn-block" onclick="closeModal();generateSkillTree('${d.id}')">${escapeHtml(d.name)} · ${stageLabel(d.stage || 'beginner')}</button>
+          `).join('')}
+        </div>
+        <button class="btn btn-secondary btn-block" style="margin-top:12px" onclick="closeModal()">Отмена</button>
+      `;
+      openModal();
+    }
+
+    function resolveQuestTarget(q, fallbackDirId) {
+      // Prefer skill by name if AI provided skillName / targetSkill
+      const skillName = (q.skillName || q.targetSkill || '').trim().toLowerCase();
+      if (skillName) {
+        for (const d of state.directions) {
+          const node = (d.nodes || []).find(n => (n.name || '').toLowerCase() === skillName);
+          if (node) return { targetType: 'SKILL', targetId: node.id, dirId: d.id };
+        }
+      }
+      let dirId = q.dirId || fallbackDirId;
+      if (dirId && state.directions.some(d => d.id === dirId)) {
+        return { targetType: 'DIRECTION', targetId: dirId, dirId };
+      }
+      return { targetType: 'GENERAL', targetId: null, dirId: null };
+    }
+
+    function stageHint(dir) {
+      const stage = dir.stage || 'beginner';
+      const done = state.quests.filter(q => q.done && q.targetType === 'DIRECTION' && q.targetId === dir.id).length +
+        state.quests.filter(q => q.done && q.targetType === 'SKILL' && (dir.nodes || []).some(n => n.id === q.targetId)).length;
+      const lvl = levelFromXp(dir.xp || 0);
+      if (stage === 'beginner' && (done >= 8 || lvl >= 5)) return 'Похоже, пора сменить уровень на «Средний»';
+      if (stage === 'intermediate' && (done >= 20 || lvl >= 12)) return 'Можно попробовать «Продвинутый»';
+      if (stage === 'advanced' && lvl >= 20) return 'При желании — уровень «Профи»';
+      return '';
+    }
+
 
     // ===================== PSYCHOLOGICAL SYSTEMS =====================
     function isoWeekKey(d = new Date()) {
@@ -1909,41 +2284,29 @@
     let onboardStep = 0;
     const ONBOARD_STEPS = [
       {
-        title: '⚔️ Это не трекер. Это RPG.',
+        title: 'За 2 минуты — первый прогресс',
         html: `
-          <p>LIFE RPG превращает твою реальную жизнь в игру, где <strong>ты сам</strong> создаёшь мир.</p>
-          <div class="highlight">Нет готовых квестов. Нет обязательных привычек. Только то, что важно именно тебе.</div>
-          <p>Ты — герой. Направления жизни — локации. Навыки — дерево прокачки. Действия — квесты.</p>
+          <p><strong>LIFE RPG</strong> превращает реальные дела в квесты и уровни. Без готовых «привычек на всех» — только твой мир.</p>
+          <div class="highlight">Сделал дело → XP → герой растёт. Всё хранится на устройстве.</div>
+          <p style="font-size:0.85rem;color:var(--text-muted)">Дальше: направление → уровень в теме → квесты на день.</p>
         `
       },
       {
-        title: '🌳 Как строить дерево навыков',
+        title: 'Три шага, чтобы начать',
         html: `
-          <p>Хорошее дерево — это не список, а иерархия мастерства.</p>
-          <div class="highlight">
-            <strong>Корень</strong> = большая область (Гитара)<br>
-            <strong>1–2 уровень</strong> = столпы (Аккорды, Ритм)<br>
-            <strong>Глубже</strong> = конкретные микро-навыки (Баррэ F)
-          </div>
-          <p>Лучше узкое и глубокое, чем широкое и мелкое. 3–5 детей у узла — комфортно. Глубина 4–7 — кайф.</p>
+          <p><strong>1.</strong> Создай направление (например «Гитара») и укажи <strong>свой уровень в теме</strong> — новичок / средний…</p>
+          <p><strong>2.</strong> В «Квестах» нажми <strong>На день</strong> — ИИ предложит задачи под твой уровень и сколько у тебя времени.</p>
+          <p><strong>3.</strong> Выполни один квест на главном экране кнопкой ✓</p>
+          <div class="highlight">LVL героя — общий прогресс. Уровень направления — насколько ты силён именно в этой теме. Это разные вещи.</div>
         `
       },
       {
-        title: '📜 Квесты и смысл',
+        title: 'Квесты простыми словами',
         html: `
-          <p><strong>SIDE</strong> — повседневные действия<br>
-          <strong>MAIN</strong> — важные цели<br>
-          <strong>BOSS</strong> — серьёзные испытания</p>
-          <div class="highlight">Квест можно привязать к навыку, направлению или оставить общим. Дерево не обязательно.</div>
-          <p>После MAIN и BOSS система предложит написать <strong>отражение</strong> — это закрепляет смысл.</p>
-        `
-      },
-      {
-        title: '🎖 Идентичность и прогресс',
-        html: `
-          <p>Титулы, достижения, серия дней и лор создают ощущение «я становлюсь кем-то».</p>
-          <div class="highlight">Смотри на near-miss («почти уровень»), бонусы удачи и ритуалы level-up — они специально для дофамина.</div>
-          <p>Готов начать свою легенду?</p>
+          <p><strong>SIDE</strong> — сегодня, 10–60 мин<br>
+          <strong>MAIN</strong> — важная цель на дни<br>
+          <strong>BOSS</strong> — серьёзное испытание</p>
+          <div class="highlight">Новичку ИИ не предложит «концерт на 50 человек». Следит за уровнем направления.</div>
         `
       }
     ];
@@ -1971,7 +2334,10 @@
     function closeOnboarding(finished) {
       document.getElementById('onboardOverlay').classList.remove('open');
       try { localStorage.setItem('life_rpg_v4_onboarded', '1'); } catch(e) {}
-      if (finished) toast('Добро пожаловать в свою RPG', 'success');
+      if (finished) {
+        toast('Поехали. Шаг 1 — направление', 'success');
+        if (!state.directions.length) setTimeout(() => switchScreen('skills'), 400);
+      }
     }
 
     function openHelp() {
@@ -2075,36 +2441,47 @@
     function populateAiSettings() {
       ensureAi();
       const keyEl = document.getElementById('aiApiKey');
+      const proxyEl = document.getElementById('aiProxyUrl');
       const modelEl = document.getElementById('aiModel');
       if (keyEl) keyEl.value = getApiKey();
+      if (proxyEl) proxyEl.value = getProxyUrl() || DEFAULT_PROXY_URL || '';
       if (modelEl) modelEl.value = state.ai.model || 'openai/gpt-oss-20b';
     }
 
     function saveAiSettings() {
       ensureAi();
       const key = (document.getElementById('aiApiKey')?.value || '').trim();
+      const proxy = (document.getElementById('aiProxyUrl')?.value || '').trim();
       const model = document.getElementById('aiModel')?.value || 'openai/gpt-oss-20b';
       setApiKey(key);
+      setProxyUrl(proxy);
       state.ai.model = model;
       if (state.ai.apiKey) delete state.ai.apiKey;
       save();
-      toast(key ? 'Настройки ИИ сохранены' : 'Ключ очищен — ИИ выключен');
+      if (proxy) toast('Proxy сохранён — ИИ для всех через Worker');
+      else if (key) toast('Личный ключ сохранён');
+      else toast('ИИ выключен (нет proxy и ключа)');
     }
 
     async function testGroqConnection() {
       ensureAi();
-      const key = (document.getElementById('aiApiKey')?.value || getApiKey() || '').trim();
-      if (!key) { toast('Сначала вставь API-ключ', 'error'); return; }
+      // persist fields first
+      const key = (document.getElementById('aiApiKey')?.value || '').trim();
+      const proxy = (document.getElementById('aiProxyUrl')?.value || '').trim();
+      const model = document.getElementById('aiModel')?.value || state.ai.model || 'openai/gpt-oss-20b';
+      setApiKey(key);
+      setProxyUrl(proxy);
+      state.ai.model = model;
+      save();
+
+      if (!hasAiAccess()) { toast('Укажи Proxy URL или API-ключ', 'error'); return; }
       toast('Проверяю соединение…');
       try {
-        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        const res = await fetch(aiEndpoint(), {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + key
-          },
+          headers: aiAuthHeaders(),
           body: JSON.stringify({
-            model: document.getElementById('aiModel')?.value || state.ai.model || 'openai/gpt-oss-20b',
+            model,
             messages: [{ role: 'user', content: 'Ответь одним словом: ок' }],
             max_tokens: 10,
             temperature: 0
@@ -2112,10 +2489,9 @@
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          throw new Error(err.error?.message || ('HTTP ' + res.status));
+          throw new Error(err.error?.message || err.error || ('HTTP ' + res.status));
         }
-        toast('Groq подключен', 'success');
-        saveAiSettings();
+        toast(getProxyUrl() ? 'Proxy + Groq подключены' : 'Groq подключен', 'success');
       } catch (e) {
         toast('Ошибка: ' + (e.message || 'нет связи'), 'error');
       }
@@ -2123,14 +2499,10 @@
 
     async function callGroq(systemPrompt, userPrompt) {
       ensureAi();
-      const key = (getApiKey() || '').trim();
-      if (!key) throw new Error('Нет API-ключа. Добавь в Сейв → ИИ');
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      if (!hasAiAccess()) throw new Error('Нет ИИ: укажи Proxy URL или API-ключ в Сейв');
+      const res = await fetch(aiEndpoint(), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ' + key
-        },
+        headers: aiAuthHeaders(),
         body: JSON.stringify({
           model: state.ai.model || 'openai/gpt-oss-20b',
           messages: [
@@ -2138,7 +2510,7 @@
             { role: 'user', content: userPrompt }
           ],
           temperature: 0.7,
-          max_tokens: 1200
+          max_tokens: 2000
         })
       });
       if (!res.ok) {
@@ -2162,8 +2534,8 @@
 
     async function generateQuestsForDirection(dirId) {
       ensureAi();
-      if (!(getApiKey() || '').trim()) {
-        toast('Добавь API-ключ Groq во вкладке Сейв', 'error');
+      if (!hasAiAccess()) {
+        toast('Укажи Proxy или API-ключ в Сейв → ИИ', 'error');
         switchScreen('save');
         populateAiSettings();
         return;
@@ -2172,6 +2544,8 @@
       if (!dir) return;
 
       const skills = (dir.nodes || []).map(n => n.name).slice(0, 20);
+      const stage = dir.stage || 'beginner';
+      const rules = stageRules(stage);
       const pref = state.ai.preferredDifficulty || { SIDE: 2, MAIN: 3, BOSS: 2 };
       const existing = state.quests
         .filter(q => !q.done && (q.targetType === 'DIRECTION' && q.targetId === dirId ||
@@ -2182,95 +2556,271 @@
       toast('Генерирую квесты…');
       document.getElementById('modalContent').innerHTML = `
         <h2>ИИ-квесты</h2>
-        <p class="text-dim" style="margin-bottom:16px">Генерация для «${escapeHtml(dir.name)}»…</p>
-        <div style="text-align:center;padding:24px;color:var(--text-muted)">Жди несколько секунд</div>
+        <p class="text-dim" style="margin-bottom:16px">«${escapeHtml(dir.name)}» · ${stageLabel(stage)}</p>
+        <div style="text-align:center;padding:28px 16px">
+          <div style="font-size:1.4rem;margin-bottom:10px;opacity:0.7">◌</div>
+          <div style="color:var(--text-muted);font-size:0.9rem">ИИ подбирает квесты…</div>
+          <div style="color:var(--text-muted);font-size:0.78rem;margin-top:6px">Обычно 3–10 секунд</div>
+        </div>
       `;
       openModal();
 
       try {
-        const system = `Ты помощник в life-RPG. Пользователь сам создаёт мир. Предложи 5 конкретных реальных квестов на русском.
-Ответь ТОЛЬКО JSON-массивом без пояснений:
-[{"title":"...","type":"SIDE|MAIN|BOSS","difficulty":1-5,"description":"..."}]
-Правила:
-- SIDE = повседневное действие (20-60 мин)
-- MAIN = важная цель на дни/недели
-- BOSS = серьёзное испытание
-- Конкретно, без воды и мотивационных лозунгов
-- Не дублируй уже существующие квесты
-- Учитывай навыки пользователя`;
+        const mix = stage === 'beginner' ? '5 SIDE (без MAIN и BOSS)'
+          : stage === 'intermediate' ? '4 SIDE и 1 лёгкий MAIN'
+          : stage === 'advanced' ? '3 SIDE, 1 MAIN, опционально 1 небольшой BOSS'
+          : '2 SIDE, 2 MAIN, 1 BOSS';
+
+        const system = `Ты помощник в life-RPG. Предложи конкретные реальные квесты на русском.
+Ответь ТОЛЬКО JSON-массивом:
+[{"title":"...","type":"SIDE|MAIN|BOSS","difficulty":1-5,"description":"...","skillName":"точный навык из дерева или пусто"}]
+ЖЁСТКИЕ ПРАВИЛА УРОВНЯ:
+${rules.prompt}
+- Конкретно, без воды и лозунгов
+- Не предлагай то, что явно выше уровня
+- Не дублируй существующие квесты
+- SIDE = действие на сегодня (10–60 мин)
+- MAIN = цель на дни/недели (только если уровень позволяет)
+- BOSS = серьёзное испытание (только если уровень позволяет)
+- description: 2–4 полных предложения на русском: что сделать, как понять что готово, сколько примерно минут. Не обрывай мысль.
+- skillName: если у направления есть навыки в дереве — укажи ОДИН ближайший; иначе пустая строка`;
 
         const user = `Направление: ${dir.name}
+Уровень пользователя: ${stageLabel(stage)} (${stage})
 Описание: ${dir.description || 'нет'}
-Навыки: ${skills.length ? skills.join(', ') : 'пока нет'}
-Уже есть активные квесты: ${existing.length ? existing.join('; ') : 'нет'}
-Предпочтительная сложность: SIDE=${pref.SIDE}, MAIN=${pref.MAIN}, BOSS=${pref.BOSS}
-Дай микс: 3 SIDE, 1 MAIN, 1 BOSS.`;
+Навыки: ${skills.length ? skills.join(', ') : 'пока нет — значит совсем старт'}
+Активные квесты: ${existing.length ? existing.join('; ') : 'нет'}
+Предпочтительная сложность (ориентир, но НЕ выше лимита уровня): SIDE=${pref.SIDE}, MAIN=${pref.MAIN}, BOSS=${pref.BOSS}
+Состав: ${mix}`;
 
         const raw = await callGroq(system, user);
         let list = parseJsonFromAi(raw);
         if (!Array.isArray(list) || !list.length) throw new Error('Пустой ответ ИИ');
 
-        list = list.slice(0, 6).map(q => {
-          let type = String(q.type || 'SIDE').toUpperCase();
-          if (!['SIDE', 'MAIN', 'BOSS'].includes(type)) type = 'SIDE';
-          let difficulty = parseInt(q.difficulty, 10);
-          if (!(difficulty >= 1 && difficulty <= 5)) difficulty = pref[type] || 2;
-          return {
-            title: String(q.title || 'Квест').slice(0, 120),
-            type,
-            difficulty,
-            description: String(q.description || '').slice(0, 300),
-            xp: QUEST_XP[type][difficulty]
-          };
-        });
-
+        list = list.slice(0, 6).map(q => clampQuestToStage(q, stage));
         showAiQuestSuggestions(dirId, list);
       } catch (e) {
-        closeModal();
-        toast('ИИ: ' + (e.message || 'ошибка'), 'error');
+        document.getElementById('modalContent').innerHTML = `
+          <h2>Не вышло</h2>
+          <p class="text-dim" style="margin-bottom:14px">${escapeHtml(e.message || 'ошибка ИИ')}</p>
+          <div class="modal-actions" style="flex-direction:column;gap:8px">
+            <button class="btn btn-primary btn-block" onclick="generateQuestsForDirection('${dirId}')">Повторить</button>
+            <button class="btn btn-secondary btn-block" onclick="closeModal()">Закрыть</button>
+          </div>`;
+        openModal();
       }
     }
 
-    function showAiQuestSuggestions(dirId, list) {
-      const dir = state.directions.find(d => d.id === dirId);
+    async function generateDailyQuests() {
+      ensureAi();
+      if (!hasAiAccess()) {
+        toast('Укажи Proxy или API-ключ в Сейв → ИИ', 'error');
+        switchScreen('save');
+        populateAiSettings();
+        return;
+      }
+      if (!state.directions.length) {
+        toast('Сначала создай направление', 'error');
+        switchScreen('skills');
+        return;
+      }
+      // capacity picker
+      const prev = (state.ui && state.ui.dailyCapacity) || 60;
       document.getElementById('modalContent').innerHTML = `
-        <h2>Идеи квестов</h2>
-        <p class="text-dim" style="margin-bottom:12px;font-size:0.85rem">Для «${escapeHtml(dir?.name || '')}». Выбери, что добавить. Можно править после создания.</p>
-        <div id="aiQuestList" style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto">
-          ${list.map((q, i) => `
-            <label class="card" style="padding:12px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;margin:0">
-              <input type="checkbox" class="ai-q-check" data-i="${i}" checked style="margin-top:4px;width:18px;height:18px">
-              <div style="flex:1">
-                <div style="font-weight:600;margin-bottom:4px">${escapeHtml(q.title)}</div>
-                <div class="quest-meta" style="margin-bottom:4px">
-                  <span class="badge badge-${q.type.toLowerCase()}">${q.type}</span>
-                  <span class="badge badge-diff">${DIFF_LABELS[q.difficulty]}</span>
-                  <span class="quest-xp">+${q.xp} XP</span>
-                </div>
-                ${q.description ? `<div class="text-dim" style="font-size:0.82rem">${escapeHtml(q.description)}</div>` : ''}
-              </div>
-            </label>
-          `).join('')}
+        <h2>Квесты на день</h2>
+        <p class="text-dim" style="margin-bottom:14px;font-size:0.9rem">Сколько времени реально есть сегодня? ИИ подстроит объём и сложность под уровень каждого направления.</p>
+        <div class="form-group">
+          <label>Время сегодня</label>
+          <select id="dailyCap">
+            <option value="20" ${prev===20?'selected':''}>~20 минут</option>
+            <option value="40" ${prev===40?'selected':''}>~40 минут</option>
+            <option value="60" ${prev===60?'selected':''}>~1 час</option>
+            <option value="120" ${prev===120?'selected':''}>~2 часа</option>
+            <option value="180" ${prev===180?'selected':''}>~3 часа</option>
+          </select>
         </div>
-        <div class="modal-actions mt-16">
+        <div class="modal-actions">
           <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
-          <button class="btn btn-primary" onclick="acceptAiQuests('${dirId}')">Добавить выбранные</button>
+          <button class="btn btn-primary" onclick="runDailyQuestGen()">Собрать план</button>
         </div>
       `;
-      window._aiQuestDrafts = list;
       openModal();
     }
 
-    function acceptAiQuests(dirId) {
-      const drafts = window._aiQuestDrafts || [];
-      const checks = document.querySelectorAll('.ai-q-check:checked');
-      if (!checks.length) { toast('Ничего не выбрано', 'error'); return; }
-      ensureAi();
-      let added = 0;
-      checks.forEach(ch => {
+    async function runDailyQuestGen() {
+      const cap = parseInt(document.getElementById('dailyCap')?.value || '60', 10);
+      if (!state.ui) state.ui = {};
+      state.ui.dailyCapacity = cap;
+      save();
+
+      toast('Собираю квесты на день…');
+      document.getElementById('modalContent').innerHTML = `
+        <h2>Квесты на день</h2>
+        <p class="text-dim" style="margin-bottom:16px">~${cap} мин · уровни направлений учтены</p>
+        <div style="text-align:center;padding:28px 16px">
+          <div style="font-size:1.4rem;margin-bottom:10px;opacity:0.7">◌</div>
+          <div style="color:var(--text-muted);font-size:0.9rem">ИИ подбирает квесты…</div>
+          <div style="color:var(--text-muted);font-size:0.78rem;margin-top:6px">Обычно 3–10 секунд</div>
+        </div>
+      `;
+      openModal();
+
+      try {
+        const dirBrief = state.directions.map(d => {
+          const st = d.stage || 'beginner';
+          const skills = (d.nodes || []).map(n => n.name).slice(0, 12);
+          return {
+            id: d.id,
+            name: d.name,
+            stage: st,
+            stageLabel: stageLabel(st),
+            skills
+          };
+        });
+
+        const existing = state.quests.filter(q => !q.done).map(q => q.title).slice(0, 15);
+        const heroLvl = levelFromXp(state.hero.xp || 0);
+        const perDir = state.directions.length >= 4 ? 1 : (cap >= 120 ? 2 : 1);
+
+        const system = `Ты помощник в life-RPG. План на ОДИН день. Ответь ТОЛЬКО JSON-массивом:
+[{"dirId":"...","title":"...","type":"SIDE","difficulty":1-5,"description":"...","minutes":15,"skillName":"навык из дерева или пусто"}]
+Правила:
+- На каждое направление примерно ${perDir} квест(а)
+- Суммарно minutes всех квестов ≤ ${cap}
+- Почти все SIDE; MAIN только если stage не beginner и влезает в бюджет времени
+- BOSS запрещён
+- beginner: 10–25 мин, домашняя практика, без публики и «концертов»
+- intermediate: 15–40 мин
+- advanced/pro: можно плотнее, но в пределах бюджета
+- Конкретно, без мотивационной воды
+- dirId = id из списка
+- Не дублируй активные квесты
+- description: 2–4 предложения — что сделать, критерий «готово», ориентир по минутам. Не обрывай фразу.
+- skillName: привяжи к навыку из дерева направления, если есть; иначе ""`;
+
+        const user = `Герой LVL ${heroLvl} (это ОБЩИЙ уровень, не уровень в теме)
+Бюджет времени: ${cap} минут
+Направления: ${JSON.stringify(dirBrief)}
+Активные квесты: ${existing.length ? existing.join('; ') : 'нет'}`;
+
+        const raw = await callGroq(system, user);
+        let list = parseJsonFromAi(raw);
+        if (!Array.isArray(list) || !list.length) throw new Error('Пустой ответ ИИ');
+
+        // normalize + attach dir
+        const validIds = new Set(state.directions.map(d => d.id));
+        const byName = {};
+        state.directions.forEach(d => { byName[d.name.toLowerCase()] = d.id; });
+
+        list = list.slice(0, 20).map(q => {
+          let dirId = q.dirId;
+          if (!validIds.has(dirId)) {
+            // try match by name in title/description — or first dir
+            const maybe = state.directions.find(d =>
+              String(q.title || '').toLowerCase().includes(d.name.toLowerCase())
+            );
+            dirId = maybe ? maybe.id : (state.directions[0] && state.directions[0].id);
+          }
+          const dir = state.directions.find(d => d.id === dirId);
+          const stage = dir?.stage || 'beginner';
+          const clamped = clampQuestToStage({ ...q, type: 'SIDE' }, stage);
+          // daily: force SIDE for beginners/intermediate mostly already clamped
+          if (stage === 'beginner' || stage === 'intermediate') {
+            clamped.type = 'SIDE';
+            clamped.difficulty = Math.min(clamped.difficulty, stage === 'beginner' ? 2 : 3);
+            clamped.xp = QUEST_XP.SIDE[clamped.difficulty];
+          }
+          let minutes = parseInt(q.minutes, 10);
+          if (!(minutes > 0 && minutes <= 300)) minutes = clamped.minutes;
+          return {
+            ...clamped,
+            minutes: minutes || clamped.minutes,
+            skillName: clamped.skillName || q.skillName || null,
+            dirId,
+            dirName: dir?.name || ''
+          };
+        }).filter(q => q.dirId);
+
+        showDailyQuestSuggestions(list);
+      } catch (e) {
+        document.getElementById('modalContent').innerHTML = `
+          <h2>Не вышло</h2>
+          <p class="text-dim" style="margin-bottom:14px">${escapeHtml(e.message || 'ошибка ИИ')}</p>
+          <div class="modal-actions" style="flex-direction:column;gap:8px">
+            <button class="btn btn-primary btn-block" onclick="runDailyQuestGen()">Повторить</button>
+            <button class="btn btn-secondary btn-block" onclick="closeModal()">Закрыть</button>
+          </div>`;
+        openModal();
+      }
+    }
+
+    function renderAiDraftCard(q, i, opts) {
+      const showDir = opts && opts.showDir;
+      return `
+        <div class="card" style="padding:12px;margin:0" data-draft="${i}">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <input type="checkbox" class="ai-q-check" data-i="${i}" checked style="margin-top:6px;width:18px;height:18px;flex-shrink:0">
+            <div style="flex:1;min-width:0">
+              ${showDir ? `<div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:6px">${escapeHtml(q.dirName || '')}</div>` : ''}
+              <input type="text" class="ai-q-title" data-i="${i}" value="${escapeHtml(q.title)}" maxlength="120"
+                style="width:100%;margin-bottom:8px;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.9rem;font-weight:600;font-family:inherit">
+              <div class="quest-meta" style="margin-bottom:8px">
+                <span class="badge badge-${q.type.toLowerCase()}">${q.type}</span>
+                <span class="badge badge-diff">${DIFF_LABELS[q.difficulty] || q.difficulty}</span>
+                <span class="quest-xp">+${q.xp} XP</span>
+                ${q.minutes ? `<span class="badge">~${q.minutes} мин</span>` : ''}
+              </div>
+              <textarea class="ai-q-desc" data-i="${i}" rows="3"
+                style="width:100%;padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text-dim);font-size:0.85rem;line-height:1.45;font-family:inherit;resize:vertical">${escapeHtml(q.description || '')}</textarea>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function collectAiDraftsFromDom(baseDrafts) {
+      const out = [];
+      document.querySelectorAll('.ai-q-check:checked').forEach(ch => {
         const i = parseInt(ch.dataset.i, 10);
-        const q = drafts[i];
-        if (!q) return;
+        const base = baseDrafts[i];
+        if (!base) return;
+        const titleEl = document.querySelector('.ai-q-title[data-i="' + i + '"]');
+        const descEl = document.querySelector('.ai-q-desc[data-i="' + i + '"]');
+        const title = (titleEl?.value || base.title || '').trim();
+        if (!title) return;
+        out.push({
+          ...base,
+          title: title.slice(0, 120),
+          description: (descEl?.value || base.description || '').trim().slice(0, 900)
+        });
+      });
+      return out;
+    }
+
+    function showDailyQuestSuggestions(list) {
+      window._aiDailyDrafts = list;
+      window._aiDraftMode = 'daily';
+      document.getElementById('modalContent').innerHTML = `
+        <h2>Квесты на день</h2>
+        <p class="text-dim" style="margin-bottom:12px;font-size:0.85rem">Можно поправить текст прямо здесь, потом добавить.</p>
+        <div id="aiQuestList" style="display:flex;flex-direction:column;gap:10px;max-height:48vh;overflow-y:auto">
+          ${list.map((q, i) => renderAiDraftCard(q, i, { showDir: true })).join('')}
+        </div>
+        <div class="modal-actions mt-16" style="flex-direction:column;gap:8px">
+          <button class="btn btn-primary btn-block" onclick="acceptDailyQuests()">Добавить выбранные</button>
+          <button class="btn btn-secondary btn-block" onclick="runDailyQuestGen()">Другие варианты</button>
+          <button class="btn btn-secondary btn-block" onclick="closeModal()">Отмена</button>
+        </div>
+      `;
+      openModal();
+    }
+
+    function acceptDailyQuests() {
+      const picked = collectAiDraftsFromDom(window._aiDailyDrafts || []);
+      if (!picked.length) { toast('Ничего не выбрано', 'error'); return; }
+      const snap = snapshotState();
+      let added = 0;
+      picked.forEach(q => {
+        const tgt = resolveQuestTarget(q, q.dirId);
         state.quests.push({
           id: uid(),
           title: q.title,
@@ -2278,88 +2828,282 @@
           difficulty: q.difficulty,
           xp: QUEST_XP[q.type][q.difficulty],
           description: q.description || '',
-          targetType: 'DIRECTION',
-          targetId: dirId,
+          minutes: q.minutes || null,
+          targetType: tgt.targetType,
+          targetId: tgt.targetId,
+          tags: [],
+          done: false,
+          createdAt: Date.now(),
+          fromAi: true,
+          daily: true
+        });
+        added++;
+      });
+      save();
+      closeModal();
+      pushUndo(snap, `+${added} квестов на день`);
+      renderQuests();
+      renderHero();
+    }
+
+    function showAiQuestSuggestions(dirId, list) {
+      const dir = state.directions.find(d => d.id === dirId);
+      window._aiQuestDrafts = list;
+      window._aiDraftDirId = dirId;
+      window._aiDraftMode = 'dir';
+      document.getElementById('modalContent').innerHTML = `
+        <h2>Идеи квестов</h2>
+        <p class="text-dim" style="margin-bottom:12px;font-size:0.85rem">«${escapeHtml(dir?.name || '')}» · ${stageLabel(dir?.stage || 'beginner')}. Править текст до добавления.</p>
+        <div id="aiQuestList" style="display:flex;flex-direction:column;gap:10px;max-height:48vh;overflow-y:auto">
+          ${list.map((q, i) => renderAiDraftCard(q, i, { showDir: false })).join('')}
+        </div>
+        <div class="modal-actions mt-16" style="flex-direction:column;gap:8px">
+          <button class="btn btn-primary btn-block" onclick="acceptAiQuests('${dirId}')">Добавить выбранные</button>
+          <button class="btn btn-secondary btn-block" onclick="generateQuestsForDirection('${dirId}')">Другие варианты</button>
+          <button class="btn btn-secondary btn-block" onclick="closeModal()">Отмена</button>
+        </div>
+      `;
+      openModal();
+    }
+
+    function acceptAiQuests(dirId) {
+      const picked = collectAiDraftsFromDom(window._aiQuestDrafts || []);
+      if (!picked.length) { toast('Ничего не выбрано', 'error'); return; }
+      ensureAi();
+      const snap = snapshotState();
+      let added = 0;
+      picked.forEach(q => {
+        const tgt = resolveQuestTarget({ ...q, dirId }, dirId);
+        state.quests.push({
+          id: uid(),
+          title: q.title,
+          type: q.type,
+          difficulty: q.difficulty,
+          xp: QUEST_XP[q.type][q.difficulty],
+          description: q.description || '',
+          minutes: q.minutes || null,
+          targetType: tgt.targetType,
+          targetId: tgt.targetId,
+          tags: [],
           done: false,
           createdAt: Date.now(),
           fromAi: true
         });
-        // remember preferred difficulty
         if (!state.ai.preferredDifficulty) state.ai.preferredDifficulty = {};
         state.ai.preferredDifficulty[q.type] = q.difficulty;
         added++;
       });
       save();
       closeModal();
-      toast(`Добавлено квестов: ${added}`, 'success');
+      pushUndo(snap, `+${added} квестов`);
       renderQuests();
       renderHero();
       renderDirections();
     }
 
-    async function generateSkillIdeas(dirId) {
+    function flattenSkillTreeDraft(nodes, parentKey, depth, acc) {
+      (nodes || []).forEach((n, i) => {
+        const key = parentKey + '/' + i;
+        const name = String(n.name || n.title || '').trim().slice(0, 60);
+        if (!name) return;
+        acc.push({
+          key,
+          name,
+          description: String(n.description || '').slice(0, 200),
+          depth,
+          parentKey: parentKey === 'root' ? null : parentKey
+        });
+        if (Array.isArray(n.children) && n.children.length) {
+          flattenSkillTreeDraft(n.children, key, depth + 1, acc);
+        }
+      });
+      return acc;
+    }
+
+    async function generateSkillTree(dirId, parentNodeId) {
       ensureAi();
-      if (!(getApiKey() || '').trim()) {
-        toast('Добавь API-ключ Groq во вкладке Сейв', 'error');
+      if (!hasAiAccess()) {
+        toast('Укажи Proxy или API-ключ в Сейв → ИИ', 'error');
         switchScreen('save');
         populateAiSettings();
         return;
       }
       const dir = state.directions.find(d => d.id === dirId);
       if (!dir) return;
-      const existing = (dir.nodes || []).map(n => n.name);
+      const stage = dir.stage || 'beginner';
+      const existing = (dir.nodes || []).map(n => {
+        const parent = n.parentId ? (dir.nodes.find(x => x.id === n.parentId)?.name || '') : '';
+        return parent ? parent + ' → ' + n.name : n.name;
+      }).slice(0, 40);
 
-      toast('Генерирую ветки…');
+      const parentNode = parentNodeId ? (dir.nodes || []).find(n => n.id === parentNodeId) : null;
+      const mode = parentNode ? 'expand' : 'tree';
+
+      document.getElementById('modalContent').innerHTML = `
+        <h2>${mode === 'expand' ? 'Поднавыки' : 'Дерево навыков'}</h2>
+        <p class="text-dim" style="margin-bottom:12px;font-size:0.85rem">
+          ${mode === 'expand' ? 'Ветка «' + escapeHtml(parentNode.name) + '»' : '«' + escapeHtml(dir.name) + '» · ' + stageLabel(stage)}
+        </p>
+        <div style="text-align:center;padding:28px 16px">
+          <div style="font-size:1.4rem;margin-bottom:10px;opacity:0.7">◌</div>
+          <div style="color:var(--text-muted);font-size:0.9rem">ИИ собирает дерево…</div>
+        </div>
+      `;
+      openModal();
+
       try {
-        const system = `Ты помощник по skill-tree в life-RPG. Ответь ТОЛЬКО JSON-массивом строк — названия возможных корневых или дочерних навыков на русском, 5-8 штук, коротко, конкретно. Без пояснений.`;
-        const user = `Направление: ${dir.name}. Уже есть: ${existing.length ? existing.join(', ') : 'пусто'}. Предложи навыки, которых ещё нет.`;
+        let system, user;
+        if (mode === 'expand') {
+          system = `Ты архитектор skill-tree в life-RPG. Разбей ОДИН навык на поднавыки.
+Ответь ТОЛЬКО JSON:
+{"name":"...","children":[{"name":"...","description":"зачем этот кусок"},...]}
+Правила:
+- 3–6 детей первого уровня
+- Можно 1 уровень вложенности у детей (children у child)
+- Имена короткие, конкретные, на русском
+- Без мотивационной воды
+- Учитывай уровень пользователя: ${stageLabel(stage)}`;
+          user = `Направление: ${dir.name}
+Родительский навык: ${parentNode.name}
+Уже есть в дереве: ${existing.length ? existing.join('; ') : 'пусто'}
+Дай логичную декомпозицию «${parentNode.name}».`;
+        } else {
+          system = `Ты архитектор skill-tree в life-RPG. Построй иерархию навыков.
+Ответь ТОЛЬКО JSON:
+{"roots":[{"name":"...","description":"...","children":[{"name":"...","description":"...","children":[]}]}]}
+Правила:
+- 3–5 корневых столпов направления
+- У каждого корня 2–4 поднавыка
+- Глубже 3 уровней не иди
+- Имена короткие, конкретные, на русском
+- Новичок: базовые блоки (постановка, основы). Не «мастерство сцены»
+- Средний: техника + практика
+- Продвинутый/профи: можно узкие спецветки
+- Не повторяй уже существующие узлы
+- description — 1 короткая фраза «что это»`;
+          user = `Направление: ${dir.name}
+Уровень в теме: ${stageLabel(stage)} (${stage})
+Описание направления: ${dir.description || 'нет'}
+Уже есть: ${existing.length ? existing.join('; ') : 'дерево пустое — построй с нуля'}
+Собери полезное дерево под реальную прокачку.`;
+        }
+
         const raw = await callGroq(system, user);
-        let list = parseJsonFromAi(raw);
-        if (!Array.isArray(list)) throw new Error('Неверный формат');
-        list = list.map(x => String(x).slice(0, 60)).filter(Boolean).slice(0, 10);
+        const data = parseJsonFromAi(raw);
+        let flat = [];
+        if (mode === 'expand') {
+          const root = data && (data.children ? data : { name: parentNode.name, children: data });
+          const children = Array.isArray(root) ? root : (root.children || []);
+          flat = flattenSkillTreeDraft(children, 'root', 1, []);
+        } else {
+          const roots = data?.roots || data?.tree || (Array.isArray(data) ? data : []);
+          flat = flattenSkillTreeDraft(roots, 'root', 0, []);
+        }
+        if (!flat.length) throw new Error('Пустое дерево от ИИ');
+
+        window._aiTreeDrafts = flat;
+        window._aiTreeDirId = dirId;
+        window._aiTreeParentId = parentNodeId || null;
 
         document.getElementById('modalContent').innerHTML = `
-          <h2>Идеи навыков</h2>
-          <p class="text-dim" style="margin-bottom:12px;font-size:0.85rem">Для «${escapeHtml(dir.name)}». Выбери, что добавить как корневые навыки.</p>
-          <div style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto">
-            ${list.map((name, i) => `
-              <label class="card" style="padding:12px;display:flex;gap:10px;align-items:center;cursor:pointer;margin:0">
-                <input type="checkbox" class="ai-s-check" data-i="${i}" checked style="width:18px;height:18px">
-                <span style="font-weight:600">${escapeHtml(name)}</span>
+          <h2>${mode === 'expand' ? 'Поднавыки' : 'Дерево навыков'}</h2>
+          <p class="text-dim" style="margin-bottom:12px;font-size:0.85rem">Сними галочки с лишнего. Потом можно править в дереве.</p>
+          <div style="display:flex;flex-direction:column;gap:6px;max-height:48vh;overflow-y:auto">
+            ${flat.map((n, i) => `
+              <label class="card" style="padding:10px 12px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;margin:0">
+                <input type="checkbox" class="ai-tree-check" data-i="${i}" checked style="margin-top:3px;width:18px;height:18px;flex-shrink:0">
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:600;font-size:0.9rem;padding-left:${n.depth * 14}px">
+                    ${n.depth ? '↳ '.repeat(Math.min(n.depth, 3)) : ''}${escapeHtml(n.name)}
+                  </div>
+                  ${n.description ? `<div class="text-dim" style="font-size:0.78rem;padding-left:${n.depth * 14}px;margin-top:2px">${escapeHtml(n.description)}</div>` : ''}
+                </div>
               </label>
             `).join('')}
           </div>
-          <div class="modal-actions mt-16">
-            <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
-            <button class="btn btn-primary" onclick="acceptAiSkills('${dirId}')">Добавить</button>
+          <div class="modal-actions mt-16" style="flex-direction:column;gap:8px">
+            <button class="btn btn-primary btn-block" onclick="acceptAiSkillTree()">Добавить в дерево</button>
+            <button class="btn btn-secondary btn-block" onclick="generateSkillTree('${dirId}'${parentNodeId ? ',\'' + parentNodeId + '\'' : ''})">Другие варианты</button>
+            <button class="btn btn-secondary btn-block" onclick="closeModal()">Отмена</button>
           </div>
         `;
-        window._aiSkillDrafts = list;
         openModal();
       } catch (e) {
-        toast('ИИ: ' + (e.message || 'ошибка'), 'error');
+        document.getElementById('modalContent').innerHTML = `
+          <h2>Не вышло</h2>
+          <p class="text-dim" style="margin-bottom:14px">${escapeHtml(e.message || 'ошибка')}</p>
+          <div class="modal-actions" style="flex-direction:column;gap:8px">
+            <button class="btn btn-primary btn-block" onclick="generateSkillTree('${dirId}'${parentNodeId ? ',\'' + parentNodeId + '\'' : ''})">Повторить</button>
+            <button class="btn btn-secondary btn-block" onclick="closeModal()">Закрыть</button>
+          </div>`;
+        openModal();
       }
     }
 
-    function acceptAiSkills(dirId) {
+    function acceptAiSkillTree() {
+      const dirId = window._aiTreeDirId;
+      const parentId = window._aiTreeParentId || null;
       const dir = state.directions.find(d => d.id === dirId);
       if (!dir) return;
       if (!dir.nodes) dir.nodes = [];
-      const drafts = window._aiSkillDrafts || [];
-      let added = 0;
-      document.querySelectorAll('.ai-s-check:checked').forEach(ch => {
+      window._aiTreeSnap = snapshotState();
+      const drafts = window._aiTreeDrafts || [];
+      const selected = [];
+      document.querySelectorAll('.ai-tree-check:checked').forEach(ch => {
         const i = parseInt(ch.dataset.i, 10);
-        const name = drafts[i];
-        if (!name) return;
-        dir.nodes.push({ id: uid(), name, description: '', parentId: null, xp: 0 });
+        if (drafts[i]) selected.push(drafts[i]);
+      });
+      if (!selected.length) { toast('Ничего не выбрано', 'error'); return; }
+
+      // map draft keys -> real ids, only for selected + their ancestors if parent selected chain
+      const keyToId = {};
+      let added = 0;
+      // parents first by depth
+      selected.sort((a, b) => a.depth - b.depth).forEach(n => {
+        const exists = dir.nodes.find(x => x.name === n.name && (x.parentId || null) === (
+          n.parentKey ? (keyToId[n.parentKey] || null) : parentId
+        ));
+        if (exists) {
+          keyToId[n.key] = exists.id;
+          return;
+        }
+        let realParent = parentId;
+        if (n.parentKey) {
+          realParent = keyToId[n.parentKey] || parentId;
+          // if parent wasn't selected, attach to expand parent or root
+          if (!keyToId[n.parentKey] && !parentId) {
+            // skip orphan deep nodes without parent
+            if (n.depth > 0) return;
+          }
+        }
+        const id = uid();
+        keyToId[n.key] = id;
+        dir.nodes.push({
+          id,
+          name: n.name,
+          description: n.description || '',
+          parentId: n.depth === 0 ? parentId : (keyToId[n.parentKey] || parentId),
+          xp: 0,
+          lastActiveAt: 0
+        });
         added++;
       });
+
+      if (added) {
+        // undo was not snapshotted before loop — fix by snapshot at start
+      }
       save();
       closeModal();
-      toast(`Добавлено навыков: ${added}`, 'success');
-      if (currentTreeDirId === dirId) renderTree(dirId);
+      if (added) pushUndo(window._aiTreeSnap || snapshotState(), `Дерево +${added}`);
+      else toast('Уже было в дереве', 'success');
       renderDirections();
-      renderHero();
+      if (currentTreeDirId === dirId) renderTree(dirId);
+      else openTreeView(dirId);
+    }
+
+    // back-compat alias
+    function generateSkillIdeas(dirId) {
+      generateSkillTree(dirId);
     }
 
     // ===================== XP APPLICATION =====================
@@ -2430,97 +3174,99 @@
       const totalQuests = state.quests.length;
       const doneQuests = state.quests.filter(q => q.done).length;
       const totalDirs = state.directions.length;
-      let totalSkills = 0;
-      state.directions.forEach(d => {
-        totalSkills += (d.nodes || []).filter(n => !n.parentId).length;
-      });
       const title = getTitle(h.titleId || 'newbie');
       const nearMiss = prog.percent >= 85 && prog.level < MAX_LEVEL;
       const streak = state.streak || { current: 0, longest: 0 };
       const today = todayStr();
       const doneToday = state.quests.filter(q => q.done && q.completedAt && new Date(q.completedAt).toISOString().slice(0,10) === today).length;
-      // Today picks: active quests sorted by priority MAIN/BOSS first, then low difficulty, then oldest
-      const todayPicks = state.quests.filter(q => !q.done).slice().sort((a, b) => {
+      const active = state.quests.filter(q => !q.done);
+      const todayPicks = active.slice().sort((a, b) => {
         const prio = { BOSS: 0, MAIN: 1, SIDE: 2 };
         const pa = prio[a.type] ?? 3, pb = prio[b.type] ?? 3;
         if (pa !== pb) return pa - pb;
         if ((a.difficulty || 3) !== (b.difficulty || 3)) return (a.difficulty || 3) - (b.difficulty || 3);
         return (a.createdAt || 0) - (b.createdAt || 0);
-      }).slice(0, 5);
+      }).slice(0, 4);
+      const showExtras = doneQuests >= 3 || prog.level >= 3;
+      const cap = (state.ui && state.ui.dailyCapacity) || 60;
 
       const el = document.getElementById('heroContent');
+
+      // Guided empty / next step
+      let nextBlock = '';
+      if (totalDirs === 0) {
+        nextBlock = `
+          <div class="card mt-12">
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:600;margin-bottom:8px">ЧТО СДЕЛАТЬ</div>
+            <p class="text-dim" style="font-size:0.9rem;margin-bottom:12px">Шаг 1 из 3 — область жизни и твой уровень в ней (новичок / средний…).</p>
+            <button class="btn btn-primary btn-block" onclick="switchScreen('skills');setTimeout(()=>openDirectionModal(),200)">+ Создать направление</button>
+          </div>`;
+      } else if (active.length === 0) {
+        nextBlock = `
+          <div class="card mt-12">
+            <div style="font-size:0.75rem;color:var(--text-muted);font-weight:600;margin-bottom:8px">ЧТО СДЕЛАТЬ</div>
+            <p class="text-dim" style="font-size:0.9rem;margin-bottom:12px">Шаг 2 — квесты на сегодня под уровень направлений и твоё время.</p>
+            <button class="btn btn-primary btn-block" onclick="openAssistant()">Помощник ИИ</button>
+          </div>`;
+      } else {
+        nextBlock = `
+          <div class="card mt-12">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+              <div style="font-size:0.75rem;color:var(--text-muted);font-weight:600">СЕЙЧАС</div>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-secondary btn-sm" onclick="openAssistant()" style="min-height:30px;padding:4px 10px;font-size:0.75rem">ИИ</button>
+                <button class="btn btn-secondary btn-sm" onclick="switchScreen('quests')" style="min-height:30px;padding:4px 10px;font-size:0.75rem">Все</button>
+              </div>
+            </div>
+            ${todayPicks.map(q => `
+              <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--border)">
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(q.title)}</div>
+                  <div style="font-size:0.72rem;color:var(--text-muted)">${q.type}${q.minutes ? ' · ~' + q.minutes + 'м' : ''} · +${q.xp} XP</div>
+                </div>
+                <button class="btn btn-success btn-sm" onclick="completeQuest('${q.id}')" style="min-height:36px;min-width:44px">✓</button>
+              </div>
+            `).join('')}
+          </div>`;
+      }
+
       el.innerHTML = `
         <div class="hero-card">
-          <div class="hero-name" onclick="editHeroName()" style="cursor:pointer" title="Нажми чтобы изменить">${escapeHtml(h.name)}</div>
-          <div onclick="openTitlePicker()" style="cursor:pointer;margin:4px 0 8px;display:inline-block">
-            <span class="badge" style="font-size:0.78rem;padding:4px 10px;color:var(--gold);border-color:rgba(212,165,116,0.35)">
-              ${escapeHtml(title.name)}
-            </span>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div class="hero-name" style="margin:0">${escapeHtml(h.name)}</div>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="editHeroName()">Изменить ник</button>
           </div>
+          <div class="text-dim" style="font-size:0.78rem;margin:8px 0 6px">Уровень героя (общий прогресс)</div>
           <div class="hero-lvl">LVL ${prog.level}</div>
           <div class="progress-wrap" style="max-width:280px;margin:12px auto;position:relative">
             <div class="progress-bar gold" style="width:${prog.percent}%"></div>
           </div>
           <div class="hero-xp">
             <span>${formatNum(h.xp)}</span> XP
-            ${prog.level < MAX_LEVEL ? ` · до след. уровня: <span>${formatNum(prog.needed - prog.current)}</span>` : ' · MAX LEVEL'}
+            ${prog.level < MAX_LEVEL ? ` · до LVL ${prog.level + 1}: <span>${formatNum(prog.needed - prog.current)}</span>` : ' · MAX'}
           </div>
-          ${nearMiss ? `<div style="margin-top:10px;color:var(--gold);font-weight:600;font-size:0.88rem">⚡ Почти новый уровень</div>` : ''}
+          ${nearMiss ? `<div style="margin-top:10px;color:var(--gold);font-weight:600;font-size:0.88rem">⚡ Почти новый уровень героя</div>` : ''}
         </div>
 
         <div class="stats-grid">
-          <div class="stat-box"><div class="val">${doneToday}</div><div class="lbl">Сегодня ✓</div></div>
-          <div class="stat-box"><div class="val">${doneQuests}</div><div class="lbl">Всего ✓</div></div>
+          <div class="stat-box"><div class="val">${doneToday}</div><div class="lbl">Сегодня</div></div>
+          <div class="stat-box"><div class="val">${streak.current}</div><div class="lbl">Серия, дн</div></div>
           <div class="stat-box"><div class="val">${totalDirs}</div><div class="lbl">Направлений</div></div>
-          <div class="stat-box"><div class="val">${totalSkills}</div><div class="lbl">Навыков</div></div>
+          <div class="stat-box"><div class="val">${doneQuests}</div><div class="lbl">Квестов ✓</div></div>
         </div>
 
-        ${todayPicks.length ? `
-        <div class="card mt-12">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <div style="font-size:0.75rem;color:var(--text-muted);letter-spacing:0.3px;font-weight:600">СЕГОДНЯ</div>
-            <button class="btn btn-secondary btn-sm" onclick="switchScreen('quests')" style="min-height:30px;padding:4px 10px;font-size:0.75rem">Все</button>
-          </div>
-          ${todayPicks.map(q => `
-            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border)">
-              <div style="flex:1;min-width:0">
-                <div style="font-weight:600;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(q.title)}</div>
-                <div style="font-size:0.72rem;color:var(--text-muted)">${q.type} · ${DIFF_LABELS[q.difficulty] || ''} · +${q.xp} XP</div>
-              </div>
-              <button class="btn btn-success btn-sm" onclick="completeQuest('${q.id}')" style="min-height:32px">✓</button>
-            </div>
-          `).join('')}
-        </div>` : ''}
+        ${nextBlock}
 
-        <div class="card mt-12" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-          <div>
-            <div style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Серия</div>
-            <div style="font-size:1.3rem;font-weight:800;color:${streak.current > 0 ? 'var(--gold)' : 'var(--text-dim)'}">
-              🔥 ${streak.current} дн.
-            </div>
-            <div class="text-dim" style="font-size:0.75rem">Рекорд: ${streak.longest} дн.</div>
-          </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-secondary btn-sm" onclick="openTitlePicker()">Титулы</button>
+        ${showExtras ? `
+        <div class="card mt-12">
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="openTitlePicker()">${escapeHtml(title.name)}</button>
             <button class="btn btn-secondary btn-sm" onclick="openAchievements()">🏆 ${state.unlockedAchievements.length}</button>
             <button class="btn btn-secondary btn-sm" onclick="showWeeklyReview()">Обзор</button>
             <button class="btn btn-secondary btn-sm" onclick="takeRestDay()" ${!canTakeRestDay() ? 'disabled style="opacity:0.45"' : ''}>Отдых</button>
           </div>
-        </div>
-
-        ${totalDirs === 0 && totalQuests === 0 ? `
-          <div class="empty-state mt-16">
-            <div class="big-icon">✨</div>
-            <h3>Чистая игра</h3>
-            <p>Создай первое направление или первый квест — и начни свою историю.</p>
-            <button class="btn btn-primary" onclick="switchScreen('skills')">Создать направление</button>
-          </div>
-        ` : `
-          <div class="card mt-12">
-            <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:8px;letter-spacing:0.3px">ЛЁГКИЙ СТАРТ</div>
-            <button class="btn btn-primary btn-block btn-sm" onclick="easyStart()">Что сделать прямо сейчас?</button>
-          </div>
-        `}
+          <p class="text-dim" style="font-size:0.75rem;margin-top:10px">Титул героя: ${escapeHtml(title.name)}. Это не уровень направления.</p>
+        </div>` : ''}
       `;
     }
 
@@ -2541,13 +3287,33 @@
     }
 
     function editHeroName() {
-      const name = prompt('Имя героя:', state.hero.name);
-      if (name !== null && name.trim()) {
-        state.hero.name = name.trim().slice(0, 40);
-        save();
-        renderHero();
-        toast('Имя изменено');
-      }
+      document.getElementById('modalContent').innerHTML = `
+        <h2>Ник героя</h2>
+        <p class="text-dim" style="font-size:0.88rem;margin-bottom:14px">Так тебя видно на главном экране и в истории.</p>
+        <div class="form-group">
+          <label>Ник</label>
+          <input type="text" id="heroNameInput" value="${escapeHtml(state.hero.name || '')}" maxlength="40" placeholder="Как тебя зовут?" autocomplete="nickname">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+          <button class="btn btn-primary" onclick="saveHeroName()">Сохранить</button>
+        </div>
+      `;
+      openModal();
+      setTimeout(() => {
+        const inp = document.getElementById('heroNameInput');
+        if (inp) { inp.focus(); inp.select(); }
+      }, 100);
+    }
+
+    function saveHeroName() {
+      const name = (document.getElementById('heroNameInput')?.value || '').trim();
+      if (!name) { toast('Введи ник', 'error'); return; }
+      state.hero.name = name.slice(0, 40);
+      save();
+      closeModal();
+      renderHero();
+      toast('Ник обновлён', 'success');
     }
 
     // ===================== QUESTS =====================
@@ -2597,10 +3363,11 @@
           <div class="empty-state">
             <div class="big-icon">📜</div>
             <h3>${questFilter === 'all' && !questSearch ? 'Нет квестов' : 'Ничего не найдено'}</h3>
-            <p>SIDE — повседневное. MAIN — важное. BOSS — серьёзное испытание.</p>
+            <p>${state.directions.length ? 'Собери план на сегодня под твои направления и время.' : 'Сначала создай направление во вкладке «Навыки».'}</p>
             <div style="display:flex;flex-direction:column;gap:8px;max-width:280px;margin:0 auto">
-              <button class="btn btn-primary" onclick="openQuestModal()">+ Создать квест</button>
-              <button class="btn btn-secondary" onclick="openAiQuestPicker()">ИИ: предложить квесты</button>
+              ${state.directions.length
+                ? '<button class="btn btn-primary" onclick="generateDailyQuests()">На день (ИИ)</button><button class="btn btn-secondary" onclick="openQuestModal()">+ Вручную</button>'
+                : '<button class="btn btn-primary" onclick="switchScreen(\'skills\')">К направлениям</button>'}
             </div>
           </div>`;
         return;
@@ -2618,6 +3385,7 @@
             <div class="quest-meta">
               <span class="badge badge-${q.type.toLowerCase()}">${q.type === 'BOSS' ? '☠ ' : ''}${q.type}</span>
               <span class="badge badge-diff">${DIFF_LABELS[q.difficulty] || q.difficulty}</span>
+              ${q.minutes ? `<span class="badge">~${q.minutes} мин</span>` : ''}
               ${q.done ? '<span class="badge badge-done">✓ Выполнен</span>' : ''}
               ${near ? '<span class="badge" style="color:var(--gold);border-color:rgba(212,165,116,0.4)">⚡ Закроет уровень</span>' : ''}
               ${(q.tags||[]).map(tg => {
@@ -2627,6 +3395,7 @@
             </div>
             ${q.description ? `<div class="quest-desc">${escapeHtml(q.description)}</div>` : ''}
             ${targetLabel ? `<div class="quest-target">🎯 ${escapeHtml(targetLabel)}</div>` : ''}
+            ${q.fromAi && !targetLabel ? `<div class="quest-target">🎯 герой / общее</div>` : ''}
             <div class="quest-actions">
               ${!q.done ? `<button class="btn btn-success btn-sm" onclick="completeQuest('${q.id}')">✓</button>` : ''}
               ${!q.done ? `<button class="btn btn-secondary btn-sm" onclick="openQuestModal('${q.id}')">✎</button>` : ''}
@@ -2687,8 +3456,8 @@
 
     function openAiQuestPicker() {
       ensureAi();
-      if (!(getApiKey() || '').trim()) {
-        toast('Добавь API-ключ в Сейв → ИИ', 'error');
+      if (!hasAiAccess()) {
+        toast('Укажи Proxy или API-ключ в Сейв → ИИ', 'error');
         switchScreen('save');
         populateAiSettings();
         return;
@@ -2786,7 +3555,7 @@
         </div>
         <div class="form-group">
           <label>Описание</label>
-          <textarea id="qDesc" placeholder="Подробности (необязательно)">${q ? escapeHtml(q.description || '') : ''}</textarea>
+          <textarea id="qDesc" rows="4" placeholder="Что сделать и как понять, что готово">${q ? escapeHtml(q.description || '') : ''}</textarea>
         </div>
         <div class="form-group">
           <label>Привязка награды</label>
@@ -2893,17 +3662,22 @@
       // Auto-lore
       const targetLabel = getQuestTargetLabel(q);
       let loreText = '';
+      const dest = getQuestTargetLabel(q) || 'герою';
       if (q.type === 'BOSS') {
         loreText = `☠ BOSS повержен: «${q.title}» (+${finalXp} XP${luck.bonus ? ', 🍀 удача!' : ''})`;
-        toast('☠ BOSS повержен!', 'levelup');
+        toast(`BOSS: +${finalXp} XP → ${dest}`, 'levelup');
       } else if (q.type === 'MAIN') {
         loreText = `📜 Главный квест выполнен: «${q.title}» (+${finalXp} XP${luck.bonus ? ', 🍀 удача!' : ''})`;
+        toast(`+${finalXp} XP → герой и ${dest}`, 'success');
       } else {
         loreText = `✓ Квест выполнен: «${q.title}» (+${finalXp} XP${luck.bonus ? ', 🍀 удача!' : ''})`;
+        toast(`+${finalXp} XP → герой${dest !== 'герою' ? ' · ' + dest : ''}`, 'success');
       }
       if (targetLabel) loreText += `\n🎯 ${targetLabel}`;
       if (state.streak.current > 1) loreText += `\n🔥 Серия: ${state.streak.current} дн.`;
-      addAutoLore(loreText);
+      if (q.type === 'BOSS') addAutoLore(loreText, 'boss');
+      else if (q.type === 'MAIN') addAutoLore(loreText, 'main');
+      else addAutoLore(loreText, 'side');
 
       checkTitlesAndAchievements();
       save();
@@ -2934,11 +3708,8 @@
         list.innerHTML = `
           <div class="empty-state">
             <div class="big-icon">🌳</div>
-            <h3>Нет направлений</h3>
-            <p>Направление — большая область жизни (Музыка, Деньги, Тело, Учёба…). Внутри — дерево навыков.</p>
-            <div class="tip-box" style="text-align:left;max-width:300px;margin:0 auto 16px">
-              <strong>С чего начать:</strong> выбери одну область, которая сейчас важнее всего. Не пытайся охватить всю жизнь сразу.
-            </div>
+            <h3>Первое направление</h3>
+            <p>Одна область жизни. Укажи уровень: новичок — и ИИ не предложит концерт.</p>
             <button class="btn btn-primary" onclick="openDirectionModal()">+ Создать направление</button>
           </div>`;
         return;
@@ -2957,7 +3728,7 @@
         const prog = xpProgress(d.xp || 0);
         const skillCount = (d.nodes || []).length;
         return `
-          <div class="card dir-card" onclick="openTreeView('${d.id}')">
+          <div class="card dir-card">
             <div class="dir-top">
               <div class="dir-name">${escapeHtml(d.name)}</div>
               <div class="dir-lvl">LVL ${prog.level}</div>
@@ -2967,13 +3738,16 @@
               <div class="progress-bar" style="width:${prog.percent}%"></div>
             </div>
             <div class="dir-meta">
-              <span>${formatNum(d.xp || 0)} XP</span>
-              <span>Навыков: ${skillCount}</span>
+              <span>${formatNum(d.xp || 0)} XP направления</span>
+              <span>В теме: ${stageLabel(d.stage || 'beginner')}</span>
+              <span>${skillCount} навыков</span>
             </div>
-            <div class="quest-actions mt-12" onclick="event.stopPropagation()" style="flex-wrap:wrap">
-              <button class="btn btn-primary btn-sm" onclick="generateQuestsForDirection('${d.id}')">ИИ квесты</button>
-              <button class="btn btn-secondary btn-sm" onclick="generateSkillIdeas('${d.id}')">ИИ навыки</button>
-              <button class="btn btn-secondary btn-sm" onclick="openDirectionModal('${d.id}')">✎</button>
+            ${stageHint(d) ? `<p class="text-dim" style="font-size:0.78rem;margin-top:8px;color:var(--gold)">${stageHint(d)} · <button type="button" class="btn btn-secondary btn-sm" style="min-height:28px;padding:2px 8px;font-size:0.72rem" onclick="openDirectionModal('${d.id}')">Сменить</button></p>` : ''}
+            <div class="quest-actions mt-12" style="flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" onclick="generateQuestsForDirection('${d.id}')">Квесты ИИ</button>
+              <button class="btn btn-secondary btn-sm" onclick="generateSkillTree('${d.id}')">Дерево ИИ</button>
+              <button class="btn btn-secondary btn-sm" onclick="openTreeView('${d.id}')">Дерево</button>
+              <button class="btn btn-secondary btn-sm" onclick="openDirectionModal('${d.id}')">Уровень</button>
               <button class="btn btn-danger btn-sm" onclick="deleteDirection('${d.id}')">✕</button>
             </div>
           </div>
@@ -2986,11 +3760,19 @@
       editingType = 'direction';
       const d = id ? state.directions.find(x => x.id === id) : null;
 
+      const st = (d && d.stage) ? d.stage : 'beginner';
       document.getElementById('modalContent').innerHTML = `
         <h2>${d ? 'Редактировать направление' : 'Новое направление'}</h2>
         <div class="form-group">
           <label>Название</label>
-          <input type="text" id="dName" value="${d ? escapeHtml(d.name) : ''}" placeholder="Например: Музыка, Деньги, Здоровье" maxlength="60">
+          <input type="text" id="dName" value="${d ? escapeHtml(d.name) : ''}" placeholder="Например: Гитара, Английский, Бег" maxlength="60">
+        </div>
+        <div class="form-group">
+          <label>Твой уровень в направлении</label>
+          <select id="dStage">
+            ${DIR_STAGES.map(s => `<option value="${s.id}" ${st===s.id?'selected':''}>${s.label} — ${s.hint}</option>`).join('')}
+          </select>
+          <p class="text-dim" style="font-size:0.78rem;margin-top:6px">ИИ подстроит квесты под этот уровень (новичку не предложит концерт).</p>
         </div>
         <div class="form-group">
           <label>Описание</label>
@@ -3008,12 +3790,14 @@
       const name = document.getElementById('dName').value.trim();
       if (!name) { toast('Введи название', 'error'); return; }
       const description = document.getElementById('dDesc').value.trim();
+      const stage = document.getElementById('dStage')?.value || 'beginner';
 
       if (editingId) {
         const d = state.directions.find(x => x.id === editingId);
         if (d) {
           d.name = name;
           d.description = description;
+          d.stage = stage;
           toast('Направление обновлено');
         }
       } else {
@@ -3021,10 +3805,11 @@
           id: uid(),
           name,
           description,
+          stage,
           xp: 0,
           nodes: []
         });
-        addAutoLore(`🌳 Новое направление: «${name}»`);
+        addAutoLore(`🌳 Новое направление: «${name}» (${stageLabel(stage)})`);
         toast('Направление создано');
         checkTitlesAndAchievements();
       }
@@ -3153,15 +3938,13 @@
 
       if (roots.length === 0) {
         canvas.innerHTML = `
-          <div style="padding:48px 20px;text-align:center;color:var(--text-dim);max-width:320px;margin:0 auto">
+          <div style="padding:40px 20px;text-align:center;color:var(--text-dim);max-width:340px;margin:0 auto">
             <div style="font-size:2.5rem;margin-bottom:12px;opacity:0.5">🌳</div>
             <p style="font-weight:700;color:var(--text);margin-bottom:8px">Дерево пустое</p>
-            <p style="font-size:0.85rem;margin-bottom:14px">Нажми «+ Корень» — это будет большой столп направления (например «Аккорды» или «Сила»).</p>
-            <div class="tip-box" style="text-align:left">
-              <strong>Как думать:</strong><br>
-              Корень → 2–4 столпа → углубление в то, что реально качаешь.
-            </div>
-            <button class="btn btn-secondary btn-sm" onclick="showTreeExamples()">Смотреть примеры</button>
+            <p style="font-size:0.88rem;margin-bottom:16px">Собери столпы и поднавыки через ИИ — или добавь корень вручную.</p>
+            <button class="btn btn-primary btn-block" style="margin-bottom:8px" onclick="generateSkillTree('${dirId}')">Собрать дерево ИИ</button>
+            <button class="btn btn-secondary btn-block" style="margin-bottom:8px" onclick="openSkillModal(null)">+ Корень вручную</button>
+            <button class="btn btn-secondary btn-sm" onclick="showTreeExamples()">Примеры</button>
           </div>`;
         canvas.style.width = '100%';
         canvas.style.height = '100%';
@@ -3206,7 +3989,8 @@
               <div class="progress-bar ${near ? 'gold' : ''}" style="width:${prog.percent}%"></div>
             </div>
             <div class="sn-actions">
-              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openSkillModal('${node.id}', true)">+</button>
+              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openSkillModal('${node.id}', true)" title="Поднавык вручную">+</button>
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();generateSkillTree('${dirId}', '${node.id}')" title="ИИ: разбить на поднавыки">AI</button>
               <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();toggleKeySkill('${node.id}')" title="Ключевой">${isKey ? '★' : '☆'}</button>
               <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openSkillModal('${node.id}')">✎</button>
               <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteSkill('${node.id}')">✕</button>
@@ -3323,22 +4107,38 @@
     }
 
     // ===================== LORE =====================
+    let loreFilter = 'all';
+
     function renderLore() {
       const list = document.getElementById('loreList');
-      const items = [...state.lore].reverse();
+      let items = [...state.lore].reverse();
+      if (loreFilter === 'manual') items = items.filter(l => !l.auto);
+      if (loreFilter === 'auto') items = items.filter(l => l.auto);
 
-      if (items.length === 0) {
+      const filters = `
+        <div class="filters" style="margin-bottom:12px">
+          <button class="filter-btn ${loreFilter==='all'?'active':''}" onclick="loreFilter='all';renderLore()">Все</button>
+          <button class="filter-btn ${loreFilter==='manual'?'active':''}" onclick="loreFilter='manual';renderLore()">Мои</button>
+          <button class="filter-btn ${loreFilter==='auto'?'active':''}" onclick="loreFilter='auto';renderLore()">Авто</button>
+        </div>`;
+
+      if (state.lore.length === 0) {
         list.innerHTML = `
           <div class="empty-state">
             <div class="big-icon">📖</div>
             <h3>История пуста</h3>
-            <p>Лор пишется автоматически при выполнении квестов и level-up. Можно добавлять записи вручную.</p>
+            <p>Пиши важные моменты вручную. Авто-записи появятся после квестов.</p>
             <button class="btn btn-primary" onclick="openLoreModal()">+ Первая запись</button>
           </div>`;
         return;
       }
 
-      list.innerHTML = items.map(l => `
+      if (items.length === 0) {
+        list.innerHTML = filters + `<div class="empty-state"><p class="text-dim">В этом фильтре пусто</p></div>`;
+        return;
+      }
+
+      list.innerHTML = filters + items.map(l => `
         <div class="card lore-card">
           <div class="lore-date">
             ${escapeHtml(l.date)}
@@ -3657,6 +4457,49 @@
       renderLore();
       toast('Ритуал сохранён', 'success');
     }
+
+    // ===================== THEME =====================
+    function getPreferredTheme() {
+      try {
+        const saved = localStorage.getItem('life_rpg_theme');
+        if (saved === 'light' || saved === 'dark') return saved;
+        if (saved === 'system' || !saved) {
+          return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+      } catch (e) {}
+      return 'dark';
+    }
+
+    function applyTheme(theme) {
+      const t = theme === 'light' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+      const meta = document.getElementById('metaThemeColor');
+      if (meta) meta.setAttribute('content', t === 'light' ? '#f6f1ea' : '#141210');
+      const btn = document.getElementById('themeToggle');
+      if (btn) btn.textContent = t === 'light' ? 'Тёмная' : 'Светлая';
+    }
+
+    function setTheme(mode) {
+      try {
+        if (mode === 'system') localStorage.setItem('life_rpg_theme', 'system');
+        else localStorage.setItem('life_rpg_theme', mode);
+      } catch (e) {}
+      applyTheme(mode === 'system' ? getPreferredTheme() : mode);
+      toast(mode === 'light' ? 'Светлая тема' : mode === 'dark' ? 'Тёмная тема' : 'Как в системе', 'success');
+    }
+
+    function toggleTheme() {
+      const cur = document.documentElement.getAttribute('data-theme') || 'dark';
+      setTheme(cur === 'light' ? 'dark' : 'light');
+    }
+
+    applyTheme(getPreferredTheme());
+    try {
+      window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+        const saved = localStorage.getItem('life_rpg_theme');
+        if (!saved || saved === 'system') applyTheme(getPreferredTheme());
+      });
+    } catch (e) {}
 
     // ===================== INIT =====================
     load();
