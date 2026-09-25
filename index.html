@@ -1264,27 +1264,11 @@
           </div>
         </div>
         <div class="save-section">
-          <h3>ИИ для квестов</h3>
-          <p class="text-dim" style="font-size:0.82rem;margin-bottom:12px;line-height:1.45">
-            Нужен, чтобы кнопки «На день» и «ИИ» работали. Без этого приложение полностью офлайн.
+          <h3>ИИ</h3>
+          <p class="text-dim" style="font-size:0.85rem;line-height:1.5;margin-bottom:8px">
+            Квесты и дерево навыков работают через встроенный сервис. Ключи настраивать не нужно.
           </p>
-          <div class="form-group">
-            <label>Proxy URL (если есть)</label>
-            <input type="url" id="aiProxyUrl" placeholder="https://….workers.dev" autocomplete="off">
-          </div>
-          <div class="form-group">
-            <label>Или личный ключ Groq</label>
-            <input type="password" id="aiApiKey" placeholder="gsk_..." autocomplete="off">
-          </div>
-          <div class="form-group">
-            <label>Модель</label>
-            <select id="aiModel">
-              <option value="openai/gpt-oss-20b">GPT-OSS 20B (быстро)</option>
-              <option value="openai/gpt-oss-120b">GPT-OSS 120B (качество)</option>
-            </select>
-          </div>
-          <button class="btn btn-primary btn-block mb-8" onclick="saveAiSettings()">Сохранить</button>
-          <button class="btn btn-secondary btn-block" onclick="testGroqConnection()">Проверить</button>
+          <p id="aiStatusLine" class="text-dim" style="font-size:0.8rem"></p>
         </div>
         <div class="save-section">
           <h3>Данные</h3>
@@ -1364,7 +1348,9 @@
     const SCHEMA_VERSION = 2;
     const MAX_LEVEL = 200;
     // Optional: hardcode your Worker URL after deploy so users need nothing:
-    // const DEFAULT_PROXY_URL = 'https://life-rpg-groq.YOUR_SUBDOMAIN.workers.dev';
+    // ВШИТЫЙ proxy (Supabase Edge Function). Пользователи ключ НЕ вводят.
+    // После деплоя функции подставь свой URL:
+    // const DEFAULT_PROXY_URL = 'https://ТВОЙ_PROJECT_REF.supabase.co/functions/v1/groq-proxy';
     const DEFAULT_PROXY_URL = '';
 
     const QUEST_XP = {
@@ -1580,38 +1566,27 @@
     }
 
     function getProxyUrl() {
-      try {
-        const u = (localStorage.getItem(PROXY_KEY) || DEFAULT_PROXY_URL || '').trim();
-        return u.replace(/\/$/, '');
-      } catch(e) { return (DEFAULT_PROXY_URL || '').replace(/\/$/, ''); }
-    }
-
-    function setProxyUrl(url) {
-      try {
-        const u = (url || '').trim().replace(/\/$/, '');
-        if (u) localStorage.setItem(PROXY_KEY, u);
-        else localStorage.removeItem(PROXY_KEY);
-      } catch(e) {}
+      return (DEFAULT_PROXY_URL || '').trim().replace(/\/$/, '');
     }
 
     function aiEndpoint() {
-      const proxy = getProxyUrl();
-      if (proxy) return proxy; // worker root accepts POST
-      return 'https://api.groq.com/openai/v1/chat/completions';
+      return getProxyUrl() || '';
     }
 
     function aiAuthHeaders() {
-      const proxy = getProxyUrl();
-      if (proxy) return { 'Content-Type': 'application/json' }; // key on worker
-      const key = getApiKey();
-      return {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + key
-      };
+      return { 'Content-Type': 'application/json' };
     }
 
     function hasAiAccess() {
-      return !!(getProxyUrl() || getApiKey());
+      return !!getProxyUrl();
+    }
+
+    function updateAiStatusLine() {
+      const el = document.getElementById('aiStatusLine');
+      if (!el) return;
+      el.textContent = hasAiAccess()
+        ? 'Статус: ИИ подключён'
+        : 'Статус: ИИ временно недоступен';
     }
 
     function save() {
@@ -1828,9 +1803,8 @@
       document.getElementById('modalContent').innerHTML = `
         <h2>Помощник</h2>
         <p class="text-dim" style="margin-bottom:14px;font-size:0.9rem">Один вход в ИИ. Выбери, что нужно.</p>
-        ${!aiOk ? `<div class="tip-box warn" style="margin-bottom:12px"><strong>ИИ не подключён.</strong> Сейв → укажи Proxy или ключ Groq.</div>
-          <button class="btn btn-primary btn-block" onclick="closeModal();switchScreen('save');populateAiSettings()">Подключить ИИ</button>
-          <button class="btn btn-secondary btn-block" style="margin-top:8px" onclick="closeModal()">Закрыть</button>` : `
+        ${!aiOk ? `<div class="tip-box warn" style="margin-bottom:12px"><strong>ИИ временно недоступен.</strong> Попробуй позже — ключи настраивать не нужно.</div>
+          <button class="btn btn-secondary btn-block" onclick="closeModal()">Закрыть</button>` : `
           <div style="display:flex;flex-direction:column;gap:8px">
             <button class="btn btn-primary btn-block" onclick="closeModal();generateDailyQuests()">Квесты на день</button>
             <button class="btn btn-secondary btn-block" onclick="closeModal();openAiQuestPicker()">Квесты для направления</button>
@@ -2439,67 +2413,16 @@
     }
 
     function populateAiSettings() {
-      ensureAi();
-      const keyEl = document.getElementById('aiApiKey');
-      const proxyEl = document.getElementById('aiProxyUrl');
-      const modelEl = document.getElementById('aiModel');
-      if (keyEl) keyEl.value = getApiKey();
-      if (proxyEl) proxyEl.value = getProxyUrl() || DEFAULT_PROXY_URL || '';
-      if (modelEl) modelEl.value = state.ai.model || 'openai/gpt-oss-20b';
+      updateAiStatusLine();
     }
 
     function saveAiSettings() {
-      ensureAi();
-      const key = (document.getElementById('aiApiKey')?.value || '').trim();
-      const proxy = (document.getElementById('aiProxyUrl')?.value || '').trim();
-      const model = document.getElementById('aiModel')?.value || 'openai/gpt-oss-20b';
-      setApiKey(key);
-      setProxyUrl(proxy);
-      state.ai.model = model;
-      if (state.ai.apiKey) delete state.ai.apiKey;
-      save();
-      if (proxy) toast('Proxy сохранён — ИИ для всех через Worker');
-      else if (key) toast('Личный ключ сохранён');
-      else toast('ИИ выключен (нет proxy и ключа)');
-    }
-
-    async function testGroqConnection() {
-      ensureAi();
-      // persist fields first
-      const key = (document.getElementById('aiApiKey')?.value || '').trim();
-      const proxy = (document.getElementById('aiProxyUrl')?.value || '').trim();
-      const model = document.getElementById('aiModel')?.value || state.ai.model || 'openai/gpt-oss-20b';
-      setApiKey(key);
-      setProxyUrl(proxy);
-      state.ai.model = model;
-      save();
-
-      if (!hasAiAccess()) { toast('Укажи Proxy URL или API-ключ', 'error'); return; }
-      toast('Проверяю соединение…');
-      try {
-        const res = await fetch(aiEndpoint(), {
-          method: 'POST',
-          headers: aiAuthHeaders(),
-          body: JSON.stringify({
-            model,
-            messages: [{ role: 'user', content: 'Ответь одним словом: ок' }],
-            max_tokens: 10,
-            temperature: 0
-          })
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error?.message || err.error || ('HTTP ' + res.status));
-        }
-        toast(getProxyUrl() ? 'Proxy + Groq подключены' : 'Groq подключен', 'success');
-      } catch (e) {
-        toast('Ошибка: ' + (e.message || 'нет связи'), 'error');
-      }
+      /* AI is built-in; no user settings */
     }
 
     async function callGroq(systemPrompt, userPrompt) {
       ensureAi();
-      if (!hasAiAccess()) throw new Error('Нет ИИ: укажи Proxy URL или API-ключ в Сейв');
+      if (!hasAiAccess()) throw new Error('ИИ временно недоступен');
       const res = await fetch(aiEndpoint(), {
         method: 'POST',
         headers: aiAuthHeaders(),
@@ -2535,9 +2458,7 @@
     async function generateQuestsForDirection(dirId) {
       ensureAi();
       if (!hasAiAccess()) {
-        toast('Укажи Proxy или API-ключ в Сейв → ИИ', 'error');
-        switchScreen('save');
-        populateAiSettings();
+        toast('ИИ временно недоступен', 'error');
         return;
       }
       const dir = state.directions.find(d => d.id === dirId);
@@ -2614,9 +2535,7 @@ ${rules.prompt}
     async function generateDailyQuests() {
       ensureAi();
       if (!hasAiAccess()) {
-        toast('Укажи Proxy или API-ключ в Сейв → ИИ', 'error');
-        switchScreen('save');
-        populateAiSettings();
+        toast('ИИ временно недоступен', 'error');
         return;
       }
       if (!state.directions.length) {
@@ -2923,9 +2842,7 @@ ${rules.prompt}
     async function generateSkillTree(dirId, parentNodeId) {
       ensureAi();
       if (!hasAiAccess()) {
-        toast('Укажи Proxy или API-ключ в Сейв → ИИ', 'error');
-        switchScreen('save');
-        populateAiSettings();
+        toast('ИИ временно недоступен', 'error');
         return;
       }
       const dir = state.directions.find(d => d.id === dirId);
@@ -3457,9 +3374,7 @@ ${rules.prompt}
     function openAiQuestPicker() {
       ensureAi();
       if (!hasAiAccess()) {
-        toast('Укажи Proxy или API-ключ в Сейв → ИИ', 'error');
-        switchScreen('save');
-        populateAiSettings();
+        toast('ИИ временно недоступен', 'error');
         return;
       }
       const dirs = state.directions;
@@ -4368,7 +4283,7 @@ ${rules.prompt}
       if (name === 'quests') renderQuests();
       if (name === 'skills') renderDirections();
       if (name === 'lore') renderLore();
-      if (name === 'save') populateAiSettings();
+      if (name === 'save') updateAiStatusLine();
     }
 
     document.querySelectorAll('.nav-btn').forEach(btn => {
