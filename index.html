@@ -3050,7 +3050,7 @@
               { role: 'user', content: userPrompt }
             ],
             temperature: 0.7,
-            max_tokens: 2000
+            max_tokens: 3500
           })
         });
       } catch (e) {
@@ -3084,13 +3084,56 @@
 
     function parseJsonFromAi(text) {
       if (!text) return null;
-      let t = text.trim();
+      let t = String(text).trim();
+      // strip markdown fences
       const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
       if (fence) t = fence[1].trim();
+      // if model returned object wrapper
+      if (t[0] === '{' && t.includes('[')) {
+        const a = t.indexOf('[');
+        const b = t.lastIndexOf(']');
+        if (a >= 0 && b > a) t = t.slice(a, b + 1);
+      }
       const start = t.indexOf('[');
-      const end = t.lastIndexOf(']');
-      if (start >= 0 && end > start) t = t.slice(start, end + 1);
-      return JSON.parse(t);
+      let end = t.lastIndexOf(']');
+      if (start >= 0) {
+        if (end > start) t = t.slice(start, end + 1);
+        else t = t.slice(start); // truncated — try repair below
+      }
+
+      function tryParse(s) {
+        try { return JSON.parse(s); } catch (e) { return null; }
+      }
+
+      let parsed = tryParse(t);
+      if (parsed) return parsed;
+
+      // Repair truncated JSON array: close open braces/brackets/strings
+      let fix = t;
+      // remove trailing incomplete object fragment after last complete }
+      const lastComplete = fix.lastIndexOf('}');
+      if (lastComplete > 0) {
+        fix = fix.slice(0, lastComplete + 1);
+        // close array if needed
+        if (!fix.trim().endsWith(']')) fix = fix + ']';
+        // remove trailing comma before ]
+        fix = fix.replace(/,\s*]$/, ']');
+        parsed = tryParse(fix);
+        if (parsed) return parsed;
+      }
+
+      // Fallback: extract individual {...} objects
+      const objs = [];
+      const re = /\{[^{}]*\}/g;
+      let m;
+      while ((m = re.exec(t)) !== null) {
+        const o = tryParse(m[0]);
+        if (o && typeof o === 'object') objs.push(o);
+      }
+      if (objs.length) return objs;
+
+      // last resort: throw with short preview
+      throw new Error('ИИ вернул неполный JSON. Нажми «Повторить».');
     }
 
     async function generateQuestsForDirection(dirId) {
@@ -3131,8 +3174,10 @@
           : '2 SIDE, 2 MAIN, 1 BOSS';
 
         const system = `Ты помощник в life-RPG. Предложи конкретные реальные квесты на русском.
-Ответь ТОЛЬКО JSON-массивом:
-[{"title":"...","type":"SIDE|MAIN|BOSS","difficulty":1-5,"description":"...","skillName":"точный навык из дерева или пусто"}]
+Ответь ТОЛЬКО валидным JSON-массивом, без текста до/после, без markdown.
+Ровно 3–5 объектов. Каждый объект ЗАКРОЙ. Массив ЗАКРОЙ символом ].
+Формат:
+[{"title":"...","type":"SIDE","difficulty":2,"description":"...","skillName":""}]
 ЖЁСТКИЕ ПРАВИЛА УРОВНЯ:
 ${rules.prompt}
 - Конкретно, без воды и лозунгов
