@@ -630,7 +630,7 @@
       margin-top: 6px;
     }
 
-    /* Skill Tree View */
+    /* Skill Tree View — mobile-first comfort */
     .tree-view {
       display: none;
       position: fixed;
@@ -648,41 +648,217 @@
 
     .tree-header {
       display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px 14px 10px;
       border-bottom: 1px solid var(--border);
-      background: var(--bg);
+      background: rgba(20, 18, 16, 0.96);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       flex-shrink: 0;
     }
 
+    [data-theme="light"] .tree-header {
+      background: rgba(255, 253, 251, 0.96);
+    }
+
+    .tree-header-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
     .tree-header h2 {
-      font-size: 1.15rem;
-      font-weight: 800;
+      font-size: 1.1rem;
+      font-weight: 700;
       flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: -0.3px;
+    }
+
+    .tree-sub {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+
+    .tree-toolbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .tree-mode-switch {
+      display: inline-flex;
+      background: rgba(255, 236, 210, 0.06);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .tree-mode-btn {
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      font-weight: 650;
+      padding: 7px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-family: inherit;
+      min-height: 34px;
+    }
+
+    .tree-mode-btn.active {
+      background: rgba(224, 184, 120, 0.2);
+      color: var(--gold);
+    }
+
+    .tree-toolbar-actions {
+      display: flex;
+      gap: 6px;
+      flex: 1;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .tree-body {
+      flex: 1;
+      min-height: 0;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* LIST MODE */
+    .tree-list-wrap {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 12px 14px 28px;
+    }
+
+    .tree-list-item {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 12px 12px 10px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s, transform 0.12s;
+      min-height: 56px;
+    }
+
+    .tree-list-item:active {
+      transform: scale(0.985);
+      background: var(--panel-hover);
+    }
+
+    .tree-list-item.root-item {
+      border-color: rgba(224, 184, 120, 0.22);
+      background: linear-gradient(135deg, rgba(224, 184, 120, 0.07), var(--panel));
+    }
+
+    .tree-list-item.key-item {
+      border-color: rgba(224, 184, 120, 0.35);
+    }
+
+    .tree-list-item .tl-depth {
+      width: 4px;
+      align-self: stretch;
+      border-radius: 99px;
+      background: rgba(255, 236, 210, 0.08);
+      flex-shrink: 0;
+    }
+
+    .tree-list-item.root-item .tl-depth {
+      background: var(--gold);
+      opacity: 0.55;
+    }
+
+    .tree-list-item .tl-main { flex: 1; min-width: 0; }
+
+    .tree-list-item .tl-name {
+      font-size: 0.95rem;
+      font-weight: 650;
+      letter-spacing: -0.2px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .tree-controls {
+    .tree-list-item .tl-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 3px;
       display: flex;
-      gap: 6px;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
     }
 
+    .tree-list-item .tl-meta .gold { color: var(--gold); font-weight: 650; }
+
+    .tree-list-item .tl-bar {
+      height: 4px;
+      margin-top: 7px;
+      background: rgba(255, 236, 210, 0.08);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .tree-list-item .tl-bar > i {
+      display: block;
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, #c49a5c, #e8c48a);
+    }
+
+    .tree-list-item .tl-chevron {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border-radius: 8px;
+      background: rgba(255, 236, 210, 0.04);
+    }
+
+    .tree-list-children {
+      margin-left: 10px;
+      padding-left: 8px;
+      border-left: 1px solid var(--border);
+    }
+
+    .tree-list-children.collapsed { display: none; }
+
+    /* MAP MODE */
     .tree-canvas-wrap {
       flex: 1;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
+      overflow: hidden;
       position: relative;
-      background: var(--bg);
+      background:
+        radial-gradient(circle at 20% 10%, rgba(224, 184, 120, 0.05), transparent 40%),
+        var(--bg);
+      touch-action: none;
     }
 
     .tree-canvas {
-      position: relative;
-      min-width: 100%;
-      min-height: 100%;
+      position: absolute;
+      top: 0;
+      left: 0;
       transform-origin: 0 0;
+      will-change: transform;
     }
 
     .tree-svg {
@@ -695,64 +871,158 @@
 
     .skill-node {
       position: absolute;
-      width: 146px;
+      width: 158px;
       background: var(--panel);
       border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 12px;
+      border-radius: 14px;
+      padding: 12px 12px 10px;
       cursor: pointer;
-      transition: border-color 0.15s, background 0.15s;
+      transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
       z-index: 2;
       user-select: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
     }
 
-    .skill-node:hover {
-      border-color: var(--border-light);
-      background: var(--panel-hover);
-      z-index: 3;
+    .skill-node:active {
+      transform: scale(0.97);
     }
 
     .skill-node.root {
-      border-color: var(--border-light);
+      border-color: rgba(224, 184, 120, 0.35);
+      background: linear-gradient(160deg, rgba(224, 184, 120, 0.1), var(--panel));
+    }
+
+    .skill-node.key-skill {
+      border-color: rgba(224, 184, 120, 0.5);
+      box-shadow: 0 0 0 1px rgba(224, 184, 120, 0.15), 0 4px 16px rgba(0,0,0,0.18);
     }
 
     .skill-node .sn-name {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
       font-weight: 700;
       margin-bottom: 4px;
-      white-space: nowrap;
+      line-height: 1.25;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
       overflow: hidden;
-      text-overflow: ellipsis;
     }
 
     .skill-node .sn-lvl {
-      font-size: 0.75rem;
-      font-weight: 800;
+      font-size: 0.72rem;
+      font-weight: 750;
       color: var(--gold);
     }
 
     .skill-node .sn-xp {
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       color: var(--text-muted);
     }
 
     .skill-node .sn-bar {
       height: 4px;
-      margin: 6px 0 8px;
+      margin: 7px 0 0;
     }
 
-    .skill-node .sn-actions {
+    .skill-node .sn-hint {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      opacity: 0.75;
+    }
+
+    .tree-map-hint {
+      position: absolute;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(28, 25, 22, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      z-index: 5;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .tree-zoom-fab {
+      position: absolute;
+      right: 12px;
+      bottom: 14px;
       display: flex;
-      gap: 4px;
-      opacity: 0.85;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 6;
     }
 
-    .skill-node .sn-actions button {
-      flex: 1;
-      font-size: 0.7rem;
-      padding: 5px 4px;
-      min-height: 30px;
+    .tree-zoom-fab button {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      border: 1px solid var(--border-light);
+      background: rgba(28, 25, 22, 0.92);
+      color: var(--text);
+      font-size: 1.15rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
     }
+
+    /* Node action sheet */
+    .node-sheet-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      z-index: 20;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .node-sheet-overlay.open { display: flex; }
+
+    .node-sheet {
+      width: 100%;
+      max-width: 480px;
+      background: var(--bg2);
+      border: 1px solid var(--border-light);
+      border-radius: 20px 20px 0 0;
+      padding: 12px 16px calc(18px + var(--safe-bottom));
+      animation: slideUp 0.25s var(--ease);
+    }
+
+    .node-sheet::before {
+      content: '';
+      display: block;
+      width: 36px;
+      height: 4px;
+      border-radius: 99px;
+      background: rgba(255, 236, 210, 0.15);
+      margin: 0 auto 12px;
+    }
+
+    .node-sheet h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .node-sheet .ns-meta {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    .node-sheet .ns-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .node-sheet .ns-grid .btn { width: 100%; }
+    .node-sheet .ns-grid .btn.span2 { grid-column: 1 / -1; }
 
     /* ===== LORE ===== */
     .lore-card .lore-date {
@@ -1271,6 +1541,27 @@
           <p id="aiStatusLine" class="text-dim" style="font-size:0.8rem"></p>
         </div>
         <div class="save-section">
+          <h3>Облачный сейв (Telegram)</h3>
+          <p class="text-dim" style="font-size:0.82rem;margin-bottom:10px;line-height:1.45">
+            Один аккаунт Telegram = один прогресс на телефоне и планшете.
+            Нужен Supabase (можно тот же, что для ИИ).
+          </p>
+          <p id="cloudStatus" class="text-dim" style="font-size:0.8rem;margin-bottom:10px"></p>
+          <div class="form-group">
+            <label>Supabase Project URL</label>
+            <input type="url" id="cloudSbUrl" placeholder="https://xxxx.supabase.co" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Anon / Publishable key</label>
+            <input type="text" id="cloudSbAnon" placeholder="sb_publishable_… или eyJ…" autocomplete="off">
+          </div>
+          <button class="btn btn-primary btn-block mb-8" onclick="saveCloudSettings()">Сохранить облако</button>
+          <button class="btn btn-secondary btn-block mb-8" onclick="syncCloudNow()">Синхронизировать сейчас</button>
+          <p class="text-dim" style="font-size:0.72rem;line-height:1.4">
+            В SQL Editor Supabase один раз выполни SQL из инструкции (таблица life_rpg_saves).
+          </p>
+        </div>
+        <div class="save-section">
           <h3>Данные</h3>
           <button class="btn btn-primary btn-block mb-8" onclick="exportSave()">Экспорт JSON</button>
           <button class="btn btn-secondary btn-block mb-8" onclick="document.getElementById('importFile').click()">Импорт (заменить)</button>
@@ -1288,7 +1579,7 @@
           <button class="btn btn-danger btn-block" onclick="resetAll()">Сбросить весь прогресс</button>
         </div>
         <div class="text-dim" style="font-size:0.8rem;margin-top:16px;text-align:center;">
-          Автосохранение на этом устройстве
+          Локально + облако (если настроен Telegram и Supabase)
         </div>
       </div>
     </div>
@@ -1321,17 +1612,38 @@
   <!-- TREE VIEW OVERLAY -->
   <div class="tree-view" id="treeView">
     <div class="tree-header">
-      <button class="btn btn-secondary btn-icon" onclick="closeTreeView()">←</button>
-      <h2 id="treeTitle">Дерево</h2>
-      <div class="tree-controls">
-        <button class="btn btn-secondary btn-icon" onclick="treeZoom(-0.1)">−</button>
-        <button class="btn btn-secondary btn-icon" onclick="treeZoom(0.1)">+</button>
-        <button class="btn btn-secondary btn-sm" onclick="if(currentTreeDirId)generateSkillTree(currentTreeDirId)">Дерево ИИ</button>
-        <button class="btn btn-primary btn-sm" onclick="openSkillModal(null)">+ Корень</button>
+      <div class="tree-header-top">
+        <button class="btn btn-secondary btn-icon" onclick="closeTreeView()" title="Назад">←</button>
+        <div style="flex:1;min-width:0">
+          <h2 id="treeTitle">Дерево</h2>
+          <div class="tree-sub" id="treeSub">Навыки направления</div>
+        </div>
+      </div>
+      <div class="tree-toolbar">
+        <div class="tree-mode-switch">
+          <button type="button" class="tree-mode-btn active" id="treeModeList" onclick="setTreeMode('list')">Список</button>
+          <button type="button" class="tree-mode-btn" id="treeModeMap" onclick="setTreeMode('map')">Карта</button>
+        </div>
+        <div class="tree-toolbar-actions">
+          <button class="btn btn-secondary btn-sm" onclick="if(currentTreeDirId)generateSkillTree(currentTreeDirId)">ИИ</button>
+          <button class="btn btn-primary btn-sm" onclick="openSkillModal(null)">+ Навык</button>
+        </div>
       </div>
     </div>
-    <div class="tree-canvas-wrap" id="treeCanvasWrap">
-      <div class="tree-canvas" id="treeCanvas"></div>
+    <div class="tree-body">
+      <div class="tree-list-wrap" id="treeListWrap"></div>
+      <div class="tree-canvas-wrap" id="treeCanvasWrap" style="display:none">
+        <div class="tree-canvas" id="treeCanvas"></div>
+        <div class="tree-map-hint">Два пальца — масштаб · один — сдвиг · тап — действия</div>
+        <div class="tree-zoom-fab">
+          <button type="button" onclick="treeZoom(0.15)">+</button>
+          <button type="button" onclick="treeZoom(-0.15)">−</button>
+          <button type="button" onclick="treeResetView()" title="Сброс">⟲</button>
+        </div>
+      </div>
+      <div class="node-sheet-overlay" id="nodeSheetOverlay" onclick="if(event.target===this)closeNodeSheet()">
+        <div class="node-sheet" id="nodeSheet"></div>
+      </div>
     </div>
   </div>
 
@@ -1349,10 +1661,18 @@
     const MAX_LEVEL = 200;
     // Optional: hardcode your Worker URL after deploy so users need nothing:
     // ВШИТЫЙ proxy (Supabase Edge Function). Пользователи ключ НЕ вводят.
-    // После деплоя функции подставь свой URL:
-    // const DEFAULT_PROXY_URL = 'https://sghoucsrxbywiafpxxyw.supabase.co/functions/v1/groq-proxy';
-    const DEFAULT_PROXY_URL = 'https://sghoucsrxbywiafpxxyw.supabase.co/functions/v1/Qroq-proxy';
-    const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_vUKnyvXGOcqUdq4tBv03FA_RWkH30qP';
+    // 1) URL функции:
+    // const DEFAULT_PROXY_URL = 'https://PROJECT_ID.supabase.co/functions/v1/groq-proxy';
+    // 2) Anon key из Supabase → Settings → API → anon public (нужен для вызова с телефона):
+    // const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOi...';
+    const DEFAULT_PROXY_URL = '';
+    const DEFAULT_SUPABASE_ANON_KEY = '';
+    // Облачный сейв (тот же проект Supabase). Можно вставить в Настройки.
+    // Project URL: https://xxxx.supabase.co  (без /functions/...)
+    const DEFAULT_SUPABASE_URL = '';
+    const CLOUD_TABLE = 'life_rpg_saves';
+    const LS_SB_URL = 'life_rpg_v4_sb_url';
+    const LS_SB_ANON = 'life_rpg_v4_sb_anon';
 
     const QUEST_XP = {
       SIDE:  { 1: 20,  2: 50,  3: 120, 4: 280,  5: 650  },
@@ -1539,6 +1859,11 @@
 
     let currentTreeDirId = null;
     let treeScale = 1;
+    let treePanX = 0;
+    let treePanY = 0;
+    let treeMode = 'list'; // list | map
+    let treeCollapsed = {}; // nodeId -> true if children collapsed
+    let treePanBound = false;
     let questFilter = 'all';
     let questSearch = '';
     let questSort = 'default';
@@ -1575,7 +1900,14 @@
     }
 
     function aiAuthHeaders() {
-      return { 'Content-Type': 'application/json' };
+      const headers = { 'Content-Type': 'application/json' };
+      // Supabase Edge Functions often need anon key even with verify_jwt = false
+      const anon = (DEFAULT_SUPABASE_ANON_KEY || '').trim();
+      if (anon) {
+        headers['Authorization'] = 'Bearer ' + anon;
+        headers['apikey'] = anon;
+      }
+      return headers;
     }
 
     function hasAiAccess() {
@@ -1590,6 +1922,205 @@
         : 'Статус: ИИ временно недоступен';
     }
 
+    // ===================== CLOUD SAVE (Telegram + Supabase) =====================
+    let cloudSaveTimer = null;
+    let cloudReady = false;
+    let cloudLastError = '';
+
+    function getSupabaseUrl() {
+      try {
+        let u = (localStorage.getItem(LS_SB_URL) || DEFAULT_SUPABASE_URL || '').trim().replace(/\/$/, '');
+        if (!u && DEFAULT_PROXY_URL) {
+          const m = DEFAULT_PROXY_URL.match(/^(https:\/\/[^/]+\.supabase\.co)/i);
+          if (m) u = m[1];
+        }
+        return u;
+      } catch (e) { return (DEFAULT_SUPABASE_URL || '').trim().replace(/\/$/, ''); }
+    }
+
+    function getSupabaseAnon() {
+      try {
+        return (localStorage.getItem(LS_SB_ANON) || DEFAULT_SUPABASE_ANON_KEY || '').trim();
+      } catch (e) { return (DEFAULT_SUPABASE_ANON_KEY || '').trim(); }
+    }
+
+    function getTelegramUserId() {
+      try {
+        const tg = window.Telegram && window.Telegram.WebApp;
+        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id) {
+          return String(tg.initDataUnsafe.user.id);
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    function cloudConfigured() {
+      return !!(getSupabaseUrl() && getSupabaseAnon());
+    }
+
+    function updateCloudStatusLine() {
+      const el = document.getElementById('cloudStatus');
+      if (!el) return;
+      const tid = getTelegramUserId();
+      if (!cloudConfigured()) {
+        el.textContent = 'Статус: укажи Project URL и anon key';
+        return;
+      }
+      if (!tid) {
+        el.textContent = 'Статус: открой через Telegram-бота (нет user id)';
+        return;
+      }
+      el.textContent = 'Статус: TG id ' + tid + (cloudReady ? ' · облако ок' : '') + (cloudLastError ? ' · ' + cloudLastError : '');
+    }
+
+    function saveCloudSettings() {
+      try {
+        const url = (document.getElementById('cloudSbUrl')?.value || '').trim().replace(/\/$/, '');
+        const anon = (document.getElementById('cloudSbAnon')?.value || '').trim();
+        if (url) localStorage.setItem(LS_SB_URL, url);
+        else localStorage.removeItem(LS_SB_URL);
+        if (anon) localStorage.setItem(LS_SB_ANON, anon);
+        else localStorage.removeItem(LS_SB_ANON);
+      } catch (e) {}
+      updateCloudStatusLine();
+      toast(cloudConfigured() ? 'Облако сохранено' : 'Заполни URL и key', cloudConfigured() ? 'success' : 'error');
+      if (cloudConfigured() && getTelegramUserId()) syncCloudNow();
+    }
+
+    function populateCloudSettings() {
+      const u = document.getElementById('cloudSbUrl');
+      const a = document.getElementById('cloudSbAnon');
+      if (u) u.value = getSupabaseUrl();
+      if (a) a.value = getSupabaseAnon();
+      updateCloudStatusLine();
+    }
+
+    async function cloudFetch(path, options) {
+      const base = getSupabaseUrl();
+      const anon = getSupabaseAnon();
+      const opts = options || {};
+      const headers = Object.assign({
+        'apikey': anon,
+        'Authorization': 'Bearer ' + anon,
+        'Content-Type': 'application/json'
+      }, opts.headers || {});
+      const res = await fetch(base + path, Object.assign({}, opts, { headers }));
+      return res;
+    }
+
+    async function cloudLoad() {
+      const tid = getTelegramUserId();
+      if (!cloudConfigured() || !tid) {
+        updateCloudStatusLine();
+        return false;
+      }
+      try {
+        const res = await cloudFetch(
+          '/rest/v1/' + CLOUD_TABLE + '?telegram_id=eq.' + encodeURIComponent(tid) + '&select=data,updated_at',
+          { method: 'GET' }
+        );
+        if (!res.ok) {
+          const t = await res.text().catch(() => '');
+          cloudLastError = 'load HTTP ' + res.status;
+          if (res.status === 404 || /relation|does not exist/i.test(t)) {
+            cloudLastError = 'нет таблицы life_rpg_saves';
+          }
+          updateCloudStatusLine();
+          return false;
+        }
+        const rows = await res.json();
+        if (rows && rows[0] && rows[0].data) {
+          const err = validateImport(rows[0].data);
+          if (!err) {
+            state = migrateState(rows[0].data);
+            // also mirror locally
+            try {
+              const toSave = JSON.parse(JSON.stringify(state));
+              if (toSave.ai) delete toSave.ai.apiKey;
+              localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+            } catch (e) {}
+            cloudReady = true;
+            cloudLastError = '';
+            updateCloudStatusLine();
+            return true;
+          }
+        }
+        // no remote row yet — upload local
+        cloudReady = true;
+        cloudLastError = '';
+        await cloudSave(true);
+        updateCloudStatusLine();
+        return false;
+      } catch (e) {
+        cloudLastError = (e && e.message) || 'load fail';
+        updateCloudStatusLine();
+        return false;
+      }
+    }
+
+    async function cloudSave(force) {
+      const tid = getTelegramUserId();
+      if (!cloudConfigured() || !tid) return;
+      try {
+        const payload = JSON.parse(JSON.stringify(state));
+        if (payload.ai) delete payload.ai.apiKey;
+        payload.schemaVersion = SCHEMA_VERSION;
+        const body = [{
+          telegram_id: Number(tid),
+          data: payload,
+          updated_at: new Date().toISOString()
+        }];
+        const res = await cloudFetch('/rest/v1/' + CLOUD_TABLE, {
+          method: 'POST',
+          headers: {
+            'Prefer': 'resolution=merge-duplicates,return=minimal'
+          },
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+          const t = await res.text().catch(() => '');
+          cloudLastError = 'save HTTP ' + res.status;
+          if (/relation|does not exist/i.test(t)) cloudLastError = 'нет таблицы life_rpg_saves';
+          updateCloudStatusLine();
+          if (force) toast('Облако: ' + cloudLastError, 'error');
+          return;
+        }
+        cloudReady = true;
+        cloudLastError = '';
+        updateCloudStatusLine();
+        if (force) toast('Сейв в облаке', 'success');
+      } catch (e) {
+        cloudLastError = (e && e.message) || 'save fail';
+        updateCloudStatusLine();
+        if (force) toast('Облако: ' + cloudLastError, 'error');
+      }
+    }
+
+    function scheduleCloudSave() {
+      if (!cloudConfigured() || !getTelegramUserId()) return;
+      clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = setTimeout(() => { cloudSave(false); }, 1200);
+    }
+
+    async function syncCloudNow() {
+      if (!cloudConfigured()) {
+        toast('Сначала URL и key', 'error');
+        return;
+      }
+      if (!getTelegramUserId()) {
+        toast('Открой приложение из Telegram-бота', 'error');
+        return;
+      }
+      toast('Синхронизация…');
+      // Prefer cloud if exists, else push local
+      const loaded = await cloudLoad();
+      if (!loaded) await cloudSave(true);
+      else {
+        toast('Загружено из облака', 'success');
+        renderAll();
+      }
+    }
+
     function save() {
       try {
         const toSave = JSON.parse(JSON.stringify(state));
@@ -1597,6 +2128,7 @@
         toSave.schemaVersion = SCHEMA_VERSION;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
         maybeDailyBackup(toSave);
+        scheduleCloudSave();
       } catch (e) {
         console.warn('Save failed', e);
         toast('Ошибка сохранения', 'error');
@@ -2424,22 +2956,46 @@
     async function callGroq(systemPrompt, userPrompt) {
       ensureAi();
       if (!hasAiAccess()) throw new Error('ИИ временно недоступен');
-      const res = await fetch(aiEndpoint(), {
-        method: 'POST',
-        headers: aiAuthHeaders(),
-        body: JSON.stringify({
-          model: state.ai.model || 'openai/gpt-oss-20b',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature: 0.7,
-          max_tokens: 2000
-        })
-      });
+      const url = aiEndpoint();
+      let res;
+      try {
+        res = await fetch(url, {
+          method: 'POST',
+          headers: aiAuthHeaders(),
+          body: JSON.stringify({
+            model: state.ai.model || 'openai/gpt-oss-20b',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ],
+            temperature: 0.7,
+            max_tokens: 2000
+          })
+        });
+      } catch (e) {
+        // iOS/Telegram often shows "Load failed" on CORS / blocked network
+        const hint = !(DEFAULT_SUPABASE_ANON_KEY || '').trim()
+          ? 'Добавь DEFAULT_SUPABASE_ANON_KEY (Settings → API → anon) и проверь CORS/JWT у функции.'
+          : 'Проверь URL proxy, JWT (verify_jwt off) и секрет GROQ_API_KEY.';
+        throw new Error('Сеть: ' + (e.message || 'Load failed') + '. ' + hint);
+      }
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error?.message || ('HTTP ' + res.status));
+        const errText = await res.text().catch(() => '');
+        let msg = 'HTTP ' + res.status;
+        try {
+          const err = JSON.parse(errText);
+          msg = err.error?.message || err.message || err.msg || msg;
+          if (err.error && typeof err.error === 'string') msg = err.error;
+        } catch (_) {
+          if (errText) msg = errText.slice(0, 160);
+        }
+        if (res.status === 401 || res.status === 403) {
+          msg += ' — нужен anon key или отключи Verify JWT у функции.';
+        }
+        if (res.status === 500 && /GROQ_API_KEY/i.test(msg)) {
+          msg = 'На сервере нет GROQ_API_KEY (Secrets) — добавь и Redeploy.';
+        }
+        throw new Error(msg);
       }
       const data = await res.json();
       return data.choices?.[0]?.message?.content || '';
@@ -3660,9 +4216,9 @@ ${rules.prompt}
             </div>
             ${stageHint(d) ? `<p class="text-dim" style="font-size:0.78rem;margin-top:8px;color:var(--gold)">${stageHint(d)} · <button type="button" class="btn btn-secondary btn-sm" style="min-height:28px;padding:2px 8px;font-size:0.72rem" onclick="openDirectionModal('${d.id}')">Сменить</button></p>` : ''}
             <div class="quest-actions mt-12" style="flex-wrap:wrap">
-              <button class="btn btn-primary btn-sm" onclick="generateQuestsForDirection('${d.id}')">Квесты ИИ</button>
-              <button class="btn btn-secondary btn-sm" onclick="generateSkillTree('${d.id}')">Дерево ИИ</button>
-              <button class="btn btn-secondary btn-sm" onclick="openTreeView('${d.id}')">Дерево</button>
+              <button class="btn btn-primary btn-sm" onclick="openTreeView('${d.id}')">Открыть дерево</button>
+              <button class="btn btn-secondary btn-sm" onclick="generateQuestsForDirection('${d.id}')">Квесты ИИ</button>
+              <button class="btn btn-secondary btn-sm" onclick="generateSkillTree('${d.id}')">Собрать ИИ</button>
               <button class="btn btn-secondary btn-sm" onclick="openDirectionModal('${d.id}')">Уровень</button>
               <button class="btn btn-danger btn-sm" onclick="deleteDirection('${d.id}')">✕</button>
             </div>
@@ -3766,70 +4322,279 @@ ${rules.prompt}
     function openTreeView(dirId) {
       currentTreeDirId = dirId;
       treeScale = 1;
+      treePanX = 0;
+      treePanY = 0;
       const dir = state.directions.find(d => d.id === dirId);
       if (!dir) return;
       document.getElementById('treeTitle').textContent = dir.name;
+      const n = (dir.nodes || []).length;
+      const prog = xpProgress(dir.xp || 0);
+      document.getElementById('treeSub').textContent =
+        'LVL ' + prog.level + ' · ' + n + ' навыков · ' + stageLabel(dir.stage || 'beginner');
       document.getElementById('treeView').classList.add('open');
-      renderTree(dirId);
+      setTreeMode(treeMode || 'list');
+      bindTreePan();
     }
 
     function closeTreeView() {
       currentTreeDirId = null;
+      closeNodeSheet();
       document.getElementById('treeView').classList.remove('open');
       renderDirections();
     }
 
-    function treeZoom(delta) {
-      treeScale = Math.max(0.4, Math.min(1.8, treeScale + delta));
-      const canvas = document.getElementById('treeCanvas');
-      canvas.style.transform = `scale(${treeScale})`;
+    function setTreeMode(mode) {
+      treeMode = mode === 'map' ? 'map' : 'list';
+      const listBtn = document.getElementById('treeModeList');
+      const mapBtn = document.getElementById('treeModeMap');
+      const listWrap = document.getElementById('treeListWrap');
+      const mapWrap = document.getElementById('treeCanvasWrap');
+      if (listBtn) listBtn.classList.toggle('active', treeMode === 'list');
+      if (mapBtn) mapBtn.classList.toggle('active', treeMode === 'map');
+      if (listWrap) listWrap.style.display = treeMode === 'list' ? 'block' : 'none';
+      if (mapWrap) mapWrap.style.display = treeMode === 'map' ? 'block' : 'none';
+      if (currentTreeDirId) renderTree(currentTreeDirId);
     }
 
-    function renderTree(dirId) {
-      const dir = state.directions.find(d => d.id === dirId);
-      if (!dir) return;
-      const nodes = dir.nodes || [];
+    function applyTreeTransform() {
       const canvas = document.getElementById('treeCanvas');
-      const wrap = document.getElementById('treeCanvasWrap');
+      if (!canvas) return;
+      canvas.style.transform = 'translate(' + treePanX + 'px,' + treePanY + 'px) scale(' + treeScale + ')';
+    }
 
-      // Build tree structure
+    function treeZoom(delta) {
+      const prev = treeScale;
+      treeScale = Math.max(0.35, Math.min(2.2, treeScale + delta));
+      // zoom toward center of viewport
+      const wrap = document.getElementById('treeCanvasWrap');
+      if (wrap) {
+        const cx = wrap.clientWidth / 2;
+        const cy = wrap.clientHeight / 2;
+        treePanX = cx - (cx - treePanX) * (treeScale / prev);
+        treePanY = cy - (cy - treePanY) * (treeScale / prev);
+      }
+      applyTreeTransform();
+    }
+
+    function treeResetView() {
+      treeScale = 1;
+      treePanX = 16;
+      treePanY = 16;
+      applyTreeTransform();
+    }
+
+    function bindTreePan() {
+      if (treePanBound) return;
+      const wrap = document.getElementById('treeCanvasWrap');
+      if (!wrap) return;
+      treePanBound = true;
+
+      let dragging = false;
+      let lastX = 0, lastY = 0;
+      let pinchStartDist = 0;
+      let pinchStartScale = 1;
+
+      function dist(t) {
+        const dx = t[0].clientX - t[1].clientX;
+        const dy = t[0].clientY - t[1].clientY;
+        return Math.hypot(dx, dy);
+      }
+
+      wrap.addEventListener('touchstart', (e) => {
+        if (treeMode !== 'map') return;
+        if (e.touches.length === 1) {
+          dragging = true;
+          lastX = e.touches[0].clientX;
+          lastY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+          dragging = false;
+          pinchStartDist = dist(e.touches);
+          pinchStartScale = treeScale;
+        }
+      }, { passive: true });
+
+      wrap.addEventListener('touchmove', (e) => {
+        if (treeMode !== 'map') return;
+        if (e.touches.length === 2 && pinchStartDist > 0) {
+          e.preventDefault();
+          const d = dist(e.touches);
+          const next = Math.max(0.35, Math.min(2.2, pinchStartScale * (d / pinchStartDist)));
+          const prev = treeScale;
+          treeScale = next;
+          const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2 - wrap.getBoundingClientRect().left;
+          const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2 - wrap.getBoundingClientRect().top;
+          treePanX = cx - (cx - treePanX) * (treeScale / prev);
+          treePanY = cy - (cy - treePanY) * (treeScale / prev);
+          applyTreeTransform();
+        } else if (dragging && e.touches.length === 1) {
+          e.preventDefault();
+          const x = e.touches[0].clientX;
+          const y = e.touches[0].clientY;
+          treePanX += x - lastX;
+          treePanY += y - lastY;
+          lastX = x;
+          lastY = y;
+          applyTreeTransform();
+        }
+      }, { passive: false });
+
+      wrap.addEventListener('touchend', () => {
+        dragging = false;
+        pinchStartDist = 0;
+      });
+
+      // mouse drag for desktop
+      let mouseDown = false;
+      wrap.addEventListener('mousedown', (e) => {
+        if (treeMode !== 'map' || e.target.closest('.skill-node') || e.target.closest('.tree-zoom-fab')) return;
+        mouseDown = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (!mouseDown || treeMode !== 'map') return;
+        treePanX += e.clientX - lastX;
+        treePanY += e.clientY - lastY;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        applyTreeTransform();
+      });
+      window.addEventListener('mouseup', () => { mouseDown = false; });
+    }
+
+    function buildTreeIndex(nodes) {
       const byParent = {};
-      nodes.forEach(n => {
+      (nodes || []).forEach(n => {
         const p = n.parentId || 'root';
         if (!byParent[p]) byParent[p] = [];
         byParent[p].push(n);
       });
+      return byParent;
+    }
 
-      // Layout: recursive, depth-based
-      const NODE_W = 150;
-      const NODE_H = 110;
-      const H_GAP = 40;
-      const V_GAP = 70;
-      const positions = {};
-      let maxX = 0;
-      let maxY = 0;
+    function openNodeSheet(nodeId) {
+      const dir = state.directions.find(d => d.id === currentTreeDirId);
+      if (!dir) return;
+      const node = (dir.nodes || []).find(n => n.id === nodeId);
+      if (!node) return;
+      const prog = xpProgress(node.xp || 0);
+      const kids = (dir.nodes || []).filter(n => n.parentId === nodeId).length;
+      const sheet = document.getElementById('nodeSheet');
+      const overlay = document.getElementById('nodeSheetOverlay');
+      sheet.innerHTML = `
+        <h3>${escapeHtml(node.name)}${node.isKey ? ' ★' : ''}</h3>
+        <div class="ns-meta">LVL ${prog.level} · ${formatNum(node.xp || 0)} XP · ${kids} ветк${kids === 1 ? 'а' : kids > 1 && kids < 5 ? 'и' : 'ок'}
+          ${node.description ? '<br>' + escapeHtml(node.description) : ''}
+        </div>
+        <div class="progress-wrap" style="margin-bottom:14px"><div class="progress-bar gold" style="width:${prog.percent}%"></div></div>
+        <div class="ns-grid">
+          <button class="btn btn-primary span2" onclick="closeNodeSheet();openSkillModal('${node.id}', true)">+ Поднавык</button>
+          <button class="btn btn-secondary" onclick="closeNodeSheet();generateSkillTree('${dir.id}', '${node.id}')">ИИ-ветки</button>
+          <button class="btn btn-secondary" onclick="toggleKeySkill('${node.id}');openNodeSheet('${node.id}')">${node.isKey ? '★ Ключевой' : '☆ В ключевые'}</button>
+          <button class="btn btn-secondary" onclick="closeNodeSheet();openSkillModal('${node.id}')">Изменить</button>
+          <button class="btn btn-danger" onclick="closeNodeSheet();deleteSkill('${node.id}')">Удалить</button>
+        </div>
+        <button class="btn btn-secondary btn-block" style="margin-top:10px" onclick="closeNodeSheet()">Закрыть</button>
+      `;
+      overlay.classList.add('open');
+    }
 
-      function layout(parentId, depth, startX) {
-        const children = byParent[parentId] || [];
-        if (children.length === 0) return startX;
+    function closeNodeSheet() {
+      const overlay = document.getElementById('nodeSheetOverlay');
+      if (overlay) overlay.classList.remove('open');
+    }
 
-        let x = startX;
-        children.forEach((child, i) => {
-          const subtreeWidth = measureWidth(child.id);
-          const cx = x + subtreeWidth / 2 - NODE_W / 2;
-          const cy = 40 + depth * (NODE_H + V_GAP);
-          positions[child.id] = { x: Math.max(20, cx), y: cy, node: child };
-          maxX = Math.max(maxX, positions[child.id].x + NODE_W + 40);
-          maxY = Math.max(maxY, cy + NODE_H + 40);
-          layout(child.id, depth + 1, x);
-          x += subtreeWidth + H_GAP;
-        });
-        return x;
+    function toggleTreeCollapse(nodeId, ev) {
+      if (ev) ev.stopPropagation();
+      treeCollapsed[nodeId] = !treeCollapsed[nodeId];
+      renderTree(currentTreeDirId);
+    }
+
+    function renderTreeList(dir) {
+      const wrap = document.getElementById('treeListWrap');
+      const nodes = dir.nodes || [];
+      const byParent = buildTreeIndex(nodes);
+
+      if (!nodes.length) {
+        wrap.innerHTML = `
+          <div class="empty-state" style="padding:36px 12px">
+            <div class="big-icon">🌳</div>
+            <h3>Дерево пустое</h3>
+            <p>Собери навыки через ИИ или добавь первый корневой навык. В списке удобнее править на телефоне.</p>
+            <button class="btn btn-primary btn-block" style="margin-bottom:8px" onclick="generateSkillTree('${dir.id}')">Собрать дерево ИИ</button>
+            <button class="btn btn-secondary btn-block" style="margin-bottom:8px" onclick="openSkillModal(null)">+ Корневой навык</button>
+            <button class="btn btn-secondary btn-sm" onclick="showTreeExamples()">Примеры</button>
+          </div>`;
+        return;
       }
+
+      function renderNode(n, depth) {
+        const prog = xpProgress(n.xp || 0);
+        const children = byParent[n.id] || [];
+        const collapsed = !!treeCollapsed[n.id];
+        const hasKids = children.length > 0;
+        const indent = Math.min(depth, 6) * 8;
+        let html = `
+          <div class="tree-list-item ${!n.parentId ? 'root-item' : ''} ${n.isKey ? 'key-item' : ''}"
+               style="margin-left:${indent}px"
+               onclick="openNodeSheet('${n.id}')">
+            <div class="tl-depth"></div>
+            <div class="tl-main">
+              <div class="tl-name">${n.isKey ? '★ ' : ''}${escapeHtml(n.name)}</div>
+              <div class="tl-meta">
+                <span class="gold">LVL ${prog.level}</span>
+                <span>${formatNum(n.xp || 0)} XP</span>
+                ${hasKids ? '<span>' + children.length + ' ↓</span>' : ''}
+              </div>
+              <div class="tl-bar"><i style="width:${prog.percent}%"></i></div>
+            </div>
+            ${hasKids
+              ? `<div class="tl-chevron" onclick="toggleTreeCollapse('${n.id}', event)">${collapsed ? '▸' : '▾'}</div>`
+              : `<div class="tl-chevron" style="opacity:0.35">›</div>`}
+          </div>`;
+        if (hasKids && !collapsed) {
+          html += `<div class="tree-list-children">`;
+          children.forEach(c => { html += renderNode(c, depth + 1); });
+          html += `</div>`;
+        }
+        return html;
+      }
+
+      const roots = byParent['root'] || [];
+      wrap.innerHTML = roots.map(r => renderNode(r, 0)).join('') + `
+        <button class="btn btn-secondary btn-block" style="margin-top:12px" onclick="openSkillModal(null)">+ Ещё корневой навык</button>
+      `;
+    }
+
+    function renderTreeMap(dir) {
+      const nodes = dir.nodes || [];
+      const canvas = document.getElementById('treeCanvas');
+      const wrap = document.getElementById('treeCanvasWrap');
+      const byParent = buildTreeIndex(nodes);
+
+      if (!nodes.length) {
+        canvas.innerHTML = `
+          <div style="padding:40px 20px;text-align:center;color:var(--text-dim);max-width:340px">
+            <p style="font-weight:700;color:var(--text);margin-bottom:8px">Пока пусто</p>
+            <p style="font-size:0.88rem;margin-bottom:16px">Переключись на «Список» или собери дерево ИИ.</p>
+            <button class="btn btn-primary" onclick="generateSkillTree('${dir.id}')">ИИ-дерево</button>
+          </div>`;
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        applyTreeTransform();
+        return;
+      }
+
+      const NODE_W = 160;
+      const NODE_H = 100;
+      const H_GAP = 28;
+      const V_GAP = 56;
+      const positions = {};
+      let maxX = 0, maxY = 0;
 
       function measureWidth(nodeId) {
         const children = byParent[nodeId] || [];
-        if (children.length === 0) return NODE_W;
+        if (!children.length) return NODE_W;
         let w = 0;
         children.forEach((c, i) => {
           w += measureWidth(c.id);
@@ -3838,83 +4603,82 @@ ${rules.prompt}
         return Math.max(NODE_W, w);
       }
 
-      // Roots
-      const roots = byParent['root'] || [];
-      let startX = 40;
-      roots.forEach((r, i) => {
-        const w = measureWidth(r.id);
-        const cx = startX + w / 2 - NODE_W / 2;
-        const cy = 40;
-        positions[r.id] = { x: Math.max(20, cx), y: cy, node: r };
-        maxX = Math.max(maxX, positions[r.id].x + NODE_W + 40);
-        maxY = Math.max(maxY, cy + NODE_H + 40);
-        layout(r.id, 1, startX);
-        startX += w + H_GAP + 30;
-      });
-
-      if (roots.length === 0) {
-        canvas.innerHTML = `
-          <div style="padding:40px 20px;text-align:center;color:var(--text-dim);max-width:340px;margin:0 auto">
-            <div style="font-size:2.5rem;margin-bottom:12px;opacity:0.5">🌳</div>
-            <p style="font-weight:700;color:var(--text);margin-bottom:8px">Дерево пустое</p>
-            <p style="font-size:0.88rem;margin-bottom:16px">Собери столпы и поднавыки через ИИ — или добавь корень вручную.</p>
-            <button class="btn btn-primary btn-block" style="margin-bottom:8px" onclick="generateSkillTree('${dirId}')">Собрать дерево ИИ</button>
-            <button class="btn btn-secondary btn-block" style="margin-bottom:8px" onclick="openSkillModal(null)">+ Корень вручную</button>
-            <button class="btn btn-secondary btn-sm" onclick="showTreeExamples()">Примеры</button>
-          </div>`;
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
-        canvas.style.transform = `scale(${treeScale})`;
-        return;
+      function layout(parentId, depth, startX) {
+        const children = byParent[parentId] || [];
+        let x = startX;
+        children.forEach(child => {
+          const subtreeWidth = measureWidth(child.id);
+          const cx = x + subtreeWidth / 2 - NODE_W / 2;
+          const cy = 32 + depth * (NODE_H + V_GAP);
+          positions[child.id] = { x: Math.max(16, cx), y: cy, node: child };
+          maxX = Math.max(maxX, positions[child.id].x + NODE_W + 32);
+          maxY = Math.max(maxY, cy + NODE_H + 32);
+          layout(child.id, depth + 1, x);
+          x += subtreeWidth + H_GAP;
+        });
       }
 
-      const canvasW = Math.max(maxX + 60, wrap.clientWidth / treeScale);
-      const canvasH = Math.max(maxY + 80, wrap.clientHeight / treeScale);
+      const roots = byParent['root'] || [];
+      let startX = 24;
+      roots.forEach(r => {
+        const w = measureWidth(r.id);
+        const cx = startX + w / 2 - NODE_W / 2;
+        positions[r.id] = { x: Math.max(16, cx), y: 28, node: r };
+        maxX = Math.max(maxX, positions[r.id].x + NODE_W + 32);
+        maxY = Math.max(maxY, 28 + NODE_H + 32);
+        layout(r.id, 1, startX);
+        startX += w + H_GAP + 24;
+      });
+
+      const canvasW = Math.max(maxX + 40, (wrap.clientWidth || 320) / Math.max(treeScale, 0.5));
+      const canvasH = Math.max(maxY + 60, (wrap.clientHeight || 400) / Math.max(treeScale, 0.5));
       canvas.style.width = canvasW + 'px';
       canvas.style.height = canvasH + 'px';
-      canvas.style.transform = `scale(${treeScale})`;
 
-      // SVG lines
       let svgLines = '';
       nodes.forEach(n => {
         if (n.parentId && positions[n.parentId] && positions[n.id]) {
           const p = positions[n.parentId];
           const c = positions[n.id];
           const x1 = p.x + NODE_W / 2;
-          const y1 = p.y + NODE_H - 8;
+          const y1 = p.y + NODE_H - 6;
           const x2 = c.x + NODE_W / 2;
           const y2 = c.y + 4;
           const midY = (y1 + y2) / 2;
-          svgLines += `<path d="M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>`;
+          svgLines += `<path d="M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}" fill="none" stroke="rgba(224,184,120,0.22)" stroke-width="1.75"/>`;
         }
       });
 
       let html = `<svg class="tree-svg" width="${canvasW}" height="${canvasH}">${svgLines}</svg>`;
-
       Object.values(positions).forEach(({ x, y, node }) => {
         const prog = xpProgress(node.xp || 0);
         const isRoot = !node.parentId;
-        const isKey = !!node.isKey;
-        const near = prog.percent >= 85 && prog.level < MAX_LEVEL;
         html += `
-          <div class="skill-node ${isRoot ? 'root' : ''} ${isKey ? 'key-skill' : ''}" style="left:${x}px;top:${y}px" data-id="${node.id}">
-            <div class="sn-name">${escapeHtml(node.name)}</div>
-            <div class="sn-lvl">LVL ${prog.level}${near ? ' ⚡' : ''}</div>
+          <div class="skill-node ${isRoot ? 'root' : ''} ${node.isKey ? 'key-skill' : ''}"
+               style="left:${x}px;top:${y}px"
+               onclick="openNodeSheet('${node.id}')">
+            <div class="sn-name">${node.isKey ? '★ ' : ''}${escapeHtml(node.name)}</div>
+            <div class="sn-lvl">LVL ${prog.level}</div>
             <div class="sn-xp">${formatNum(node.xp || 0)} XP</div>
             <div class="progress-wrap sn-bar">
-              <div class="progress-bar ${near ? 'gold' : ''}" style="width:${prog.percent}%"></div>
+              <div class="progress-bar gold" style="width:${prog.percent}%"></div>
             </div>
-            <div class="sn-actions">
-              <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();openSkillModal('${node.id}', true)" title="Поднавык вручную">+</button>
-              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();generateSkillTree('${dirId}', '${node.id}')" title="ИИ: разбить на поднавыки">AI</button>
-              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();toggleKeySkill('${node.id}')" title="Ключевой">${isKey ? '★' : '☆'}</button>
-              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openSkillModal('${node.id}')">✎</button>
-              <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteSkill('${node.id}')">✕</button>
-            </div>
+            <div class="sn-hint">нажми для действий</div>
           </div>`;
       });
-
       canvas.innerHTML = html;
+      applyTreeTransform();
+    }
+
+    function renderTree(dirId) {
+      const dir = state.directions.find(d => d.id === dirId);
+      if (!dir) return;
+      const n = (dir.nodes || []).length;
+      const prog = xpProgress(dir.xp || 0);
+      const sub = document.getElementById('treeSub');
+      if (sub) sub.textContent = 'LVL ' + prog.level + ' · ' + n + ' навыков · ' + stageLabel(dir.stage || 'beginner');
+      if (treeMode === 'map') renderTreeMap(dir);
+      else renderTreeList(dir);
     }
 
     function openSkillModal(id, asChild) {
@@ -3927,14 +4691,11 @@ ${rules.prompt}
 
       let node = null;
       if (asChild && id) {
-        // adding child of id
         skillParentId = id;
       } else if (id) {
-        // editing existing
         editingId = id;
         node = (dir.nodes || []).find(n => n.id === id);
       }
-      // else: new root
 
       const title = node ? 'Редактировать навык' : (skillParentId ? 'Новая ветка' : 'Корневой навык');
 
@@ -3942,11 +4703,11 @@ ${rules.prompt}
         <h2>${title}</h2>
         <div class="form-group">
           <label>Название</label>
-          <input type="text" id="sName" value="${node ? escapeHtml(node.name) : ''}" placeholder="Название навыка" maxlength="60">
+          <input type="text" id="sName" value="${node ? escapeHtml(node.name) : ''}" placeholder="Например: Баррэ" maxlength="60">
         </div>
         <div class="form-group">
           <label>Описание</label>
-          <textarea id="sDesc" placeholder="Что это за навык?">${node ? escapeHtml(node.description || '') : ''}</textarea>
+          <textarea id="sDesc" placeholder="Зачем этот навык? Как поймёшь прогресс?">${node ? escapeHtml(node.description || '') : ''}</textarea>
         </div>
         <div class="modal-actions">
           <button class="btn btn-secondary" onclick="closeModal()">Отмена</button>
@@ -3954,6 +4715,10 @@ ${rules.prompt}
         </div>
       `;
       openModal();
+      setTimeout(() => {
+        const inp = document.getElementById('sName');
+        if (inp) inp.focus();
+      }, 120);
     }
 
     function saveSkill() {
@@ -3996,9 +4761,8 @@ ${rules.prompt}
     function deleteSkill(id) {
       const dir = state.directions.find(d => d.id === currentTreeDirId);
       if (!dir) return;
-      if (!confirm('Удалить навык и все его дочерние ветки?\nПривязанные квесты станут «Общий XP».')) return;
+      if (!confirm('Удалить навык и все дочерние ветки?\\nКвесты станут «Общий XP».')) return;
 
-      // Collect all descendant ids
       const toDelete = new Set();
       function collect(nid) {
         toDelete.add(nid);
@@ -4006,7 +4770,6 @@ ${rules.prompt}
       }
       collect(id);
 
-      // Unlink quests
       state.quests.forEach(q => {
         if (q.targetType === 'SKILL' && toDelete.has(q.targetId)) {
           q.targetType = 'GENERAL';
@@ -4018,8 +4781,7 @@ ${rules.prompt}
       save();
       renderTree(currentTreeDirId);
       renderHero();
-      renderQuests();
-      toast('Навык удалён');
+      toast('Удалено');
     }
 
     // ===================== LORE =====================
@@ -4284,7 +5046,7 @@ ${rules.prompt}
       if (name === 'quests') renderQuests();
       if (name === 'skills') renderDirections();
       if (name === 'lore') renderLore();
-      if (name === 'save') updateAiStatusLine();
+      if (name === 'save') { updateAiStatusLine(); populateCloudSettings(); }
     }
 
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -4420,19 +5182,34 @@ ${rules.prompt}
     // ===================== INIT =====================
     load();
     try {
-      checkTitlesAndAchievements();
-    } catch (e) {
-      console.warn('checkTitles failed', e);
-    }
-    renderAll();
-    try {
-      if (!localStorage.getItem('life_rpg_v4_onboarded')) {
-        setTimeout(showOnboarding, 400);
-      } else {
-        maybeEveningRitual();
-        maybeSundayReview();
+      const tg = window.Telegram && window.Telegram.WebApp;
+      if (tg && tg.ready) tg.ready();
+      if (tg && tg.expand) tg.expand();
+    } catch (e) {}
+
+    async function boot() {
+      try {
+        await cloudLoad();
+      } catch (e) {
+        console.warn('cloudLoad', e);
       }
-    } catch(e) {}
+      try {
+        checkTitlesAndAchievements();
+      } catch (e) {
+        console.warn('checkTitles failed', e);
+      }
+      renderAll();
+      populateCloudSettings();
+      try {
+        if (!localStorage.getItem('life_rpg_v4_onboarded')) {
+          setTimeout(showOnboarding, 400);
+        } else {
+          maybeEveningRitual();
+          maybeSundayReview();
+        }
+      } catch (e) {}
+    }
+    boot();
 
     // Prevent accidental zoom on double-tap (iOS)
     let lastTouch = 0;
