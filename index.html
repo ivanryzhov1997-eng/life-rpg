@@ -1535,31 +1535,35 @@
         </div>
         <div class="save-section">
           <h3>ИИ</h3>
-          <p class="text-dim" style="font-size:0.85rem;line-height:1.5;margin-bottom:8px">
-            Квесты и дерево навыков работают через встроенный сервис. Ключи настраивать не нужно.
+          <p class="text-dim" style="font-size:0.85rem;line-height:1.5;margin-bottom:6px">
+            Подключён автоматически. Ключи настраивать не нужно.
           </p>
           <p id="aiStatusLine" class="text-dim" style="font-size:0.8rem"></p>
         </div>
         <div class="save-section">
-          <h3>Облачный сейв (Telegram)</h3>
+          <h3>Облачный сейв (опционально)</h3>
           <p class="text-dim" style="font-size:0.82rem;margin-bottom:10px;line-height:1.45">
-            Один аккаунт Telegram = один прогресс на телефоне и планшете.
-            Нужен Supabase (можно тот же, что для ИИ).
+            По умолчанию <strong>выключен</strong>. Прогресс только на этом устройстве.
+            ИИ работает отдельно и не требует облака.
+            Включай только если нужен один сейв на телефон и планшет.
           </p>
           <p id="cloudStatus" class="text-dim" style="font-size:0.8rem;margin-bottom:10px"></p>
-          <div class="form-group">
-            <label>Supabase Project URL</label>
-            <input type="url" id="cloudSbUrl" placeholder="https://xxxx.supabase.co" autocomplete="off">
+          <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:0.9rem;cursor:pointer">
+            <input type="checkbox" id="cloudEnableChk" style="width:18px;height:18px">
+            Включить синхронизацию через Supabase
+          </label>
+          <div id="cloudFields" style="display:none">
+            <div class="form-group">
+              <label>Supabase Project URL</label>
+              <input type="url" id="cloudSbUrl" placeholder="https://xxxx.supabase.co" autocomplete="off">
+            </div>
+            <div class="form-group">
+              <label>Отдельный anon key (не обязательно тот же, что у ИИ)</label>
+              <input type="text" id="cloudSbAnon" placeholder="sb_publishable_… или eyJ…" autocomplete="off">
+            </div>
+            <button class="btn btn-primary btn-block mb-8" onclick="saveCloudSettings()">Сохранить облако</button>
+            <button class="btn btn-secondary btn-block mb-8" onclick="syncCloudNow()">Синхронизировать сейчас</button>
           </div>
-          <div class="form-group">
-            <label>Anon / Publishable key</label>
-            <input type="text" id="cloudSbAnon" placeholder="sb_publishable_… или eyJ…" autocomplete="off">
-          </div>
-          <button class="btn btn-primary btn-block mb-8" onclick="saveCloudSettings()">Сохранить облако</button>
-          <button class="btn btn-secondary btn-block mb-8" onclick="syncCloudNow()">Синхронизировать сейчас</button>
-          <p class="text-dim" style="font-size:0.72rem;line-height:1.4">
-            В SQL Editor Supabase один раз выполни SQL из инструкции (таблица life_rpg_saves).
-          </p>
         </div>
         <div class="save-section">
           <h3>Данные</h3>
@@ -1665,14 +1669,16 @@
     // const DEFAULT_PROXY_URL = 'https://PROJECT_ID.supabase.co/functions/v1/groq-proxy';
     // 2) Anon key из Supabase → Settings → API → anon public (нужен для вызова с телефона):
     // const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOi...';
-    const DEFAULT_PROXY_URL = '';
-    const DEFAULT_SUPABASE_ANON_KEY = '';
+    const DEFAULT_PROXY_URL = 'https://sghoucsrxbywiafpxxyw.supabase.co/functions/v1/groq-proxy';
+    const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_vUKnyvXGOcqUdq4tBv03FA_RWkH30qP';
     // Облачный сейв (тот же проект Supabase). Можно вставить в Настройки.
-    // Project URL: https://xxxx.supabase.co  (без /functions/...)
-    const DEFAULT_SUPABASE_URL = '';
+    const DEFAULT_SUPABASE_URL = ''; // облако выкл. по умолчанию — только ИИ через proxy
     const CLOUD_TABLE = 'life_rpg_saves';
     const LS_SB_URL = 'life_rpg_v4_sb_url';
     const LS_SB_ANON = 'life_rpg_v4_sb_anon';
+    const LS_PROXY = 'life_rpg_v4_proxy_url';
+    const LS_PROXY_ANON = 'life_rpg_v4_proxy_anon';
+    const LS_CLOUD_ON = 'life_rpg_v4_cloud_on';
 
     const QUEST_XP = {
       SIDE:  { 1: 20,  2: 50,  3: 120, 4: 280,  5: 650  },
@@ -1892,7 +1898,22 @@
     }
 
     function getProxyUrl() {
-      return (DEFAULT_PROXY_URL || '').trim().replace(/\/$/, '');
+      try {
+        const ls = (localStorage.getItem(LS_PROXY) || '').trim();
+        const u = (ls || DEFAULT_PROXY_URL || '').trim();
+        return u.replace(/\/$/, '');
+      } catch (e) {
+        return (DEFAULT_PROXY_URL || '').trim().replace(/\/$/, '');
+      }
+    }
+
+    function getProxyAnon() {
+      try {
+        const ls = (localStorage.getItem(LS_PROXY_ANON) || '').trim();
+        return (ls || DEFAULT_SUPABASE_ANON_KEY || '').trim();
+      } catch (e) {
+        return (DEFAULT_SUPABASE_ANON_KEY || '').trim();
+      }
     }
 
     function aiEndpoint() {
@@ -1901,8 +1922,7 @@
 
     function aiAuthHeaders() {
       const headers = { 'Content-Type': 'application/json' };
-      // Supabase Edge Functions often need anon key even with verify_jwt = false
-      const anon = (DEFAULT_SUPABASE_ANON_KEY || '').trim();
+      const anon = getProxyAnon();
       if (anon) {
         headers['Authorization'] = 'Bearer ' + anon;
         headers['apikey'] = anon;
@@ -1919,7 +1939,32 @@
       if (!el) return;
       el.textContent = hasAiAccess()
         ? 'Статус: ИИ подключён'
-        : 'Статус: ИИ временно недоступен';
+        : 'Статус: ИИ недоступен';
+    }
+
+    function saveAiProxySettings() {
+      try {
+        const url = (document.getElementById('aiProxyUrlInput')?.value || '').trim().replace(/\/$/, '');
+        const anon = (document.getElementById('aiProxyAnonInput')?.value || '').trim();
+        if (url) localStorage.setItem(LS_PROXY, url);
+        else localStorage.removeItem(LS_PROXY);
+        if (anon) localStorage.setItem(LS_PROXY_ANON, anon);
+        else localStorage.removeItem(LS_PROXY_ANON);
+      } catch (e) {}
+      updateAiStatusLine();
+      toast(hasAiAccess() ? 'ИИ сохранён' : 'Нужен Proxy URL', hasAiAccess() ? 'success' : 'error');
+    }
+
+    async function testAiProxy() {
+      saveAiProxySettings();
+      if (!hasAiAccess()) { toast('Сначала Proxy URL', 'error'); return; }
+      toast('Проверяю ИИ…');
+      try {
+        const raw = await callGroq('Reply with one word: ok', 'ping');
+        toast('ИИ ок: ' + String(raw || '').slice(0, 40), 'success');
+      } catch (e) {
+        toast(e.message || 'Ошибка ИИ', 'error');
+      }
     }
 
     // ===================== CLOUD SAVE (Telegram + Supabase) =====================
@@ -1928,20 +1973,22 @@
     let cloudLastError = '';
 
     function getSupabaseUrl() {
+      // Облачный сейв — ТОЛЬКО если пользователь сам включил в Настройках.
+      // Не берём URL из AI-proxy и не подставляем чужие дефолты.
       try {
-        let u = (localStorage.getItem(LS_SB_URL) || DEFAULT_SUPABASE_URL || '').trim().replace(/\/$/, '');
-        if (!u && DEFAULT_PROXY_URL) {
-          const m = DEFAULT_PROXY_URL.match(/^(https:\/\/[^/]+\.supabase\.co)/i);
-          if (m) u = m[1];
-        }
-        return u;
-      } catch (e) { return (DEFAULT_SUPABASE_URL || '').trim().replace(/\/$/, ''); }
+        return (localStorage.getItem(LS_SB_URL) || DEFAULT_SUPABASE_URL || '').trim().replace(/\/$/, '');
+      } catch (e) {
+        return (DEFAULT_SUPABASE_URL || '').trim().replace(/\/$/, '');
+      }
     }
 
     function getSupabaseAnon() {
+      // Не используем AI anon key для облака — иначе сейвы открыты тем же ключом, что и proxy.
       try {
-        return (localStorage.getItem(LS_SB_ANON) || DEFAULT_SUPABASE_ANON_KEY || '').trim();
-      } catch (e) { return (DEFAULT_SUPABASE_ANON_KEY || '').trim(); }
+        return (localStorage.getItem(LS_SB_ANON) || '').trim();
+      } catch (e) {
+        return '';
+      }
     }
 
     function getTelegramUserId() {
@@ -1954,26 +2001,48 @@
       return null;
     }
 
+    function isCloudEnabled() {
+      try { return localStorage.getItem(LS_CLOUD_ON) === '1'; } catch (e) { return false; }
+    }
+
+    function setCloudEnabled(on) {
+      try {
+        if (on) localStorage.setItem(LS_CLOUD_ON, '1');
+        else localStorage.removeItem(LS_CLOUD_ON);
+      } catch (e) {}
+    }
+
     function cloudConfigured() {
-      return !!(getSupabaseUrl() && getSupabaseAnon());
+      // Явное согласие + URL + key. ИИ работает без этого.
+      return !!(isCloudEnabled() && getSupabaseUrl() && getSupabaseAnon());
     }
 
     function updateCloudStatusLine() {
       const el = document.getElementById('cloudStatus');
       if (!el) return;
+      const chk = document.getElementById('cloudEnableChk');
+      const fields = document.getElementById('cloudFields');
+      if (chk) chk.checked = isCloudEnabled();
+      if (fields) fields.style.display = isCloudEnabled() ? 'block' : 'none';
+      if (!isCloudEnabled()) {
+        el.textContent = 'Статус: выключен · данные только на устройстве';
+        return;
+      }
       const tid = getTelegramUserId();
       if (!cloudConfigured()) {
-        el.textContent = 'Статус: укажи Project URL и anon key';
+        el.textContent = 'Статус: включи и укажи Project URL + key';
         return;
       }
       if (!tid) {
         el.textContent = 'Статус: открой через Telegram-бота (нет user id)';
         return;
       }
-      el.textContent = 'Статус: TG id ' + tid + (cloudReady ? ' · облако ок' : '') + (cloudLastError ? ' · ' + cloudLastError : '');
+      el.textContent = 'Статус: TG id ' + tid + (cloudReady ? ' · синхронизируется' : '') + (cloudLastError ? ' · ' + cloudLastError : '');
     }
 
     function saveCloudSettings() {
+      const chk = document.getElementById('cloudEnableChk');
+      setCloudEnabled(!!(chk && chk.checked));
       try {
         const url = (document.getElementById('cloudSbUrl')?.value || '').trim().replace(/\/$/, '');
         const anon = (document.getElementById('cloudSbAnon')?.value || '').trim();
@@ -1983,7 +2052,11 @@
         else localStorage.removeItem(LS_SB_ANON);
       } catch (e) {}
       updateCloudStatusLine();
-      toast(cloudConfigured() ? 'Облако сохранено' : 'Заполни URL и key', cloudConfigured() ? 'success' : 'error');
+      if (!isCloudEnabled()) {
+        toast('Облако выключено · сейв только локально', 'success');
+        return;
+      }
+      toast(cloudConfigured() ? 'Облако включено' : 'Укажи URL и key', cloudConfigured() ? 'success' : 'error');
       if (cloudConfigured() && getTelegramUserId()) syncCloudNow();
     }
 
@@ -1992,6 +2065,14 @@
       const a = document.getElementById('cloudSbAnon');
       if (u) u.value = getSupabaseUrl();
       if (a) a.value = getSupabaseAnon();
+      const chk = document.getElementById('cloudEnableChk');
+      if (chk && !chk._bound) {
+        chk._bound = true;
+        chk.addEventListener('change', () => {
+          setCloudEnabled(chk.checked);
+          updateCloudStatusLine();
+        });
+      }
       updateCloudStatusLine();
     }
 
@@ -2974,8 +3055,8 @@
         });
       } catch (e) {
         // iOS/Telegram often shows "Load failed" on CORS / blocked network
-        const hint = !(DEFAULT_SUPABASE_ANON_KEY || '').trim()
-          ? 'Добавь DEFAULT_SUPABASE_ANON_KEY (Settings → API → anon) и проверь CORS/JWT у функции.'
+        const hint = !getProxyAnon()
+          ? 'Добавь anon/publishable key в Настройки → ИИ.'
           : 'Проверь URL proxy, JWT (verify_jwt off) и секрет GROQ_API_KEY.';
         throw new Error('Сеть: ' + (e.message || 'Load failed') + '. ' + hint);
       }
@@ -5189,7 +5270,7 @@ ${rules.prompt}
 
     async function boot() {
       try {
-        await cloudLoad();
+        if (cloudConfigured()) await cloudLoad();
       } catch (e) {
         console.warn('cloudLoad', e);
       }
