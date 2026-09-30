@@ -1898,10 +1898,12 @@
     }
 
     function getProxyUrl() {
+      // Вшитый URL всегда главный (скрытый авто-ИИ). localStorage только если DEFAULT пустой.
       try {
+        const baked = (DEFAULT_PROXY_URL || '').trim();
+        if (baked) return baked.replace(/\/$/, '');
         const ls = (localStorage.getItem(LS_PROXY) || '').trim();
-        const u = (ls || DEFAULT_PROXY_URL || '').trim();
-        return u.replace(/\/$/, '');
+        return ls.replace(/\/$/, '');
       } catch (e) {
         return (DEFAULT_PROXY_URL || '').trim().replace(/\/$/, '');
       }
@@ -1909,8 +1911,9 @@
 
     function getProxyAnon() {
       try {
-        const ls = (localStorage.getItem(LS_PROXY_ANON) || '').trim();
-        return (ls || DEFAULT_SUPABASE_ANON_KEY || '').trim();
+        const baked = (DEFAULT_SUPABASE_ANON_KEY || '').trim();
+        if (baked) return baked;
+        return (localStorage.getItem(LS_PROXY_ANON) || '').trim();
       } catch (e) {
         return (DEFAULT_SUPABASE_ANON_KEY || '').trim();
       }
