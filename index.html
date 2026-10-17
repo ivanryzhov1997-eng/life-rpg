@@ -1756,14 +1756,7 @@
           <option value="diff">По сложности</option>
         </select>
       </div>
-      <div class="filters" id="questFilters">
-        <button class="filter-btn active" data-filter="all">Все</button>
-        <button class="filter-btn" data-filter="active">Активные</button>
-        <button class="filter-btn" data-filter="done">Готово</button>
-        <button class="filter-btn" data-filter="SIDE">SIDE</button>
-        <button class="filter-btn" data-filter="MAIN">MAIN</button>
-        <button class="filter-btn" data-filter="BOSS">BOSS</button>
-      </div>
+      <div class="filters" id="questFilters"></div>
       <div id="questsList"></div>
     </div>
 
@@ -4391,17 +4384,43 @@ ${rules.prompt}
       return q.xp >= need || remainPct < 15 && q.xp >= need * 0.5;
     }
 
+    function getQuestDirectionId(q) {
+      if (!q) return null;
+      if (q.targetType === 'DIRECTION' && q.targetId) {
+        return state.directions.some(d => d.id === q.targetId) ? q.targetId : null;
+      }
+      if (q.targetType === 'SKILL' && q.targetId) {
+        const dir = state.directions.find(d => (d.nodes || []).some(n => n.id === q.targetId));
+        return dir ? dir.id : null;
+      }
+      return null;
+    }
+
+    function renderQuestFilters() {
+      const wrap = document.getElementById('questFilters');
+      if (!wrap) return;
+      const items = [
+        { id: 'all', label: 'Все' },
+        { id: 'general', label: 'Общие' },
+        ...state.directions.map(d => ({ id: 'dir:' + d.id, label: d.name }))
+      ];
+      if (!items.some(x => x.id === questFilter)) questFilter = 'all';
+      wrap.innerHTML = items.map(x =>
+        `<button class="filter-btn ${questFilter === x.id ? 'active' : ''}" data-filter="${escapeHtml(x.id)}">${escapeHtml(x.label)}</button>`
+      ).join('');
+    }
+
     function renderQuests() {
       const list = document.getElementById('questsList');
       if (!list) return;
+      renderQuestFilters();
       let quests = [...state.quests];
 
-      if (questFilter === 'active') quests = quests.filter(q => !q.done);
-      else if (questFilter === 'done') quests = quests.filter(q => q.done);
-      else if (['SIDE', 'MAIN', 'BOSS'].includes(questFilter)) quests = quests.filter(q => q.type === questFilter);
-      else if (questFilter.startsWith('tag:')) {
-        const tag = questFilter.slice(4);
-        quests = quests.filter(q => Array.isArray(q.tags) && q.tags.includes(tag));
+      if (questFilter === 'general') {
+        quests = quests.filter(q => !getQuestDirectionId(q));
+      } else if (questFilter.startsWith('dir:')) {
+        const dirId = questFilter.slice(4);
+        quests = quests.filter(q => getQuestDirectionId(q) === dirId);
       }
 
       if (questSearch) {
@@ -4421,7 +4440,7 @@ ${rules.prompt}
           <div class="empty-state">
             <div class="big-icon">📜</div>
             <h3>${questFilter === 'all' && !questSearch ? 'Нет квестов' : 'Ничего не найдено'}</h3>
-            <p>${state.directions.length ? 'Собери план на сегодня под твои направления и время.' : 'Сначала создай направление во вкладке «Навыки».'}</p>
+            <p>${questFilter === 'general' ? 'Нет квестов без привязки к направлению.' : (questFilter.startsWith('dir:') ? 'В этом направлении пока нет квестов.' : (state.directions.length ? 'Собери план на сегодня под твои направления и время.' : 'Сначала создай направление во вкладке «Навыки».'))}</p>
             <div style="display:flex;flex-direction:column;gap:8px;max-width:280px;margin:0 auto">
               ${state.directions.length
                 ? '<button class="btn btn-primary" onclick="generateDailyQuests()">На день (ИИ)</button><button class="btn btn-secondary" onclick="openQuestModal()">+ Вручную</button>'
@@ -5990,9 +6009,7 @@ ${rules.prompt}
     document.getElementById('questFilters').addEventListener('click', (e) => {
       const btn = e.target.closest('.filter-btn');
       if (!btn) return;
-      document.querySelectorAll('#questFilters .filter-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      questFilter = btn.dataset.filter;
+      questFilter = btn.dataset.filter || 'all';
       renderQuests();
     });
 
