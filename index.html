@@ -1692,7 +1692,10 @@
     .mentor-quest .mq-title{font-weight:700;font-size:.9rem}.mentor-quest .mq-criterion{margin-top:7px;padding:8px 9px;border-left:3px solid var(--teal);background:rgba(78,205,196,.05);color:var(--text-dim);font-size:.78rem;line-height:1.45}
     .verify-box{display:flex;gap:10px;align-items:flex-start;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:12px;margin:12px 0}.verify-box input{width:19px;height:19px;flex-shrink:0;margin-top:2px}
 
-  </style>
+  .quest-card.habit-card { border-color: rgba(100, 180, 255, 0.28); }
+.badge-habit { color: #7eb8ff; background: rgba(100, 180, 255, 0.12); }
+.habits-block { padding-bottom: 4px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+</style>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
@@ -1941,6 +1944,9 @@
     <script>
 // ===================== CONSTANTS & XP =====================
     const STORAGE_KEY = 'life_rpg_v4';
+    // Timestamp of the last local state change, used to avoid blindly replacing newer progress with an older cloud save.
+    const LOCAL_UPDATED_AT_KEY = 'life_rpg_v5_local_updated_at';
+    const CLOUD_PRE_REPLACE_BACKUP_PREFIX = 'life_rpg_v5_precloud_';
     const SECRET_KEY = 'life_rpg_v4_secret';
     const PROXY_KEY = 'life_rpg_v4_proxy';
     const SCHEMA_VERSION = 5;
@@ -1965,7 +1971,8 @@
     const QUEST_XP = {
       SIDE:  { 1: 20,  2: 50,  3: 120, 4: 280,  5: 650  },
       MAIN:  { 1: 80,  2: 180, 3: 400, 4: 800,  5: 1600 },
-      BOSS:  { 1: 250, 2: 600, 3: 1200,4: 2500, 5: 5000 }
+      BOSS:  { 1: 250, 2: 600, 3: 1200,4: 2500, 5: 5000 },
+      HABIT: { 1: 10,  2: 15,  3: 25,  4: 40,   5: 60   }
     };
 
     const DIFF_LABELS = { 1: 'I', 2: 'II', 3: 'III', 4: 'IV', 5: 'V' };
@@ -2153,7 +2160,7 @@
     let treeMode = 'list'; // list | map
     let treeCollapsed = {}; // nodeId -> true if children collapsed
     let treePanBound = false;
-    let questFilter = 'all';
+    let questFilter = 'active';
     let questSearch = '';
     let questSort = 'default';
     let editingId = null;
@@ -2375,7 +2382,26 @@
       return res;
     }
 
-    async function cloudLoad() {
+    function backupLocalBeforeCloudReplace() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const key = CLOUD_PRE_REPLACE_BACKUP_PREFIX + new Date().toISOString().replace(/[:.]/g, '-');
+        localStorage.setItem(key, raw);
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith(CLOUD_PRE_REPLACE_BACKUP_PREFIX)) keys.push(k);
+        }
+        keys.sort().reverse();
+        keys.slice(5).forEach(k => localStorage.removeItem(k));
+      } catch (e) {
+        // A backup failure must not silently authorize overwriting local progress.
+        throw new Error('Не удалось создать резервную копию локального сохранения');
+      }
+    }
+
+    async function cloudLoad(forceCloudReplace = false) {
       const tid = getTelegramUserId();
       if (!cloudConfigured() || !tid) {
         updateCloudStatusLine();
@@ -2397,15 +2423,38 @@
         }
         const rows = await res.json();
         if (rows && rows[0] && rows[0].data) {
-          const err = validateImport(rows[0].data);
+          const row = rows[0];
+          const err = validateImport(row.data);
           if (!err) {
-            state = migrateState(rows[0].data);
-            // also mirror locally
+            // Compare timestamps before replacing local progress. Legacy local saves without
+            // metadata are treated as conflicts, not as permission to overwrite them.
+            let localRaw = null;
+            let localExists = false;
+            let localUpdatedAt = '';
             try {
-              const toSave = JSON.parse(JSON.stringify(state));
-              if (toSave.ai) delete toSave.ai.apiKey;
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+              localRaw = localStorage.getItem(STORAGE_KEY);
+              localExists = !!localRaw && !validateImport(JSON.parse(localRaw));
+              localUpdatedAt = localStorage.getItem(LOCAL_UPDATED_AT_KEY) || '';
             } catch (e) {}
+            const localMs = Date.parse(localUpdatedAt);
+            const cloudMs = Date.parse(row.updated_at || '');
+            const needsConflictChoice = localExists && (
+              !Number.isFinite(localMs) || !Number.isFinite(cloudMs) || localMs > cloudMs + 1000
+            );
+            if (needsConflictChoice && !forceCloudReplace) {
+              cloudReady = false;
+              cloudLastError = 'конфликт сохранений: локальные данные не заменены';
+              updateCloudStatusLine();
+              return false;
+            }
+            if (localExists) backupLocalBeforeCloudReplace();
+            state = migrateState(row.data);
+            // Mirror the accepted cloud version locally only after a backup was made.
+            const toSave = JSON.parse(JSON.stringify(state));
+            if (toSave.ai) delete toSave.ai.apiKey;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+            if (row.updated_at) localStorage.setItem(LOCAL_UPDATED_AT_KEY, row.updated_at);
+            else localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
             cloudReady = true;
             cloudLastError = '';
             updateCloudStatusLine();
@@ -2432,10 +2481,11 @@
         const payload = JSON.parse(JSON.stringify(state));
         if (payload.ai) delete payload.ai.apiKey;
         payload.schemaVersion = SCHEMA_VERSION;
+        const savedAt = new Date().toISOString();
         const body = [{
           telegram_id: Number(tid),
           data: payload,
-          updated_at: new Date().toISOString()
+          updated_at: savedAt
         }];
         const res = await cloudFetch('/rest/v1/' + CLOUD_TABLE, {
           method: 'POST',
@@ -2452,6 +2502,14 @@
           if (force) toast('Облако: ' + cloudLastError, 'error');
           return;
         }
+        try {
+          const currentLocalMs = Date.parse(localStorage.getItem(LOCAL_UPDATED_AT_KEY) || '');
+          const uploadedMs = Date.parse(savedAt);
+          // Do not let a slow cloud request mark newer local edits as already synced.
+          if (!Number.isFinite(currentLocalMs) || currentLocalMs <= uploadedMs) {
+            localStorage.setItem(LOCAL_UPDATED_AT_KEY, savedAt);
+          }
+        } catch (e) {}
         cloudReady = true;
         cloudLastError = '';
         updateCloudStatusLine();
@@ -2479,13 +2537,26 @@
         return;
       }
       toast('Синхронизация…');
-      // Prefer cloud if exists, else push local
       const loaded = await cloudLoad();
-      if (!loaded) await cloudSave(true);
-      else {
+      if (loaded) {
         toast('Загружено из облака', 'success');
         renderAll();
+        return;
       }
+      if (cloudLastError.startsWith('конфликт сохранений')) {
+        const useCloud = confirm(
+          'Найдены разные локальное и облачное сохранения. Перед заменой локальная версия будет сохранена в резервную копию.\n\n' +
+          'ОК — загрузить облачную версию.\nОтмена — оставить локальный прогресс и записать его в облако.'
+        );
+        if (useCloud) {
+          const forced = await cloudLoad(true);
+          if (forced) { renderAll(); toast('Загружено из облака', 'success'); }
+        } else {
+          await cloudSave(true);
+        }
+        return;
+      }
+      await cloudSave(true);
     }
 
     function save() {
@@ -2493,7 +2564,9 @@
         const toSave = JSON.parse(JSON.stringify(state));
         if (toSave.ai) delete toSave.ai.apiKey;
         toSave.schemaVersion = SCHEMA_VERSION;
+        const savedAt = new Date().toISOString();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+        localStorage.setItem(LOCAL_UPDATED_AT_KEY, savedAt);
         maybeDailyBackup(toSave);
         scheduleCloudSave();
       } catch (e) {
@@ -2561,9 +2634,10 @@
       });
       s.quests.forEach(q => {
         if (typeof q.done !== 'boolean') q.done = !!q.done;
-        if (!q.type || !QUEST_XP[q.type]) q.type = 'SIDE';
+        if (!q.type || !QUEST_XP[q.type]) q.type = q.habit ? 'HABIT' : 'SIDE';
+        if (q.type === 'HABIT') q.habit = true;
         if (!(q.difficulty >= 1 && q.difficulty <= 5)) q.difficulty = 2;
-        if (!q.xp) q.xp = QUEST_XP[q.type][q.difficulty] || 50;
+        if (!q.xp) q.xp = QUEST_XP[q.type]?.[q.difficulty] || 50;
         if (q.goalId === undefined) q.goalId = null;
         if (q.goalUnits == null) q.goalUnits = 0;
       });
@@ -4400,11 +4474,13 @@ ${rules.prompt}
       const wrap = document.getElementById('questFilters');
       if (!wrap) return;
       const items = [
-        { id: 'all', label: 'Все' },
+        { id: 'active', label: 'Активные' },
+        { id: 'HABIT', label: 'Привычки' },
+        { id: 'done', label: 'Готово' },
         { id: 'general', label: 'Общие' },
         ...state.directions.map(d => ({ id: 'dir:' + d.id, label: d.name }))
       ];
-      if (!items.some(x => x.id === questFilter)) questFilter = 'all';
+      if (!items.some(x => x.id === questFilter)) questFilter = 'active';
       wrap.innerHTML = items.map(x =>
         `<button class="filter-btn ${questFilter === x.id ? 'active' : ''}" data-filter="${escapeHtml(x.id)}">${escapeHtml(x.label)}</button>`
       ).join('');
@@ -4413,20 +4489,35 @@ ${rules.prompt}
     function renderQuests() {
       const list = document.getElementById('questsList');
       if (!list) return;
+      try { resetHabitsForToday(); } catch (e) {}
       renderQuestFilters();
-      let quests = [...state.quests];
 
-      if (questFilter === 'general') {
-        quests = quests.filter(q => !getQuestDirectionId(q));
-      } else if (questFilter.startsWith('dir:')) {
+      const isHabitQ = isHabitQuest;
+      const habits = (state.quests || []).filter(isHabitQ);
+      let quests = (state.quests || []).filter(q => !isHabitQ(q));
+
+      // Hide completed one-shot quests unless viewing "done"
+      if (questFilter === 'active') {
+        quests = quests.filter(q => !q.done);
+      } else if (questFilter === 'done') {
+        quests = quests.filter(q => q.done);
+      } else if (questFilter === 'HABIT') {
+        quests = [];
+      } else if (questFilter === 'general') {
+        quests = quests.filter(q => !q.done && !getQuestDirectionId(q));
+      } else if (String(questFilter).startsWith('dir:')) {
         const dirId = questFilter.slice(4);
-        quests = quests.filter(q => getQuestDirectionId(q) === dirId);
+        quests = quests.filter(q => !q.done && getQuestDirectionId(q) === dirId);
+      } else {
+        // legacy "all" → active only
+        quests = quests.filter(q => !q.done);
       }
 
       if (questSearch) {
+        const s = questSearch;
         quests = quests.filter(q =>
-          (q.title || '').toLowerCase().includes(questSearch) ||
-          (q.description || '').toLowerCase().includes(questSearch)
+          (q.title || '').toLowerCase().includes(s) ||
+          (q.description || '').toLowerCase().includes(s)
         );
       }
 
@@ -4435,53 +4526,77 @@ ${rules.prompt}
       else if (questSort === 'diff') quests.sort((a, b) => (b.difficulty || 0) - (a.difficulty || 0));
       else quests.reverse();
 
-      if (quests.length === 0) {
-        list.innerHTML = `
-          <div class="empty-state">
-            <div class="big-icon">📜</div>
-            <h3>${questFilter === 'all' && !questSearch ? 'Нет квестов' : 'Ничего не найдено'}</h3>
-            <p>${questFilter === 'general' ? 'Нет квестов без привязки к направлению.' : (questFilter.startsWith('dir:') ? 'В этом направлении пока нет квестов.' : (state.directions.length ? 'Собери план на сегодня под твои направления и время.' : 'Сначала создай направление во вкладке «Навыки».'))}</p>
-            <div style="display:flex;flex-direction:column;gap:8px;max-width:280px;margin:0 auto">
-              ${state.directions.length
-                ? '<button class="btn btn-primary" onclick="generateDailyQuests()">На день (ИИ)</button><button class="btn btn-secondary" onclick="openQuestModal()">+ Вручную</button>'
-                : '<button class="btn btn-primary" onclick="switchScreen(\'skills\')">К направлениям</button>'}
-            </div>
-          </div>`;
-        return;
-      }
-
-      list.innerHTML = quests.map(q => {
+      function questCardHtml(q) {
         const targetLabel = getQuestTargetLabel(q);
         const near = !q.done && questWouldLevel(q);
+        const habit = isHabitQ(q);
+        const doneToday = habit && habitDoneToday(q);
         return `
-          <div class="card quest-card ${q.done ? 'done' : ''} ${q.type === 'BOSS' ? 'boss-card' : ''}" style="${near ? 'border-color:rgba(212,165,116,0.55)' : ''}">
+          <div class="card quest-card ${q.done ? 'done' : ''} ${q.type === 'BOSS' ? 'boss-card' : ''} ${habit ? 'habit-card' : ''}" style="${near ? 'border-color:rgba(212,165,116,0.55)' : ''}">
             <div class="quest-header">
-              <div class="quest-title">${escapeHtml(q.title)}</div>
+              <div class="quest-title">${habit ? '🔁 ' : ''}${escapeHtml(q.title)}</div>
               <div class="quest-xp">+${formatNum(q.xp)} XP</div>
             </div>
             <div class="quest-meta">
-              <span class="badge badge-${q.type.toLowerCase()}">${q.type === 'BOSS' ? '☠ ' : ''}${q.type}</span>
-              <span class="badge badge-diff">${DIFF_LABELS[q.difficulty] || q.difficulty}</span>
+              <span class="badge badge-${(q.type || 'SIDE').toLowerCase()}">${q.type === 'BOSS' ? '☠ ' : ''}${habit ? 'ПРИВЫЧКА' : q.type}</span>
+              ${!habit ? `<span class="badge badge-diff">${DIFF_LABELS[q.difficulty] || q.difficulty}</span>` : ''}
               ${q.minutes ? `<span class="badge">~${q.minutes} мин</span>` : ''}
-              ${q.done ? '<span class="badge badge-done">✓ Выполнен</span>' : ''}
-              ${near ? '<span class="badge" style="color:var(--gold);border-color:rgba(212,165,116,0.4)">⚡ Закроет уровень</span>' : ''}
+              ${habit && (q.habitStreak || 0) > 0 ? `<span class="badge badge-done">🔥 ${q.habitStreak} дн</span>` : ''}
+              ${doneToday || (q.done && !habit) ? '<span class="badge badge-done">✓</span>' : ''}
+              ${near ? '<span class="badge" style="color:var(--gold);border-color:rgba(212,165,116,0.4)">⚡ Уровень</span>' : ''}
               ${(q.tags||[]).map(tg => {
                 const meta = QUEST_TAGS.find(x => x.id === tg);
                 return meta ? `<span class="badge">${meta.label}</span>` : '';
               }).join('')}
             </div>
             ${q.description ? `<div class="quest-desc">${escapeHtml(q.description)}</div>` : ''}
+            ${q.completionCriteria ? `<div class="quest-desc" style="opacity:.85"><strong>Критерий:</strong> ${escapeHtml(q.completionCriteria)}</div>` : ''}
             ${targetLabel ? `<div class="quest-target">🎯 ${escapeHtml(targetLabel)}</div>` : ''}
-            ${q.fromAi && !targetLabel ? `<div class="quest-target">🎯 герой / общее</div>` : ''}
             <div class="quest-actions">
-              ${!q.done ? `<button class="btn btn-success btn-sm" onclick="completeQuest('${q.id}')">✓</button>` : ''}
-              ${!q.done ? `<button class="btn btn-secondary btn-sm" onclick="openQuestModal('${q.id}')">✎</button>` : ''}
-              <button class="btn btn-secondary btn-sm" onclick="copyQuest('${q.id}')" title="Копировать">⧉</button>
+              ${!q.done ? `<button class="btn btn-success btn-sm" onclick="completeQuest('${q.id}')">${habit ? '✓ Сделано' : '✓'}</button>` : ''}
+              ${q.done && habit ? `<button class="btn btn-secondary btn-sm" onclick="uncompleteHabit('${q.id}')">↩</button>` : ''}
+              <button class="btn btn-secondary btn-sm" onclick="openQuestModal('${q.id}')">✎</button>
               <button class="btn btn-danger btn-sm" onclick="deleteQuest('${q.id}')">✕</button>
             </div>
           </div>
         `;
-      }).join('');
+      }
+
+      let habitsHtml = '';
+      if (questFilter !== 'done' && (questFilter === 'active' || questFilter === 'HABIT' || questFilter === 'all')) {
+        let showHabits = habits;
+        if (questSearch) {
+          showHabits = habits.filter(hh => (hh.title || '').toLowerCase().includes(questSearch));
+        }
+        const doneN = showHabits.filter(habitDoneToday).length;
+        habitsHtml = `
+          <div class="habits-block" style="margin-bottom:16px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
+              <strong style="font-size:0.95rem">🔁 Привычки · ${doneN}/${showHabits.length}</strong>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="openQuestModal(null,'HABIT')">+</button>
+            </div>
+            ${showHabits.length ? showHabits.map(questCardHtml).join('') : '<p style="font-size:0.85rem;opacity:0.7;margin:0 0 8px">Ежедневные рутины. Отмечай каждый день — снова появятся завтра.</p>'}
+          </div>`;
+      }
+
+      if (!quests.length && !habitsHtml) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <div class="big-icon">📜</div>
+            <h3>Нет активных квестов</h3>
+            <p>Выполненные в «Готово». Добавь квест или привычку.</p>
+            <div style="display:flex;flex-direction:column;gap:8px;max-width:280px;margin:0 auto">
+              <button class="btn btn-primary" onclick="openQuestModal()">+ Квест</button>
+              <button class="btn btn-secondary" onclick="openQuestModal(null,'HABIT')">+ Привычка</button>
+            </div>
+          </div>`;
+        return;
+      }
+
+      const questsBlock = quests.length
+        ? (habitsHtml ? '<div style="font-size:0.8rem;opacity:0.65;margin:10px 0 6px">Квесты (разовые)</div>' : '') + quests.map(questCardHtml).join('')
+        : '';
+      list.innerHTML = habitsHtml + questsBlock;
     }
 
     function quickAddQuest() {
@@ -4571,7 +4686,7 @@ ${rules.prompt}
       return null;
     }
 
-    function openQuestModal(id) {
+    function openQuestModal(id, defaultType) {
       editingId = id || null;
       editingType = 'quest';
       const q = id ? state.quests.find(x => x.id === id) : null;
@@ -4588,7 +4703,7 @@ ${rules.prompt}
       });
 
       ensureAi();
-      const type = q ? q.type : 'SIDE';
+      const type = q ? q.type : (defaultType === 'HABIT' ? 'HABIT' : 'SIDE');
       const diff = q ? q.difficulty : (state.ai.preferredDifficulty?.[type] || 3);
       const tags = (q && Array.isArray(q.tags)) ? q.tags : [];
 
@@ -4605,6 +4720,7 @@ ${rules.prompt}
               <option value="SIDE" ${type==='SIDE'?'selected':''}>SIDE</option>
               <option value="MAIN" ${type==='MAIN'?'selected':''}>MAIN</option>
               <option value="BOSS" ${type==='BOSS'?'selected':''}>☠ BOSS</option>
+              <option value="HABIT" ${type==='HABIT'?'selected':''}>ПРИВЫЧКА (каждый день)</option>
             </select>
           </div>
           <div class="form-group">
@@ -4695,9 +4811,10 @@ ${rules.prompt}
       const goalId = document.getElementById('qGoal')?.value || null;
       const goalUnits = Math.max(0, parseInt(document.getElementById('qGoalUnits')?.value, 10) || 0);
 
+      if (!QUEST_XP[type]) { toast('Тип квеста?', 'error'); return; }
       if (editingId) {
         const q = state.quests.find(x => x.id === editingId);
-        if (q && !q.done) {
+        if (q && (!q.done || isHabitQuest(q))) {
           q.title = title;
           q.type = type;
           q.difficulty = difficulty;
@@ -4709,7 +4826,12 @@ ${rules.prompt}
           q.tags = tags;
           q.goalId = goalId || null;
           q.goalUnits = goalId ? goalUnits : 0;
-          toast('Квест обновлён');
+          q.habit = type === 'HABIT';
+          if (type === 'HABIT') {
+            if (q.habitStreak == null) q.habitStreak = 0;
+            if (q.habitBest == null) q.habitBest = 0;
+          }
+          toast('Сохранено');
         }
       } else {
         state.quests.push({
@@ -4726,9 +4848,12 @@ ${rules.prompt}
           goalId: goalId || null,
           goalUnits: goalId ? goalUnits : 0,
           done: false,
-          createdAt: Date.now()
+          createdAt: Date.now(),
+          habit: type === 'HABIT',
+          habitStreak: type === 'HABIT' ? 0 : undefined,
+          habitBest: type === 'HABIT' ? 0 : undefined
         });
-        toast('Квест создан');
+        toast(type === 'HABIT' ? 'Привычка создана' : 'Квест создан');
       }
       ensureAi();
       if (!state.ai.preferredDifficulty) state.ai.preferredDifficulty = {};
@@ -4749,11 +4874,75 @@ ${rules.prompt}
       finishQuestCompletion(id);
     }
     function confirmQuestCompletion(id){const cb=document.getElementById('questVerifyCheck');if(!cb||!cb.checked)return;closeModal();finishQuestCompletion(id);}
+
+    function todayKey() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function isHabitQuest(q) {
+      return !!(q && (q.type === 'HABIT' || q.habit));
+    }
+
+    function habitDoneToday(q) {
+      if (!q || !q.done || !q.completedAt) return false;
+      return new Date(q.completedAt).toISOString().slice(0, 10) === todayKey();
+    }
+
+    function resetHabitsForToday() {
+      const today = todayKey();
+      let changed = false;
+      (state.quests || []).forEach(q => {
+        if (!isHabitQuest(q)) return;
+        q.habit = true;
+        q.type = 'HABIT';
+        if (q.habitStreak == null) q.habitStreak = 0;
+        if (q.habitBest == null) q.habitBest = 0;
+        const doneDay = q.completedAt ? new Date(q.completedAt).toISOString().slice(0, 10) : null;
+        if (q.done && doneDay && doneDay !== today) {
+          q.done = false;
+          changed = true;
+        } else if (q.done && !doneDay) {
+          q.done = false;
+          changed = true;
+        }
+      });
+      if (changed) save();
+    }
+
+    function uncompleteHabit(id) {
+      const q = state.quests.find(x => x.id === id);
+      if (!q || !isHabitQuest(q)) return;
+      q.done = false;
+      if (q.lastHabitDay === todayKey()) {
+        q.habitStreak = Math.max(0, (q.habitStreak || 1) - 1);
+        q.lastHabitDay = null;
+      }
+      delete q.completedAt;
+      save();
+      renderQuests();
+      renderHero();
+      toast('Снято на сегодня');
+    }
+
     function finishQuestCompletion(id) {
       const q = state.quests.find(x => x.id === id);
       if (!q || q.done) return;
+      const isHabit = isHabitQuest(q);
+      q.done = true;
       q.completedAt = Date.now();
-      state.stats.completed = (state.stats.completed || 0) + 1;
+      if (!isHabit) {
+        state.stats.completed = (state.stats.completed || 0) + 1;
+      } else {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yKey = yesterday.toISOString().slice(0, 10);
+        const last = q.lastHabitDay || null;
+        if (last === yKey) q.habitStreak = (q.habitStreak || 0) + 1;
+        else if (last !== todayKey()) q.habitStreak = 1;
+        q.lastHabitDay = todayKey();
+        q.habitBest = Math.max(q.habitBest || 0, q.habitStreak || 0);
+        state.stats.habitChecks = (state.stats.habitChecks || 0) + 1;
+      }
       haptic();
 
       // Streak
@@ -4782,6 +4971,9 @@ ${rules.prompt}
       } else if (q.type === 'MAIN') {
         loreText = `📜 Главный квест выполнен: «${q.title}» (+${finalXp} XP${luck.bonus ? ', 🍀 удача!' : ''})`;
         toast(`+${finalXp} XP → герой и ${dest}`, 'success');
+      } else if (isHabit) {
+        loreText = `🔁 Привычка: «${q.title}» (+${finalXp} XP · серия ${q.habitStreak || 1})`;
+        toast(`🔁 +${finalXp} XP · серия ${q.habitStreak || 1}`, 'success');
       } else {
         loreText = `✓ Квест выполнен: «${q.title}» (+${finalXp} XP${luck.bonus ? ', 🍀 удача!' : ''})`;
         toast(`+${finalXp} XP → герой${dest !== 'герою' ? ' · ' + dest : ''}`, 'success');
@@ -6009,7 +6201,7 @@ ${rules.prompt}
     document.getElementById('questFilters').addEventListener('click', (e) => {
       const btn = e.target.closest('.filter-btn');
       if (!btn) return;
-      questFilter = btn.dataset.filter || 'all';
+      questFilter = btn.dataset.filter || 'active';
       renderQuests();
     });
 
@@ -6225,6 +6417,7 @@ ${rules.prompt}
         } catch (e) {
           console.warn('checkTitles failed', e);
         }
+        try { resetHabitsForToday(); } catch (e) {}
         renderAll();
         try { populateCloudSettings(); } catch (e) {}
         try {
