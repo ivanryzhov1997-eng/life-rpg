@@ -1853,6 +1853,7 @@
           <h3>Данные</h3>
           <button class="btn btn-secondary btn-block mb-8" onclick="switchScreen('lore')">Открыть лор</button>
           <button class="btn btn-primary btn-block mb-8" onclick="exportSave()">Экспорт JSON</button>
+          <button class="btn btn-secondary btn-block mb-8" onclick="showActivityLog()">История действий</button>
           <button class="btn btn-secondary btn-block mb-8" onclick="document.getElementById('importFile').click()">Импорт (заменить)</button>
           <details style="margin-top:8px">
             <summary style="cursor:pointer;color:var(--text-muted);font-size:0.85rem;padding:8px 0">Дополнительно</summary>
@@ -2138,6 +2139,8 @@
       quests: [],
       goals: [],
       lore: [],
+      activityLog: [],
+      rewardLedger: [],
       stats: { completed: 0, totalXp: 0 },
       streak: { current: 0, longest: 0, lastDate: null },
       unlockedTitles: ['newbie'],
@@ -2600,6 +2603,8 @@
         quests: Array.isArray(data.quests) ? data.quests : [],
         goals: Array.isArray(data.goals) ? data.goals : [],
         lore: Array.isArray(data.lore) ? data.lore : [],
+        activityLog: Array.isArray(data.activityLog) ? data.activityLog : [],
+        rewardLedger: Array.isArray(data.rewardLedger) ? data.rewardLedger : [],
         stats: Object.assign({ completed: 0, totalXp: 0 }, data.stats || {}),
         streak: Object.assign({ current: 0, longest: 0, lastDate: null }, data.streak || {}),
         unlockedTitles: Array.isArray(data.unlockedTitles) ? data.unlockedTitles : ['newbie'],
@@ -3021,12 +3026,27 @@ ${dirs}`
     function showWeeklyReview() {
       const weekAgo = Date.now() - 7 * 86400000;
       const done = state.quests.filter(q => q.done && (q.completedAt || 0) >= weekAgo);
-      const xp = done.reduce((s, q) => s + (q.xp || 0), 0);
+      // Track actual awarded XP (including luck bonus), not only the quest's base reward.
+      const xp = done.reduce((s, q) => s + (Number.isFinite(Number(q.earnedXp)) ? Number(q.earnedXp) : (q.xp || 0)), 0);
+      const questsWithEvidence = done.filter(q => typeof q.result === 'string' && q.result.trim()).length;
+      const goalContributions = {};
+      done.forEach(q => {
+        const units = Math.max(0, Number(q.goalResultUnits) || 0);
+        if (q.goalId && units > 0) {
+          if (!goalContributions[q.goalId]) goalContributions[q.goalId] = 0;
+          goalContributions[q.goalId] += units;
+        }
+      });
+      const goalContributionList = Object.entries(goalContributions).map(([id, units]) => {
+        const g = getGoal(id);
+        return g ? { title: g.title, units, unitLabel: (g.metric && g.metric.unitLabel) || 'ед.', current: g.metric && g.metric.current, target: g.metric && g.metric.target } : null;
+      }).filter(Boolean).sort((a, b) => b.units - a.units);
       // top skills by recent activity
       const skillGain = {};
       done.forEach(q => {
         if (q.targetType === 'SKILL' && q.targetId) {
-          skillGain[q.targetId] = (skillGain[q.targetId] || 0) + (q.xp || 0);
+          const awarded = Number.isFinite(Number(q.earnedXp)) ? Number(q.earnedXp) : (q.xp || 0);
+          skillGain[q.targetId] = (skillGain[q.targetId] || 0) + awarded;
         }
       });
       const skillList = [];
@@ -3038,6 +3058,12 @@ ${dirs}`
       skillList.sort((a, b) => b.xp - a.xp);
       const top = skillList.slice(0, 3);
       const dead = getDeadSkills().slice(0, 5);
+      const goalOverview = activeGoals().map(g => {
+        const pct = goalProgressPct(g);
+        const nextMilestone = [25, 50, 75, 100].find(m => m > pct) || 100;
+        const linkedActive = state.quests.filter(q => !q.done && q.goalId === g.id).length;
+        return { goal: g, pct, nextMilestone, linkedActive };
+      }).sort((a, b) => a.pct - b.pct).slice(0, 4);
 
       document.getElementById('modalContent').innerHTML = `
         <h2>Недельный обзор</h2>
@@ -3047,9 +3073,14 @@ ${dirs}`
           <div class="stat-box"><div class="val">${state.streak?.current || 0}</div><div class="lbl">Серия</div></div>
           <div class="stat-box"><div class="val">${state.streak?.longest || 0}</div><div class="lbl">Рекорд</div></div>
         </div>
-        <div class="tip-box"><strong>Топ навыков недели</strong><br>
-          ${top.length ? top.map(s => `• ${escapeHtml(s.name)} (${escapeHtml(s.dir)}) +${s.xp} XP`).join('<br>') : 'Пока нет привязанных к навыкам квестов'}
+        <div class="tip-box"><strong>Реальный прогресс за неделю</strong><br>
+          ${goalContributionList.length ? goalContributionList.map(g => `• ${escapeHtml(g.title)}: +${formatNum(g.units)} ${escapeHtml(g.unitLabel)} · сейчас ${formatNum(g.current || 0)}/${formatNum(g.target || 0)}`).join('<br>') : 'Пока нет зафиксированного вклада в измеримые цели'}
+          <br><span class="text-dim">Результат записан у ${questsWithEvidence} из ${done.length} завершённых квестов.</span>
         </div>
+        <div class="tip-box"><strong>Топ навыков недели</strong><br>
+          ${top.length ? top.map(s => `• ${escapeHtml(s.name)} (${escapeHtml(s.dir)}) +${formatNum(s.xp)} XP`).join('<br>') : 'Пока нет привязанных к навыкам квестов'}
+        </div>
+        ${goalOverview.length ? `<div class="tip-box"><strong>Пульс активных целей</strong><br>${goalOverview.map(x => `<div style="margin-top:9px"><div style="display:flex;justify-content:space-between;gap:8px"><span>${escapeHtml(x.goal.title)}</span><strong>${x.pct}%</strong></div><div class="progress-wrap" style="margin:5px 0"><div class="progress-bar gold" style="width:${x.pct}%"></div></div><span class="text-dim">Следующий рубеж: ${x.nextMilestone}% · активных квестов: ${x.linkedActive}</span></div>`).join('')}</div>` : ''}
         ${dead.length ? `<div class="tip-box"><strong>Мягкий сигнал</strong><br>Давно не качались:<br>${dead.map(d => `• ${escapeHtml(d.node.name)} <span class="text-dim">(${escapeHtml(d.dirName)}${d.days != null ? ', ' + d.days + 'д' : ''})</span>`).join('<br>')}<br><span class="text-dim">Можно отпустить или вернуть в фокус.</span></div>` : ''}
         <div class="modal-actions">
           <button class="btn btn-secondary btn-block" onclick="closeModal()">Закрыть</button>
@@ -4290,6 +4321,41 @@ ${rules.prompt}
       return Math.floor(n).toLocaleString('ru-RU');
     }
 
+    // ===================== WEEKLY PULSE =====================
+    function localDayKey(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+
+    function renderWeeklyPulseBlock() {
+      const now = new Date();
+      const start = new Date(now);
+      start.setHours(0, 0, 0, 0);
+      start.setDate(start.getDate() - 6);
+      const recent = (state.quests || []).filter(q => q.done && Number(q.completedAt) >= start.getTime() && Number(q.completedAt) <= now.getTime());
+      const xp = recent.reduce((sum, q) => sum + Math.max(0, Number(q.earnedXp ?? q.xp) || 0), 0);
+      const goalUnits = recent.reduce((sum, q) => sum + Math.max(0, Number(q.goalResultUnits ?? q.goalUnits) || 0), 0);
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + i);
+        const key = localDayKey(d);
+        const count = recent.filter(q => localDayKey(new Date(Number(q.completedAt))) === key).length;
+        days.push({ key, label: ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][d.getDay()], count });
+      }
+      const max = Math.max(1, ...days.map(d => d.count));
+      const activeDays = days.filter(d => d.count > 0).length;
+      const directionCounts = {};
+      recent.forEach(q => {
+        const id = getQuestDirectionId(q);
+        if (!id) return;
+        const dir = state.directions.find(d => d.id === id);
+        if (dir) directionCounts[dir.name] = (directionCounts[dir.name] || 0) + 1;
+      });
+      const topDirection = Object.entries(directionCounts).sort((a, b) => b[1] - a[1])[0];
+      const bars = days.map(d => `<div style="flex:1;min-width:0;text-align:center"><div style="height:54px;display:flex;align-items:flex-end;justify-content:center"><div title="${d.count} квестов" style="width:70%;max-width:24px;height:${d.count ? Math.max(8, Math.round(d.count / max * 50)) : 3}px;border-radius:5px 5px 2px 2px;background:${d.count ? 'var(--accent)' : 'var(--border)'};opacity:${d.count ? '1' : '.7'}"></div></div><div style="font-size:.68rem;color:var(--text-muted);margin-top:5px">${d.label}</div><div style="font-size:.72rem;font-weight:650">${d.count || '·'}</div></div>`).join('');
+      return `<div class="card mt-12"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px"><div><div style="font-weight:700">📊 Пульс недели</div><div class="text-dim" style="font-size:.75rem">Последние 7 календарных дней</div></div><div style="font-size:.75rem;color:var(--text-muted)">${activeDays}/7 активных</div></div><div style="display:flex;gap:8px;margin-bottom:12px"><div style="flex:1;background:var(--surface-2,rgba(127,127,127,.08));border-radius:10px;padding:10px"><div style="font-size:1.15rem;font-weight:750">${recent.length}</div><div class="text-dim" style="font-size:.72rem">квестов</div></div><div style="flex:1;background:var(--surface-2,rgba(127,127,127,.08));border-radius:10px;padding:10px"><div style="font-size:1.15rem;font-weight:750">+${formatNum(xp)}</div><div class="text-dim" style="font-size:.72rem">XP начислено</div></div><div style="flex:1;background:var(--surface-2,rgba(127,127,127,.08));border-radius:10px;padding:10px"><div style="font-size:1.15rem;font-weight:750">${formatNum(goalUnits)}</div><div class="text-dim" style="font-size:.72rem">ед. целей*</div></div></div><div style="display:flex;gap:6px;align-items:flex-end">${bars}</div><div class="text-dim" style="font-size:.72rem;margin-top:10px">${topDirection ? `Главный фокус: <strong>${escapeHtml(topDirection[0])}</strong> (${topDirection[1]} квест.)` : 'Выполни квест, чтобы здесь появился твой главный фокус недели.'}</div><div class="text-dim" style="font-size:.66rem;margin-top:4px">*Сумма единиц вклада из связанных квестов; разные единицы измерения могут отличаться.</div></div>`;
+    }
+
     // ===================== HERO =====================
     function renderHero() {
       const h = state.hero;
@@ -4382,6 +4448,8 @@ ${rules.prompt}
 
         ${heroGoalsBlock()}
 
+        ${renderWeeklyPulseBlock()}
+
         ${showExtras ? `
         <div class="card mt-12">
           <div style="display:flex;flex-wrap:wrap;gap:8px">
@@ -4470,6 +4538,33 @@ ${rules.prompt}
       return null;
     }
 
+    function getQuestRecommendations(limit = 3) {
+      const now = Date.now();
+      const active = (state.quests || []).filter(q => !q.done && !isHabitQuest(q));
+      const ranked = active.map(q => {
+        let score = 0;
+        const reasons = [];
+        if (q.goalId) {
+          const goal = getGoal(q.goalId);
+          if (goal && goal.status === 'active') { score += 5; reasons.push('двигает активную цель'); }
+        }
+        if (q.targetType === 'SKILL' && q.targetId) {
+          const found = state.directions.flatMap(d => (d.nodes || []).map(n => ({ node: n, dir: d }))).find(x => x.node.id === q.targetId);
+          if (found) {
+            const last = Number(found.node.lastActiveAt) || 0;
+            if (!last || now - last > 14 * 86400000) { score += 3; reasons.push('возвращает практику навыка'); }
+          }
+        }
+        if (questWouldLevel(q)) { score += 4; reasons.push('приближает новый уровень'); }
+        const minutes = Math.max(0, Number(q.minutes) || 0);
+        if (minutes > 0 && minutes <= 20) { score += 2; reasons.push('можно закрыть за короткую сессию'); }
+        if (q.type === 'BOSS') score -= 1;
+        if (!reasons.length) reasons.push('поддерживает регулярный прогресс');
+        return { q, score, reasons };
+      });
+      return ranked.sort((a, b) => b.score - a.score || (Number(a.q.minutes) || 999) - (Number(b.q.minutes) || 999)).slice(0, limit);
+    }
+
     function renderQuestFilters() {
       const wrap = document.getElementById('questFilters');
       if (!wrap) return;
@@ -4551,6 +4646,8 @@ ${rules.prompt}
             </div>
             ${q.description ? `<div class="quest-desc">${escapeHtml(q.description)}</div>` : ''}
             ${q.completionCriteria ? `<div class="quest-desc" style="opacity:.85"><strong>Критерий:</strong> ${escapeHtml(q.completionCriteria)}</div>` : ''}
+            ${q.done && q.result ? `<div class="quest-desc" style="opacity:.9;border-left:2px solid var(--teal);padding-left:9px"><strong>Результат:</strong> ${escapeHtml(q.result)}</div>` : ''}
+            ${q.done && q.goalId && q.goalResultUnits != null ? `<div class="quest-desc" style="opacity:.85"><strong>Вклад в цель:</strong> +${formatNum(q.goalResultUnits)} ${escapeHtml((getGoal(q.goalId)?.metric?.unitLabel) || 'ед.')}</div>` : ''}
             ${targetLabel ? `<div class="quest-target">🎯 ${escapeHtml(targetLabel)}</div>` : ''}
             <div class="quest-actions">
               ${!q.done ? `<button class="btn btn-success btn-sm" onclick="completeQuest('${q.id}')">${habit ? '✓ Сделано' : '✓'}</button>` : ''}
@@ -4596,7 +4693,14 @@ ${rules.prompt}
       const questsBlock = quests.length
         ? (habitsHtml ? '<div style="font-size:0.8rem;opacity:0.65;margin:10px 0 6px">Квесты (разовые)</div>' : '') + quests.map(questCardHtml).join('')
         : '';
-      list.innerHTML = habitsHtml + questsBlock;
+      let recommendationsHtml = '';
+      if (questFilter === 'active' && !questSearch) {
+        const recommendations = getQuestRecommendations(3);
+        if (recommendations.length) {
+          recommendationsHtml = `<div class="tip-box" style="margin:0 0 14px"><strong>🧠 Что сделать дальше</strong><div class="text-dim" style="font-size:.78rem;margin:3px 0 8px">Рекомендации учитывают цели, практику навыков, длительность и близость нового уровня.</div>${recommendations.map(({ q, reasons }) => `<div style="padding:9px 0;border-top:1px solid var(--border)"><div style="font-weight:650">${escapeHtml(q.title)}</div><div class="text-dim" style="font-size:.78rem;margin:3px 0 7px">${escapeHtml(reasons[0])}${q.minutes ? ` · ~${formatNum(q.minutes)} мин` : ''} · +${formatNum(q.xp || 0)} XP</div><button class="btn btn-success btn-sm" onclick="completeQuest('${String(q.id).replace(/'/g, '&#39;')}')">Приступить</button></div>`).join('')}</div>`;
+        }
+      }
+      list.innerHTML = recommendationsHtml + habitsHtml + questsBlock;
     }
 
     function quickAddQuest() {
@@ -4636,6 +4740,7 @@ ${rules.prompt}
         difficulty: q.difficulty,
         xp: QUEST_XP[q.type][q.difficulty],
         description: q.description || '',
+        completionCriteria: q.completionCriteria || '',
         targetType: q.targetType || 'GENERAL',
         targetId: q.targetId || null,
         done: false,
@@ -4867,13 +4972,36 @@ ${rules.prompt}
     function completeQuest(id) {
       const q = state.quests.find(x => x.id === id);
       if (!q || q.done) return;
-      if (q.completionCriteria) {
-        document.getElementById('modalContent').innerHTML = `<h2>Подтвердить выполнение</h2><p class="text-dim" style="margin-bottom:10px">XP начисляется не за нажатие кнопки, а за реальное выполнение квеста.</p><div class="mentor-quest"><div class="mq-title">${escapeHtml(q.title)}</div><div class="mq-criterion"><strong>Критерий:</strong><br>${escapeHtml(q.completionCriteria)}</div></div><label class="verify-box"><input type="checkbox" id="questVerifyCheck"><span>Я действительно выполнил указанный критерий. Это не просто попытка.</span></label><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-primary" id="questVerifyBtn" disabled onclick="confirmQuestCompletion('${id}')">Засчитать XP</button></div>`;
-        openModal(); const cb=document.getElementById('questVerifyCheck'),btn=document.getElementById('questVerifyBtn'); if(cb&&btn) cb.addEventListener('change',()=>btn.disabled=!cb.checked); return;
-      }
-      finishQuestCompletion(id);
+      const isHabit = isHabitQuest(q);
+      const criteriaHtml = q.completionCriteria
+        ? `<div class="mentor-quest"><div class="mq-title">${escapeHtml(q.title)}</div><div class="mq-criterion"><strong>Критерий:</strong><br>${escapeHtml(q.completionCriteria)}</div></div>`
+        : `<div class="mentor-quest"><div class="mq-title">${escapeHtml(q.title)}</div></div>`;
+      const verifyHtml = q.completionCriteria && !isHabit
+        ? `<label class="verify-box"><input type="checkbox" id="questVerifyCheck"><span>Я действительно выполнил указанный критерий. Это не просто попытка.</span></label>`
+        : '';
+      const resultHtml = !isHabit
+        ? `<div class="form-group" style="margin-top:12px"><label>Результат <span style="color:var(--text-muted);font-weight:500">(что фактически получилось)</span></label><textarea id="questResult" rows="3" maxlength="500" placeholder="Например: решил 17/20 задач; создал рабочую функцию; сдал лабораторную"></textarea><p class="text-dim" style="font-size:0.76rem;margin-top:5px">Коротко зафиксируй итог. Это попадёт в историю героя.</p></div>`
+        : '';
+      const linkedGoal = !isHabit && q.goalId ? getGoal(q.goalId) : null;
+      const goalUnitsHtml = linkedGoal && linkedGoal.status === 'active'
+        ? `<div class="form-group" style="margin-top:12px"><label>Фактический вклад в цель (${escapeHtml(linkedGoal.metric.unitLabel || 'ед.')})</label><input type="number" id="questGoalActual" min="0" step="1" inputmode="numeric" value="${Math.max(0, parseInt(q.goalUnits, 10) || 0)}"><p class="text-dim" style="font-size:0.76rem;margin-top:5px">Цель: ${escapeHtml(linkedGoal.title)} · сейчас ${formatNum(linkedGoal.metric.current || 0)}/${formatNum(linkedGoal.metric.target || 1)}. Измени число, если фактический результат отличается от плана; 0 — не добавлять прогресс.</p></div>`
+        : '';
+      document.getElementById('modalContent').innerHTML = `<h2>Завершить квест</h2><p class="text-dim" style="margin-bottom:10px">XP начисляется за выполненный результат, а не просто за нажатие кнопки.</p>${criteriaHtml}${resultHtml}${goalUnitsHtml}${verifyHtml}<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Отмена</button><button class="btn btn-primary" id="questVerifyBtn" ${q.completionCriteria && !isHabit ? 'disabled' : ''} onclick="confirmQuestCompletion('${id}')">${isHabit ? 'Засчитать' : 'Завершить и получить XP'}</button></div>`;
+      openModal();
+      const cb=document.getElementById('questVerifyCheck'), btn=document.getElementById('questVerifyBtn');
+      if(cb&&btn) cb.addEventListener('change',()=>btn.disabled=!cb.checked);
     }
-    function confirmQuestCompletion(id){const cb=document.getElementById('questVerifyCheck');if(!cb||!cb.checked)return;closeModal();finishQuestCompletion(id);}
+    function confirmQuestCompletion(id){
+      const q = state.quests.find(x => x.id === id);
+      if (!q || q.done) return;
+      const cb=document.getElementById('questVerifyCheck');
+      if (cb && !cb.checked) return;
+      const result=(document.getElementById('questResult')?.value || '').trim().slice(0,500);
+      const goalUnitsEl = document.getElementById('questGoalActual');
+      const resultUnits = goalUnitsEl ? Math.max(0, parseInt(goalUnitsEl.value, 10) || 0) : null;
+      closeModal();
+      finishQuestCompletion(id, result, resultUnits);
+    }
 
     function todayKey() {
       return new Date().toISOString().slice(0, 10);
@@ -4924,12 +5052,20 @@ ${rules.prompt}
       toast('Снято на сегодня');
     }
 
-    function finishQuestCompletion(id) {
+    function finishQuestCompletion(id, result = '', resultUnits = null) {
       const q = state.quests.find(x => x.id === id);
       if (!q || q.done) return;
       const isHabit = isHabitQuest(q);
       q.done = true;
       q.completedAt = Date.now();
+      if (!isHabit && result) q.result = result;
+      else if (isHabit) delete q.result;
+      if (!isHabit && q.goalId) {
+        const actualUnits = resultUnits == null ? Math.max(0, parseInt(q.goalUnits, 10) || 0) : Math.max(0, parseInt(resultUnits, 10) || 0);
+        q.goalResultUnits = actualUnits;
+      } else {
+        delete q.goalResultUnits;
+      }
       if (!isHabit) {
         state.stats.completed = (state.stats.completed || 0) + 1;
       } else {
@@ -4951,15 +5087,39 @@ ${rules.prompt}
       // Variable reward (luck)
       const luck = tryLuckBonus(q.xp);
       const finalXp = luck.total;
+      q.earnedXp = finalXp;
 
       applyXp(finalXp, q.targetType, q.targetId, { bonus: luck.bonus });
 
       // Goal progress
       let goalNote = '';
-      if (q.goalId && q.goalUnits) {
-        const g = applyGoalProgress(q.goalId, q.goalUnits);
-        if (g) goalNote = ` · цель «${g.title}» ${g.metric.current}/${g.metric.target}`;
+      const actualGoalUnits = !isHabit && q.goalId
+        ? Math.max(0, parseInt(q.goalResultUnits, 10) || 0)
+        : Math.max(0, parseInt(q.goalUnits, 10) || 0);
+      if (q.goalId && actualGoalUnits > 0) {
+        const g = applyGoalProgress(q.goalId, actualGoalUnits);
+        if (g) goalNote = ` · цель «${g.title}» +${actualGoalUnits} ${g.metric.unitLabel || 'ед.'} · ${g.metric.current}/${g.metric.target}`;
       }
+
+      // Audit trail + reward ledger. A completed quest is guarded above by q.done,
+      // so repeated taps cannot issue a second reward for the same completion.
+      const eventId = uid();
+      q.lastRewardEventId = eventId;
+      if (!Array.isArray(state.rewardLedger)) state.rewardLedger = [];
+      state.rewardLedger.push({ eventId, questId: q.id, at: q.completedAt, xp: finalXp, baseXp: Math.max(0, Number(q.xp) || 0), bonusXp: Math.max(0, Number(luck.bonus) || 0), habit: isHabit });
+      if (state.rewardLedger.length > 500) state.rewardLedger.splice(0, state.rewardLedger.length - 500);
+      if (!Array.isArray(state.activityLog)) state.activityLog = [];
+      const linkedGoalForLog = q.goalId ? getGoal(q.goalId) : null;
+      state.activityLog.unshift({
+        id: eventId, at: q.completedAt, type: 'quest_completed', questId: q.id,
+        title: String(q.title || 'Без названия').slice(0, 160), xp: finalXp,
+        bonusXp: Math.max(0, Number(luck.bonus) || 0), habit: isHabit,
+        result: !isHabit ? String(q.result || '').slice(0, 500) : '',
+        goalId: q.goalId || null, goalTitle: linkedGoalForLog ? linkedGoalForLog.title : '',
+        goalUnits: q.goalId ? Math.max(0, Number(q.goalResultUnits ?? q.goalUnits) || 0) : 0,
+        unitLabel: linkedGoalForLog?.metric?.unitLabel || 'ед.'
+      });
+      if (state.activityLog.length > 300) state.activityLog.length = 300;
 
       // Auto-lore
       const targetLabel = getQuestTargetLabel(q);
@@ -4979,6 +5139,11 @@ ${rules.prompt}
         toast(`+${finalXp} XP → герой${dest !== 'герою' ? ' · ' + dest : ''}`, 'success');
       }
       if (targetLabel) loreText += `\n🎯 ${targetLabel}`;
+      if (!isHabit && q.result) loreText += `\n📌 Результат: ${q.result}`;
+      if (!isHabit && q.goalId && q.goalResultUnits != null) {
+        const goalForLore = getGoal(q.goalId);
+        loreText += `\n🎯 Вклад в цель: +${q.goalResultUnits} ${(goalForLore && goalForLore.metric && goalForLore.metric.unitLabel) || 'ед.'}`;
+      }
       if (goalNote) loreText += `\n${goalNote.trim()}`;
       if (state.streak.current > 1) loreText += `\n🔥 Серия: ${state.streak.current} дн.`;
       if (q.type === 'BOSS') addAutoLore(loreText, 'boss');
@@ -4996,6 +5161,17 @@ ${rules.prompt}
       if (q.type === 'MAIN' || q.type === 'BOSS') {
         setTimeout(() => openReflectionModal(q), 600);
       }
+    }
+
+    function showActivityLog() {
+      const events = Array.isArray(state.activityLog) ? state.activityLog.slice(0, 40) : [];
+      const fmtDate = (value) => {
+        const d = new Date(Number(value) || value || 0);
+        return Number.isNaN(d.getTime()) ? 'Дата неизвестна' : d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      };
+      const body = events.length ? events.map(e => `<div class="mentor-quest" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div class="mq-title">${escapeHtml(e.title || 'Событие')}</div><strong style="white-space:nowrap;color:var(--gold)">+${formatNum(e.xp || 0)} XP</strong></div><div class="text-dim" style="font-size:.75rem;margin-top:4px">${escapeHtml(fmtDate(e.at))}${e.habit ? ' · привычка' : ''}${Number(e.bonusXp) > 0 ? ` · бонус +${formatNum(e.bonusXp)} XP` : ''}</div>${e.result ? `<div style="font-size:.82rem;margin-top:6px">Результат: ${escapeHtml(e.result)}</div>` : ''}${e.goalTitle && Number(e.goalUnits) > 0 ? `<div style="font-size:.8rem;margin-top:4px">Цель «${escapeHtml(e.goalTitle)}»: +${formatNum(e.goalUnits)} ${escapeHtml(e.unitLabel || 'ед.')}</div>` : ''}</div>`).join('') : '<div class="tip-box">История начнёт заполняться после следующих завершений квестов. Старые события автоматически не восстанавливаются.</div>';
+      document.getElementById('modalContent').innerHTML = `<h2>История действий</h2><p class="text-dim" style="font-size:.82rem;margin-bottom:12px">Последние 40 событий. Записи сохраняются в локальном сейве и включаются в экспорт JSON.</p><div style="max-height:58vh;overflow:auto">${body}</div><div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Закрыть</button><button class="btn btn-primary" onclick="closeModal();exportSave()">Сделать резервную копию</button></div>`;
+      openModal();
     }
 
     function deleteQuest(id) {
@@ -5615,6 +5791,64 @@ ${rules.prompt}
       return byParent;
     }
 
+    function getSkillPracticeStats(nodeId) {
+      const completed = (state.quests || []).filter(q => q.done && q.targetType === 'SKILL' && q.targetId === nodeId);
+      const xp = completed.reduce((sum, q) => sum + Math.max(0, Number(q.earnedXp) || Number(q.xp) || 0), 0);
+      const dates = completed.map(q => Number(q.completedAt) || 0).filter(Boolean);
+      return {
+        completedCount: completed.length,
+        recordedXp: xp,
+        lastPracticedAt: dates.length ? Math.max(...dates) : null
+      };
+    }
+
+    function formatPracticeDate(timestamp) {
+      if (!timestamp) return 'пока не было';
+      const date = new Date(timestamp);
+      if (Number.isNaN(date.getTime())) return 'дата неизвестна';
+      return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    }
+
+    // Mastery is derived from existing XP and completed linked quests; no new save fields required.
+    function getSkillMastery(xp, completedCount) {
+      const points = Math.max(0, Number(xp) || 0);
+      const practiceCount = Math.max(0, Number(completedCount) || 0);
+      const tiers = [
+        { name: 'Новичок', xp: 0, quests: 0 },
+        { name: 'Ученик', xp: 50, quests: 3 },
+        { name: 'Практик', xp: 150, quests: 8 },
+        { name: 'Уверенный уровень', xp: 350, quests: 20 },
+        { name: 'Продвинутый', xp: 700, quests: 40 },
+        { name: 'Мастер', xp: 1200, quests: 75 }
+      ];
+      let index = 0;
+      for (let i = 1; i < tiers.length; i++) {
+        if (points >= tiers[i].xp && practiceCount >= tiers[i].quests) index = i;
+        else break;
+      }
+      const current = tiers[index];
+      const next = tiers[index + 1] || null;
+      const xpProgress = next ? Math.min(1, points / next.xp) : 1;
+      const questProgress = next ? Math.min(1, practiceCount / next.quests) : 1;
+      const xpRemaining = next ? Math.max(0, next.xp - points) : 0;
+      const questsRemaining = next ? Math.max(0, next.quests - practiceCount) : 0;
+      let nextAction = 'Продолжай практику: выбери небольшой квест и доведи его до измеримого результата.';
+      if (!next) nextAction = 'Ты достиг максимального ранга по текущей системе. Поддерживай навык практикой или усложняй квесты.';
+      else if (xpRemaining === 0 && questsRemaining > 0) nextAction = `XP уже достаточно. Осталось выполнить ${questsRemaining} ${questsRemaining === 1 ? 'квест' : questsRemaining < 5 ? 'квеста' : 'квестов'} по этому навыку.`;
+      else if (questsRemaining === 0 && xpRemaining > 0) nextAction = `Практики достаточно. Нужно набрать ещё ${formatNum(xpRemaining)} XP по этому навыку.`;
+      else if (xpRemaining > 0 && questsRemaining > 0) nextAction = `Для следующего ранга нужны оба условия: ещё ${formatNum(xpRemaining)} XP и ${questsRemaining} квестов. Начни с короткого квеста, который даёт реальный результат.`;
+      return {
+        name: current.name,
+        nextName: next ? next.name : null,
+        percent: next ? Math.round(((xpProgress + questProgress) / 2) * 100) : 100,
+        requirement: next ? `${formatNum(points)} / ${formatNum(next.xp)} XP · ${practiceCount} / ${next.quests} квестов` : 'Максимальный ранг достигнут',
+        xpRemaining,
+        questsRemaining,
+        nextAction,
+        isMax: !next
+      };
+    }
+
     function openNodeSheet(nodeId) {
       const dir = state.directions.find(d => d.id === currentTreeDirId);
       if (!dir) return;
@@ -5622,6 +5856,9 @@ ${rules.prompt}
       if (!node) return;
       const prog = xpProgress(node.xp || 0);
       const kids = (dir.nodes || []).filter(n => n.parentId === nodeId).length;
+      const practice = getSkillPracticeStats(nodeId);
+      const mastery = getSkillMastery(node.xp || 0, practice.completedCount);
+      const skillQuests = (state.quests || []).filter(q => !q.done && q.targetType === 'SKILL' && q.targetId === nodeId && !isHabitQuest(q)).slice(0, 3);
       const sheet = document.getElementById('nodeSheet');
       const overlay = document.getElementById('nodeSheetOverlay');
       sheet.innerHTML = `
@@ -5630,6 +5867,11 @@ ${rules.prompt}
           ${node.description ? '<br>' + escapeHtml(node.description) : ''}
         </div>
         <div class="progress-wrap" style="margin-bottom:14px"><div class="progress-bar gold" style="width:${prog.percent}%"></div></div>
+        <div class="ns-meta" style="margin-bottom:8px">🏅 Мастерство: <strong>${escapeHtml(mastery.name)}</strong>${mastery.nextName ? '<br>Следующий ранг: <strong>' + escapeHtml(mastery.nextName) + '</strong>' : ''}<br>${escapeHtml(mastery.requirement)}</div>
+        <div class="progress-wrap" style="margin-bottom:14px"><div class="progress-bar gold" style="width:${mastery.percent}%"></div></div>
+        <div class="ns-meta" style="margin:-4px 0 14px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface2, var(--card))">🧭 <strong>Следующий шаг</strong><br>${escapeHtml(mastery.nextAction)}</div>
+        <div class="ns-meta" style="margin-bottom:14px">📈 Практика по привязанным квестам: <strong>${practice.completedCount}</strong><br>XP из этих квестов: <strong>${formatNum(practice.recordedXp)}</strong><br>Последняя практика: <strong>${formatPracticeDate(practice.lastPracticedAt)}</strong></div>
+        <div class="ns-meta" style="margin-bottom:14px"><strong>🎯 Квесты для практики (${skillQuests.length})</strong>${skillQuests.length ? '<br>' + skillQuests.map(q => `<button class="btn btn-secondary btn-sm" style="margin:6px 5px 0 0;max-width:100%;white-space:normal;text-align:left" onclick="closeNodeSheet();openQuestModal('${String(q.id).replace(/'/g, '&#39;')}')">${escapeHtml(q.title)}${q.minutes ? ' · ~' + formatNum(q.minutes) + ' мин' : ''}</button>`).join('') : '<br>Нет активных квестов, привязанных к этому навыку. Создай квест и укажи этот навык как цель.'}</div>
         <div class="ns-grid">
           <button class="btn btn-primary span2" onclick="closeNodeSheet();openSkillModal('${node.id}', true)">+ Поднавык</button>
           <button class="btn btn-secondary" onclick="closeNodeSheet();generateSkillTree('${dir.id}', '${node.id}')">ИИ-ветки</button>
@@ -6032,14 +6274,18 @@ ${rules.prompt}
       const data = JSON.parse(JSON.stringify(state));
       if (data.ai) delete data.ai.apiKey;
       data.schemaVersion = SCHEMA_VERSION;
+      data.backupMeta = { app: 'LIFE RPG', format: 'json-backup', exportedAt: new Date().toISOString(), includesActivityLog: true };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
       a.href = url;
-      a.download = 'life-rpg-v4-save.json';
+      a.download = `life-rpg-backup-${stamp}.json`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
-      toast('Сейв экспортирован (без API-ключа)');
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast('Резервная копия экспортирована (без API-ключа)');
     }
 
     function exportMarkdown() {
