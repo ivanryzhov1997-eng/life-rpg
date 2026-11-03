@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { calculateStreak, gameStateSchema, levelFromXp, localDateKey, stageFromXp, xpForQuest } from "@contracts/game";
-import { createInitialState } from "./seed";
+import { createInitialState, isLegacyDemoSave } from "./seed";
 
 function offset(days: number) {
   const date = new Date();
@@ -9,6 +9,16 @@ function offset(days: number) {
 }
 
 describe("честная прогрессия", () => {
+  it("начинает новую игру с нулевого прогресса и без демо-контента", () => {
+    const state = createInitialState();
+    expect(state.hero.xp).toBe(0);
+    expect(state.hero.level).toBe(1);
+    expect(state.hero.totalCompleted).toBe(0);
+    expect(state.hero.streakDays).toBe(0);
+    expect(state.quests).toHaveLength(0);
+    expect(state.directions).toHaveLength(0);
+    expect(isLegacyDemoSave(state)).toBe(false);
+  });
   it("использует согласованную таблицу XP", () => {
     expect(xpForQuest("SIDE", 1)).toBe(20);
     expect(xpForQuest("MAIN", 3)).toBe(400);
