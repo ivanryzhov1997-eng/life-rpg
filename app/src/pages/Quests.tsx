@@ -14,13 +14,13 @@ export default function Quests() {
   const quests = useGameStore((state) => state.quests);
   const deleteQuest = useGameStore((state) => state.deleteQuest);
   const duplicateQuest = useGameStore((state) => state.duplicateQuest);
-  const undoQuest = useGameStore((state) => state.undoQuest);\n  const undoQuest = useGameStore((state) => state.undoQuest);
+  const undoQuest = useGameStore((state) => state.undoQuest);
   const [tab, setTab] = useState<"active" | "done">("active");
   const [filter, setFilter] = useState<Filter>("ALL");
   const [formOpen, setFormOpen] = useState(false);
   const [formType, setFormType] = useState<QuestType>("SIDE");
   const [selected, setSelected] = useState<Quest | null>(null);
-  const [editing, setEditing] = useState<Quest | null>(null);\n  const [editing, setEditing] = useState<Quest | null>(null);
+  const [editing, setEditing] = useState<Quest | null>(null);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"newest" | "shortest" | "xp">("newest");
 
