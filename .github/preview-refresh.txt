@@ -1,1 +1,1 @@
-The iPhone preview is rebuilt from the latest mobile-check branch whenever this marker changes.
+Refresh preview after AI mentor and quest/tree generation UI integration.
