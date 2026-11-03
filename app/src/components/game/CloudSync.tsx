@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Cloud, RefreshCw } from "lucide-react";
 import { trpc } from "@/providers/trpc";
 import { gameSnapshot, useGameStore } from "@/store/gameStore";
+import { isLegacyDemoSave } from "@/lib/seed";
 
 function deviceId() {
   const key = "life-rpg-device";
@@ -49,7 +50,7 @@ export function CloudSync({ authenticated }: { authenticated: boolean }) {
       revisionRef.current = cloud.revision;
       setRevision(cloud.revision);
       const forceRestore = localStorage.getItem("life-rpg-force-cloud-restore") === "1";
-      if (forceRestore || cloud.state.updatedAt > useGameStore.getState().updatedAt) {
+      if (!isLegacyDemoSave(cloud.state) && (forceRestore || cloud.state.updatedAt > useGameStore.getState().updatedAt)) {
         skipNext.current = true;
         importState(cloud.state);
       }
