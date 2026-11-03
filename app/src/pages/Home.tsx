@@ -15,10 +15,19 @@ export default function Home() {
   const lore = useGameStore((state) => state.lore);
   const onboardingSeen = useGameStore((state) => state.settings.onboardingSeen);
   const setSettings = useGameStore((state) => state.setSettings);
+  const setEquippedTitle = useGameStore((state) => state.setEquippedTitle);
+  const markRestDay = useGameStore((state) => state.markRestDay);
   const [selected, setSelected] = useState<Quest | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [formType, setFormType] = useState<QuestType>("SIDE");
   const progress = levelProgress(hero.xp);
+  const availableTitles = [
+    { level: 1, title: "Новичок" },
+    { level: 3, title: "Искатель" },
+    { level: 7, title: "Следопыт" },
+    { level: 12, title: "Мастер своей главы" },
+    { level: 20, title: "Хранитель реальности" },
+  ].filter((item) => hero.level >= item.level);
   const active = useMemo(() => quests.filter((quest) => !quest.done && quest.type !== "HABIT").slice(0, 3), [quests]);
   const habits = useMemo(() => quests.filter((quest) => quest.type === "HABIT").slice(0, 2), [quests]);
   const achievements = [
@@ -39,7 +48,7 @@ export default function Home() {
     const date = new Date(today);
     date.setDate(today.getDate() - (6 - index));
     const key = localDateKey(date);
-    return { key, label: new Intl.DateTimeFormat("ru-RU", { weekday: "short" }).format(date), active: hero.activityDates.includes(key), isToday: key === localDateKey(today) };
+    return { key, label: new Intl.DateTimeFormat("ru-RU", { weekday: "short" }).format(date), active: hero.activityDates.includes(key), rest: (hero.restDays ?? []).includes(key), isToday: key === localDateKey(today) };
   });
   const unlockedCount = achievements.filter((item) => item.unlocked).length;
   const openForm = (type: QuestType) => { setFormType(type); setFormOpen(true); };
@@ -55,7 +64,7 @@ export default function Home() {
               <p className="game-label">Текущий уровень</p>
               <div className="mt-3 flex items-end gap-3">
                 <span className="display-number text-7xl font-semibold">{hero.level}</span>
-                <span className="pb-1 text-sm text-muted-foreground">{titleForLevel(hero.level)}</span>
+                <span className="pb-1 text-sm text-muted-foreground">{hero.equippedTitle ?? titleForLevel(hero.level)}</span>
               </div>
             </div>
             <div className="text-right font-mono text-xs text-muted-foreground">
@@ -77,12 +86,12 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="mb-8 grid grid-cols-2 gap-3">
+      <section className="surface mb-6 p-4" aria-label="Титул героя"><div className="flex items-center justify-between gap-3"><div><p className="game-label">Титул</p><p className="mt-1 text-sm font-medium">{hero.equippedTitle ?? titleForLevel(hero.level)}</p></div><select aria-label="Экипировать титул" className="field max-w-[58%]" value={hero.equippedTitle ?? titleForLevel(hero.level)} onChange={(event) => setEquippedTitle(event.target.value)}>{availableTitles.map((item) => <option key={item.title} value={item.title}>{item.title}</option>)}</select></div><p className="mt-2 text-xs text-muted-foreground">Титулы открываются по мере роста уровня.</p></section>\n\n      <div className="mb-8 grid grid-cols-2 gap-3">
         <button type="button" onClick={() => openForm("SIDE")} className="press-button inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold"><Plus size={17} aria-hidden="true" /> Квест</button>
         <button type="button" onClick={() => openForm("HABIT")} className="quiet-button inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium"><Plus size={17} aria-hidden="true" /> Привычка</button>
       </div>
 
-      <section className="mb-8" aria-labelledby="today-habits">
+      <section className="surface mb-7 p-4" aria-label="День отдыха"><div className="flex items-center justify-between gap-3"><div><h2 className="text-sm font-semibold">Сегодня — день отдыха?</h2><p className="mt-1 text-xs text-muted-foreground">Можно сохранить серию без XP и выполнения квестов.</p></div><button type="button" disabled={hero.activityDates.includes(localDateKey()) || (hero.restDays ?? []).includes(localDateKey())} onClick={markRestDay} className="quiet-button min-h-10 shrink-0 rounded-lg px-3 text-xs disabled:opacity-50">{(hero.restDays ?? []).includes(localDateKey()) ? "Отмечено" : "Отметить"}</button></div></section>\n\n      <section className="mb-8" aria-labelledby="today-habits">
         <SectionHeading title="Быстрые привычки" meta="отметка за 3 секунды" />
         <div id="today-habits">
           {habits.map((quest) => <QuestCard key={quest.id} quest={quest} onComplete={setSelected} />)}
@@ -100,7 +109,7 @@ export default function Home() {
         <SectionHeading title="Активность за неделю" meta={`${weekDays.filter((day) => day.active).length}/7 дней`} />
         <div id="weekly-pulse" className="mt-4 grid grid-cols-7 gap-2">
           {weekDays.map((day) => <div key={day.key} className="text-center">
-            <div aria-label={`${day.label}: ${day.active ? "была активность" : "без активности"}`} className={`mx-auto grid aspect-square w-full max-w-10 place-items-center rounded-xl border text-xs ${day.active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"} ${day.isToday ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>{day.active ? "✓" : "·"}</div>
+            <div aria-label={`${day.label}: ${day.active ? "была активность" : "без активности"}`} className={`mx-auto grid aspect-square w-full max-w-10 place-items-center rounded-xl border text-xs ${day.active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"} ${day.isToday ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>{day.active ? "✓" : day.rest ? "R" : "·"}</div>
             <span className="mt-2 block text-[10px] capitalize text-muted-foreground">{day.label}</span>
           </div>)}
         </div>
