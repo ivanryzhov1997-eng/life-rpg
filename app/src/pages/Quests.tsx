@@ -13,12 +13,14 @@ type Filter = "ALL" | Exclude<QuestType, "HABIT">;
 export default function Quests() {
   const quests = useGameStore((state) => state.quests);
   const deleteQuest = useGameStore((state) => state.deleteQuest);
-  const duplicateQuest = useGameStore((state) => state.duplicateQuest);\n  const undoQuest = useGameStore((state) => state.undoQuest);
+  const duplicateQuest = useGameStore((state) => state.duplicateQuest);
+  const undoQuest = useGameStore((state) => state.undoQuest);\n  const undoQuest = useGameStore((state) => state.undoQuest);
   const [tab, setTab] = useState<"active" | "done">("active");
   const [filter, setFilter] = useState<Filter>("ALL");
   const [formOpen, setFormOpen] = useState(false);
   const [formType, setFormType] = useState<QuestType>("SIDE");
-  const [selected, setSelected] = useState<Quest | null>(null);\n  const [editing, setEditing] = useState<Quest | null>(null);
+  const [selected, setSelected] = useState<Quest | null>(null);
+  const [editing, setEditing] = useState<Quest | null>(null);\n  const [editing, setEditing] = useState<Quest | null>(null);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"newest" | "shortest" | "xp">("newest");
 
@@ -62,7 +64,7 @@ export default function Quests() {
               ))}
             </div>
             <div id="one-time-block">
-              {active.length ? active.map((quest) => <QuestCard key={quest.id} quest={quest} onComplete={setSelected} onDelete={(item) => { if (window.confirm(`Удалить квест «${item.title}»?`)) { deleteQuest(item.id); toast.success("Квест удалён"); } }} onDuplicate={(item) => { duplicateQuest(item.id); toast.success("Квест скопирован"); }} />) : <EmptyState title="Здесь стало тихо" text="Добавьте следующий шаг или измените фильтр. Новичку достаточно одного реалистичного действия." actionLabel="Новый квест" onAction={() => openForm("SIDE")} />}
+              {active.length ? active.map((quest) => <QuestCard key={quest.id} quest={quest} onComplete={setSelected} onDelete={(item) => { if (window.confirm(`Удалить квест «${item.title}»?`)) { deleteQuest(item.id); toast.success("Квест удалён"); } }} onDuplicate={(item) => { duplicateQuest(item.id); toast.success("Квест скопирован"); }} onEdit={setEditing} />) : <EmptyState title="Здесь стало тихо" text="Добавьте следующий шаг или измените фильтр. Новичку достаточно одного реалистичного действия." actionLabel="Новый квест" onAction={() => openForm("SIDE")} />}
             </div>
           </section>
         </>
@@ -77,7 +79,8 @@ export default function Quests() {
           )) : <EmptyState title="Архив пока пуст" text="Первый подтверждённый результат появится здесь автоматически." actionLabel="К активным квестам" onAction={() => setTab("active")} />}
         </section>
       )}
-      <QuestForm open={formOpen} onOpenChange={setFormOpen} defaultType={formType} />\n      <QuestForm open={!!editing} onOpenChange={(open) => !open && setEditing(null)} initialQuest={editing} />
+      <QuestForm open={formOpen} onOpenChange={setFormOpen} defaultType={formType} />
+      <QuestForm open={!!editing} onOpenChange={(open) => !open && setEditing(null)} initialQuest={editing} />
       <CompletionDialog quest={selected} onClose={() => setSelected(null)} />
     </>
   );
