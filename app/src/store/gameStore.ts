@@ -48,6 +48,7 @@ type GameActions = {
   updateSkill: (id: string, input: { name: string; parentId: string | null }) => void;
   deleteSkill: (id: string) => void;
   addGoal: (input: { title: string; horizon: Horizon; target: number; unit: string; directionId: string | null }) => void;
+  setGoalProgress: (id: string, current: number) => void;
   setHeroName: (name: string) => void;
   setSettings: (settings: Partial<Settings>) => void;
   importState: (state: GameState) => void;
@@ -370,6 +371,8 @@ export const useGameStore = create<GameStore>()(
         const goal: Goal = { ...input, id: id(), current: 0, createdAt: now() };
         set((state) => ({ goals: [...state.goals, goal], updatedAt: now() }));
       },
+
+      setGoalProgress: (goalId, current) => set((state) => ({ goals: state.goals.map((goal) => goal.id === goalId ? { ...goal, current: Math.max(0, Math.min(goal.target, current)) } : goal), updatedAt: now() })),
 
       setHeroName: (name) => set({ hero: { ...get().hero, name: name.trim() || "Герой" }, updatedAt: now() }),
       setSettings: (settings) =>
