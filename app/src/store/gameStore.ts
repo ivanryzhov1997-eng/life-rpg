@@ -345,7 +345,11 @@ export const useGameStore = create<GameStore>()(
 
       updateDirection: (directionId, input) => set((state) => ({ directions: state.directions.map((direction) => direction.id === directionId ? { ...direction, name: input.name.trim(), description: input.description.trim() } : direction), updatedAt: now() })),
 
-      deleteDirection: (directionId) => set((state) => ({ directions: state.directions.filter((direction) => direction.id !== directionId), skills: state.skills.filter((skill) => skill.directionId !== directionId), quests: state.quests.map((quest) => quest.directionId === directionId ? { ...quest, directionId: state.directions.find((direction) => direction.id !== directionId)?.id ?? "", skillId: null } : quest), goals: state.goals.map((goal) => goal.directionId === directionId ? { ...goal, directionId: null } : goal), updatedAt: now() })),
+      deleteDirection: (directionId) => set((state) => {
+        if (state.directions.length <= 1) return state;
+        const fallbackId = state.directions.find((direction) => direction.id !== directionId)?.id;
+        return { directions: state.directions.filter((direction) => direction.id !== directionId), skills: state.skills.filter((skill) => skill.directionId !== directionId), quests: state.quests.map((quest) => quest.directionId === directionId ? { ...quest, directionId: fallbackId!, skillId: null } : quest), goals: state.goals.map((goal) => goal.directionId === directionId ? { ...goal, directionId: null } : goal), updatedAt: now() };
+      }),
 
       addSkill: (directionId, parentId, name) => {
         const skillId = id();
