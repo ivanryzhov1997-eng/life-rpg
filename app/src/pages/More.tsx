@@ -38,7 +38,7 @@ export default function More() {
   const exportMarkdown = () => {
     const state = useGameStore.getState();
     const lines = ["# LIFE RPG — сохранение", "", `Герой: ${state.hero.name}`, `Уровень: ${state.hero.level} · ${state.hero.xp} XP`, `Завершено: ${state.hero.totalCompleted}`, "", "## Активные квесты", ...state.quests.filter((quest) => !quest.done).map((quest) => `- [ ] ${quest.title} (${quest.minutes} мин, ${quest.xp} XP)`), "", "## Завершённые квесты", ...state.quests.filter((quest) => quest.done).map((quest) => `- [x] ${quest.title}`), "", "## Цели", ...state.goals.map((goal) => `- ${goal.title}: ${goal.current}/${goal.target} ${goal.unit}`), "", "## Направления", ...state.directions.map((direction) => `- ${direction.name}: ${direction.xp} XP`), "", "## Журнал", ...state.lore.map((entry) => `- ${entry.createdAt.slice(0, 10)} — **${entry.title}**: ${entry.text}`)];
-    const url = URL.createObjectURL(new Blob([lines.join("\\n")], { type: "text/markdown;charset=utf-8" }));
+    const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/markdown;charset=utf-8" }));
     const anchor = document.createElement("a"); anchor.href = url; anchor.download = `life-rpg-${new Date().toISOString().slice(0, 10)}.md`; anchor.click(); URL.revokeObjectURL(url);
     toast.success("Экспорт Markdown готов");
   };
