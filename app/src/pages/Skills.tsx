@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { GitBranch, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, GitBranch, Pencil, Plus, Trash2 } from "lucide-react";
 import { STAGE_LABELS, stageFromXp } from "@contracts/game";
 import { useGameStore } from "@/store/gameStore";
 import { Modal } from "@/components/game/Modal";
@@ -24,6 +24,7 @@ export default function Skills() {
   const [editingSkill, setEditingSkill] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editParentId, setEditParentId] = useState("");
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
   const selected = directions.find((item) => item.id === selectedId) ?? directions[0];
 
   useEffect(() => {
@@ -66,18 +67,19 @@ export default function Skills() {
     const skill = directionSkills.find((item) => item.id === skillId);
     if (!skill) return null;
     const children = directionSkills.filter((item) => item.parentId === skillId);
+    const collapsed = collapsedIds.has(skillId);
     return (
       <li key={skill.id}>
         <div className={`relative flex min-h-16 items-center justify-between gap-3 border-b border-border py-3 ${depth ? "ml-6 pl-5" : ""}`}>
           {depth > 0 && <span className="absolute bottom-0 left-0 top-0 border-l border-border" aria-hidden="true" />}
-          <div className="min-w-0 flex-1"><p className="font-medium">{skill.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{depth === 0 ? "Корневой навык" : "Поднавык"}</p></div>
+          <div className="min-w-0 flex-1"><p className="font-medium">{skill.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{depth === 0 ? "Корневой навык" : "Поднавык"}{children.length ? ` · ${children.length} поднавыков` : ""}</p></div>
           <span className="shrink-0 font-mono text-xs text-muted-foreground">{skill.xp} XP</span>
           <div className="flex shrink-0 items-center gap-1">
             <button type="button" className="quiet-button grid h-9 w-9 place-items-center rounded-lg" aria-label={`Редактировать навык ${skill.name}`} onClick={() => { setEditingSkill(skill.id); setEditName(skill.name); setEditParentId(skill.parentId ?? ""); }}><Pencil size={16} aria-hidden="true" /></button>
             <button type="button" className="quiet-button grid h-9 w-9 place-items-center rounded-lg text-destructive" aria-label={`Удалить навык ${skill.name} и его поднавыки`} onClick={() => { if (window.confirm(`Удалить «${skill.name}» и все вложенные поднавыки? Квесты сохранятся, но отвяжутся от удалённых навыков.`)) deleteSkill(skill.id); }}><Trash2 size={16} aria-hidden="true" /></button>
           </div>
         </div>
-        {children.length > 0 && <ul>{children.map((child) => renderNode(child.id, depth + 1))}</ul>}
+        {children.length > 0 && !collapsed && <ul>{children.map((child) => renderNode(child.id, depth + 1))}</ul>}
       </li>
     );
   };
@@ -113,7 +115,7 @@ export default function Skills() {
       <Modal open={!!editingSkill} onOpenChange={(open) => !open && setEditingSkill(null)} title="Редактировать навык" description="Можно переименовать узел или перенести его в другую ветку.">
         <form onSubmit={(event) => { event.preventDefault(); if (editingSkill && editName.trim()) { updateSkill(editingSkill, { name: editName, parentId: editParentId || null }); setEditingSkill(null); } }} className="space-y-4 pt-2">
           <label className="block text-sm font-medium">Название<input className="field mt-1.5" value={editName} onChange={(event) => setEditName(event.target.value)} required maxLength={120} /></label>
-          <label className="block text-sm font-medium">Родительский узел<select className="field mt-1.5" value={editParentId} onChange={(event) => setEditParentId(event.target.value)}><option value="">Корневой навык</option>{directionSkills.filter((skill) => skill.id !== editingSkill).map((skill) => <option key={skill.id} value={skill.id}>{skill.name}</option>)}</select></label>
+          <label className="block text-sm font-medium">Родительский узел<select className="field mt-1.5" value={editParentId} onChange={(event) => setEditParentId(event.target.value)}><option value="">Корневой навык</option>{directionSkills.filter((skill) => { if (skill.id === editingSkill) return false; let parent = skill.parentId; while (parent) { if (parent === editingSkill) return false; parent = directionSkills.find((item) => item.id === parent)?.parentId ?? null; } return true; }).map((skill) => <option key={skill.id} value={skill.id}>{skill.name}</option>)}</select></label>
           <button type="submit" className="press-button w-full rounded-xl px-4 text-sm font-semibold">Сохранить изменения</button>
         </form>
       </Modal>
