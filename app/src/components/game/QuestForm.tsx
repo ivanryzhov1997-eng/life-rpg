@@ -12,6 +12,7 @@ export function QuestForm({ open, onOpenChange, defaultType = "SIDE", initialQue
   const goals = useGameStore((state) => state.goals);
   const addQuest = useGameStore((state) => state.addQuest);
   const updateQuest = useGameStore((state) => state.updateQuest);
+  const updateQuest = useGameStore((state) => state.updateQuest);
   const [title, setTitle] = useState("");
   const [type, setType] = useState<QuestType>(defaultType);
   const [difficulty, setDifficulty] = useState(1);
@@ -25,8 +26,16 @@ export function QuestForm({ open, onOpenChange, defaultType = "SIDE", initialQue
 
   useEffect(() => {
     if (open) {
-      setType(defaultType);
-      setDirectionId((current) => current || directions[0]?.id || "");
+      setType(initialQuest?.type ?? defaultType);
+      setTitle(initialQuest?.title ?? "");
+      setDifficulty(initialQuest?.difficulty ?? 1);
+      setDescription(initialQuest?.description ?? "");
+      setCriteria(initialQuest?.completionCriteria ?? "");
+      setMinutes(initialQuest?.minutes ?? 15);
+      setDirectionId(initialQuest?.directionId ?? directions[0]?.id ?? "");
+      setSkillId(initialQuest?.skillId ?? "");
+      setGoalId(initialQuest?.goalId ?? "");
+      setGoalUnits(initialQuest?.goalUnits ?? 1);
     }
   }, [open, defaultType, directions]);
 
@@ -36,12 +45,13 @@ export function QuestForm({ open, onOpenChange, defaultType = "SIDE", initialQue
       toast.error("Заполните название, критерий и направление");
       return;
     }
-    addQuest({
+    const input = {
       title: title.trim(), type, difficulty, description: description.trim() || criteria.trim(),
       completionCriteria: criteria.trim(), minutes, directionId, skillId: skillId || null,
-      goalId: goalId || null, goalUnits: goalId ? goalUnits : 0,
-    });
-    toast.success(type === "HABIT" ? "Привычка добавлена" : "Квест добавлен");
+      goalId: goalId || null, goalUnits: goalId ? goalUnits : 0, fromAi: initialQuest?.fromAi ?? false,
+    };
+    if (initialQuest) { updateQuest(initialQuest.id, input); toast.success("Квест обновлён"); }
+    else { addQuest(input); toast.success(type === "HABIT" ? "Привычка добавлена" : "Квест добавлен"); }
     setTitle(""); setDescription(""); setCriteria(""); setSkillId(""); setGoalId("");
     onOpenChange(false);
   };
