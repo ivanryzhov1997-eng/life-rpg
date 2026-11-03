@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { GitBranch, Plus } from "lucide-react";
+import { GitBranch, Pencil, Plus, Trash2 } from "lucide-react";
 import { STAGE_LABELS, stageFromXp } from "@contracts/game";
 import { useGameStore } from "@/store/gameStore";
 import { Modal } from "@/components/game/Modal";
@@ -12,13 +12,13 @@ export default function Skills() {
   const directions = useGameStore((state) => state.directions);
   const skills = useGameStore((state) => state.skills);
   const addDirection = useGameStore((state) => state.addDirection);
-  const addSkill = useGameStore((state) => state.addSkill);
+  const addSkill = useGameStore((state) => state.addSkill);\n  const updateSkill = useGameStore((state) => state.updateSkill);\n  const deleteSkill = useGameStore((state) => state.deleteSkill);
   const [selectedId, setSelectedId] = useState(directions[0]?.id ?? "");
   const [directionOpen, setDirectionOpen] = useState(false);
   const [skillOpen, setSkillOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [parentId, setParentId] = useState("");
+  const [parentId, setParentId] = useState("");\n  const [editingSkill, setEditingSkill] = useState<string | null>(null);\n  const [editName, setEditName] = useState("");\n  const [editParentId, setEditParentId] = useState("");
   const selected = directions.find((item) => item.id === selectedId) ?? directions[0];
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function Skills() {
       </section>
 
       <DirectionModal open={directionOpen} onOpenChange={setDirectionOpen} name={name} setName={setName} description={description} setDescription={setDescription} onSubmit={submitDirection} />
-      <Modal open={skillOpen} onOpenChange={setSkillOpen} title={`Новый навык · ${selected.name}`} description="Сначала выберите место в дереве, затем подтвердите запись.">
+      <Modal open={!!editingSkill} onOpenChange={(open) => !open && setEditingSkill(null)} title="Редактировать навык" description="Можно переименовать узел или перенести его в другую ветку.">\n        <form onSubmit={(event) => { event.preventDefault(); if (editingSkill && editName.trim()) { updateSkill(editingSkill, { name: editName, parentId: editParentId || null }); setEditingSkill(null); } }} className="space-y-4 pt-2">\n          <label className="block text-sm font-medium">Название<input className="field mt-1.5" value={editName} onChange={(event) => setEditName(event.target.value)} required maxLength={120} /></label>\n          <label className="block text-sm font-medium">Родительский узел<select className="field mt-1.5" value={editParentId} onChange={(event) => setEditParentId(event.target.value)}><option value="">Корневой навык</option>{directionSkills.filter((skill) => skill.id !== editingSkill).map((skill) => <option key={skill.id} value={skill.id}>{skill.name}</option>)}</select></label>\n          <button type="submit" className="press-button w-full rounded-xl px-4 text-sm font-semibold">Сохранить изменения</button>\n        </form>\n      </Modal>\n      <Modal open={skillOpen} onOpenChange={setSkillOpen} title={`Новый навык · ${selected.name}`} description="Сначала выберите место в дереве, затем подтвердите запись.">
         <form onSubmit={submitSkill} className="space-y-4 pt-2">
           <label className="block text-sm font-medium">Название<input autoFocus className="field mt-1.5" value={name} onChange={(event) => setName(event.target.value)} required maxLength={120} placeholder="Например, спокойный старт" /></label>
           <label className="block text-sm font-medium">Родительский узел<select className="field mt-1.5" value={parentId} onChange={(event) => setParentId(event.target.value)}><option value="">Корневой навык</option>{directionSkills.map((skill) => <option key={skill.id} value={skill.id}>{skill.name}</option>)}</select></label>
