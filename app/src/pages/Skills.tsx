@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ChevronDown, ChevronRight, GitBranch, ListTree, Network, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { STAGE_LABELS, stageFromXp } from "@contracts/game";
 import { useGameStore } from "@/store/gameStore";
@@ -61,9 +61,8 @@ export default function Skills() {
 
   const directionSkills = skills.filter((skill) => skill.directionId === selected.id);
   const roots = directionSkills.filter((skill) => !skill.parentId);
-  const matchingIds = useMemo(() => {
-    const query = treeSearch.trim().toLocaleLowerCase();
-    if (!query) return null;
+  const query = treeSearch.trim().toLocaleLowerCase();
+  const matchingIds = query ? (() => {
     const matches = new Set<string>();
     for (const skill of directionSkills) {
       if (!skill.name.toLocaleLowerCase().includes(query)) continue;
@@ -71,7 +70,7 @@ export default function Skills() {
       while (current) { matches.add(current.id); current = current.parentId ? directionSkills.find((item) => item.id === current?.parentId) : undefined; }
     }
     return matches;
-  }, [directionSkills, treeSearch]);
+  })() : null;
   const stage = stageFromXp(selected.xp);
   const nextThreshold = stage === "novice" ? 400 : stage === "intermediate" ? 1500 : stage === "advanced" ? 5000 : 5000;
   const prevThreshold = stage === "novice" ? 0 : stage === "intermediate" ? 400 : stage === "advanced" ? 1500 : 5000;
@@ -95,7 +94,7 @@ export default function Skills() {
             <button type="button" className="quiet-button grid h-9 w-9 place-items-center rounded-lg text-destructive" aria-label={`Удалить навык ${skill.name} и его поднавыки`} onClick={() => { if (window.confirm(`Удалить «${skill.name}» и все вложенные поднавыки? Квесты сохранятся, но отвяжутся от удалённых навыков.`)) deleteSkill(skill.id); }}><Trash2 size={16} aria-hidden="true" /></button>
           </div>
         </div>
-        {children.length > 0 && !collapsed && <ul>{children.map((child) => renderNode(child.id, depth + 1))}</ul>}
+        {children.length > 0 && (!collapsed || !!matchingIds) && <ul>{children.map((child) => renderNode(child.id, depth + 1))}</ul>}
       </li>
     );
   };
