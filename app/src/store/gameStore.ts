@@ -38,6 +38,9 @@ type GameActions = {
   undoHabit: (id: string) => void;
   rolloverHabits: () => void;
   addQuest: (input: NewQuestInput) => string;
+  updateQuest: (id: string, input: NewQuestInput) => void;
+  deleteQuest: (id: string) => void;
+  duplicateQuest: (id: string) => string | null;
   acceptAiDrafts: (directionId: string, drafts: AiQuestDraft[]) => void;
   addDirection: (name: string, description: string) => void;
   addSkill: (directionId: string, parentId: string | null, name: string) => string;
@@ -241,6 +244,32 @@ export const useGameStore = create<GameStore>()(
         const quest = questFromInput(input);
         set((state) => ({ quests: [quest, ...state.quests], updatedAt: now() }));
         return quest.id;
+      },
+
+      updateQuest: (questId, input) => {
+        set((state) => ({
+          quests: state.quests.map((quest) => quest.id === questId && !quest.done
+            ? { ...quest, ...input, xp: xpForQuest(input.type, input.difficulty), id: quest.id, done: quest.done, completedAt: quest.completedAt, createdAt: quest.createdAt }
+            : quest),
+          updatedAt: now(),
+        }));
+      },
+
+      deleteQuest: (questId) => {
+        set((state) => ({ quests: state.quests.filter((quest) => quest.id !== questId), updatedAt: now() }));
+      },
+
+      duplicateQuest: (questId) => {
+        const source = get().quests.find((quest) => quest.id === questId);
+        if (!source) return null;
+        const copy = questFromInput({
+          title: `${source.title} (копия)`, type: source.type, difficulty: source.difficulty,
+          description: source.description, completionCriteria: source.completionCriteria,
+          minutes: source.minutes, directionId: source.directionId, skillId: source.skillId,
+          goalId: source.goalId, goalUnits: source.goalUnits, fromAi: source.fromAi,
+        });
+        set((state) => ({ quests: [copy, ...state.quests], updatedAt: now() }));
+        return copy.id;
       },
 
       acceptAiDrafts: (directionId, drafts) => {
