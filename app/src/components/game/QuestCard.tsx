@@ -25,14 +25,13 @@ export function QuestCard({ quest, onComplete, archived = false, onDelete, onDup
             <span className="ml-auto font-mono text-sm font-semibold text-foreground">+{quest.xp} XP</span>
           </div>
         </div>
-        {!archived && !isHabit && <div className="flex shrink-0 flex-col gap-1">\n          <button type="button" onClick={() => onEdit?.(quest)} className="quiet-button grid h-9 w-9 place-items-center rounded-lg" aria-label={`Редактировать: ${quest.title}`}><Pencil size={15} /></button>
+        {!archived && !isHabit && <div className="flex shrink-0 flex-col gap-1">
+          <button type="button" onClick={() => onEdit?.(quest)} className="quiet-button grid h-9 w-9 place-items-center rounded-lg" aria-label={`Редактировать: ${quest.title}`}><Pencil size={15} /></button>
           <button type="button" onClick={() => onDuplicate?.(quest)} className="quiet-button grid h-9 w-9 place-items-center rounded-lg" aria-label={`Копировать: ${quest.title}`}><Copy size={15} /></button>
           <button type="button" onClick={() => onDelete?.(quest)} className="quiet-button grid h-9 w-9 place-items-center rounded-lg text-destructive" aria-label={`Удалить: ${quest.title}`}><Trash2 size={15} /></button>
         </div>}
         {archived ? (
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-border text-muted-foreground" aria-label="Выполнено">
-            <Check size={19} aria-hidden="true" />
-          </span>
+          <button type="button" onClick={() => onUndo?.(quest)} className="quiet-button grid h-11 w-11 shrink-0 place-items-center rounded-full" aria-label={`Отменить завершение: ${quest.title}`}><RotateCcw size={17} aria-hidden="true" /></button>
         ) : isHabit && quest.done ? (
           <button type="button" onClick={() => undoHabit(quest.id)} className="quiet-button grid h-12 w-12 shrink-0 place-items-center rounded-full" aria-label={`Снять отметку: ${quest.title}`}>
             <RotateCcw size={19} aria-hidden="true" />
