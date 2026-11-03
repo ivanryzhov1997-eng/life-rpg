@@ -13,12 +13,12 @@ type Filter = "ALL" | Exclude<QuestType, "HABIT">;
 export default function Quests() {
   const quests = useGameStore((state) => state.quests);
   const deleteQuest = useGameStore((state) => state.deleteQuest);
-  const duplicateQuest = useGameStore((state) => state.duplicateQuest);
+  const duplicateQuest = useGameStore((state) => state.duplicateQuest);\n  const undoQuest = useGameStore((state) => state.undoQuest);
   const [tab, setTab] = useState<"active" | "done">("active");
   const [filter, setFilter] = useState<Filter>("ALL");
   const [formOpen, setFormOpen] = useState(false);
   const [formType, setFormType] = useState<QuestType>("SIDE");
-  const [selected, setSelected] = useState<Quest | null>(null);
+  const [selected, setSelected] = useState<Quest | null>(null);\n  const [editing, setEditing] = useState<Quest | null>(null);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"newest" | "shortest" | "xp">("newest");
 
@@ -44,7 +44,7 @@ export default function Quests() {
           <section className="mb-8" aria-labelledby="habit-block">
             <SectionHeading title="Привычки" meta="ежедневный reset" action={<button type="button" onClick={() => openForm("HABIT")} className="quiet-button rounded-lg px-3 text-xs">Добавить</button>} />
             <div id="habit-block">
-              {habits.length ? habits.map((quest) => <QuestCard key={quest.id} quest={quest} onComplete={setSelected} onDelete={(item) => { if (window.confirm(`Удалить квест «${item.title}»?`)) { deleteQuest(item.id); toast.success("Квест удалён"); } }} onDuplicate={(item) => { duplicateQuest(item.id); toast.success("Квест скопирован"); }} />) : <EmptyState title="Нет ежедневного ритуала" text="Добавьте действие на 2–15 минут. Его можно отметить за три секунды и снять отметку сегодня." actionLabel="Создать привычку" onAction={() => openForm("HABIT")} />}
+              {habits.length ? habits.map((quest) => <QuestCard key={quest.id} quest={quest} onComplete={setSelected} onDelete={(item) => { if (window.confirm(`Удалить квест «${item.title}»?`)) { deleteQuest(item.id); toast.success("Квест удалён"); } }} onDuplicate={(item) => { duplicateQuest(item.id); toast.success("Квест скопирован"); }} onEdit={setEditing} />) : <EmptyState title="Нет ежедневного ритуала" text="Добавьте действие на 2–15 минут. Его можно отметить за три секунды и снять отметку сегодня." actionLabel="Создать привычку" onAction={() => openForm("HABIT")} />}
             </div>
           </section>
 
@@ -71,13 +71,13 @@ export default function Quests() {
           <p className="mb-3 text-sm text-muted-foreground">Разовые квесты попадают сюда с датой и временем завершения.</p>
           {done.length ? done.map((quest) => (
             <div key={quest.id}>
-              <QuestCard quest={quest} onComplete={setSelected} archived />
+              <QuestCard quest={quest} onComplete={setSelected} archived onUndo={(item) => { if (window.confirm(`Вернуть квест «${item.title}» в активные? Начисленные XP и прогресс будут отменены.`)) { undoQuest(item.id); toast.success("Завершение отменено"); } }} />
               {quest.completedAt && <p className="-mt-3 mb-3 text-xs text-muted-foreground">{new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(quest.completedAt))}{quest.reflection ? ` · ${quest.reflection}` : ""}</p>}
             </div>
           )) : <EmptyState title="Архив пока пуст" text="Первый подтверждённый результат появится здесь автоматически." actionLabel="К активным квестам" onAction={() => setTab("active")} />}
         </section>
       )}
-      <QuestForm open={formOpen} onOpenChange={setFormOpen} defaultType={formType} />
+      <QuestForm open={formOpen} onOpenChange={setFormOpen} defaultType={formType} />\n      <QuestForm open={!!editing} onOpenChange={(open) => !open && setEditing(null)} initialQuest={editing} />
       <CompletionDialog quest={selected} onClose={() => setSelected(null)} />
     </>
   );
