@@ -1,16 +1,17 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { toast } from "sonner";
-import { QUEST_TYPE_LABELS, xpForQuest, type QuestType } from "@contracts/game";
+import { QUEST_TYPE_LABELS, xpForQuest, type Quest, type QuestType } from "@contracts/game";
 import { useGameStore } from "@/store/gameStore";
 import { Modal } from "./Modal";
 
 const types: QuestType[] = ["SIDE", "MAIN", "BOSS", "HABIT"];
 
-export function QuestForm({ open, onOpenChange, defaultType = "SIDE" }: { open: boolean; onOpenChange: (open: boolean) => void; defaultType?: QuestType }) {
+export function QuestForm({ open, onOpenChange, defaultType = "SIDE", initialQuest = null }: { open: boolean; onOpenChange: (open: boolean) => void; defaultType?: QuestType; initialQuest?: Quest | null }) {
   const directions = useGameStore((state) => state.directions);
   const skills = useGameStore((state) => state.skills);
   const goals = useGameStore((state) => state.goals);
   const addQuest = useGameStore((state) => state.addQuest);
+  const updateQuest = useGameStore((state) => state.updateQuest);
   const [title, setTitle] = useState("");
   const [type, setType] = useState<QuestType>(defaultType);
   const [difficulty, setDifficulty] = useState(1);
@@ -46,7 +47,7 @@ export function QuestForm({ open, onOpenChange, defaultType = "SIDE" }: { open: 
   };
 
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title={type === "HABIT" ? "Новая привычка" : "Новый квест"} description="Сформулируйте результат так, чтобы его можно было честно проверить." wide>
+    <Modal open={open} onOpenChange={onOpenChange} title={initialQuest ? "Редактировать квест" : type === "HABIT" ? "Новая привычка" : "Новый квест"} description="Сформулируйте результат так, чтобы его можно было честно проверить." wide>
       <form onSubmit={submit} className="grid gap-4 pt-2 sm:grid-cols-2">
         <label className="text-sm font-medium sm:col-span-2">Название
           <input autoFocus className="field mt-1.5" value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} placeholder="Например, 20 минут черновика" required />
@@ -92,7 +93,7 @@ export function QuestForm({ open, onOpenChange, defaultType = "SIDE" }: { open: 
         </label>}
         <div className="flex gap-3 sm:col-span-2">
           <button type="button" onClick={() => onOpenChange(false)} className="quiet-button flex-1 rounded-xl px-4 text-sm">Отмена</button>
-          <button type="submit" className="press-button flex-1 rounded-xl px-4 text-sm font-semibold">Добавить · {xpForQuest(type, difficulty)} XP</button>
+          <button type="submit" className="press-button flex-1 rounded-xl px-4 text-sm font-semibold">{initialQuest ? "Сохранить изменения" : `Добавить · ${xpForQuest(type, difficulty)} XP`}</button>
         </div>
       </form>
     </Modal>
