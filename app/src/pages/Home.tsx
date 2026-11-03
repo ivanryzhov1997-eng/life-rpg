@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import { ArrowRight, Flame, Plus, ShieldCheck } from "lucide-react";
-import { levelProgress, titleForLevel, type Quest, type QuestType } from "@contracts/game";
+import { levelProgress, localDateKey, titleForLevel, type Quest, type QuestType } from "@contracts/game";
 import { useGameStore } from "@/store/gameStore";
 import { QuestCard } from "@/components/game/QuestCard";
 import { QuestForm } from "@/components/game/QuestForm";
@@ -22,11 +22,26 @@ export default function Home() {
   const active = useMemo(() => quests.filter((quest) => !quest.done && quest.type !== "HABIT").slice(0, 3), [quests]);
   const habits = useMemo(() => quests.filter((quest) => quest.type === "HABIT").slice(0, 2), [quests]);
   const achievements = [
-    { label: "Первый шаг", unlocked: hero.totalCompleted >= 1 },
-    { label: "Серия ×7", unlocked: hero.streakDays >= 7 },
-    { label: "10 привычек", unlocked: hero.habitCompletions >= 10 },
-    { label: "Первый босс", unlocked: hero.bossCompleted >= 1 },
+    { label: "Первый шаг", detail: "Завершить первый квест", unlocked: hero.totalCompleted >= 1 },
+    { label: "Десятка", detail: "Завершить 10 квестов", unlocked: hero.totalCompleted >= 10 },
+    { label: "Полсотни", detail: "Завершить 50 квестов", unlocked: hero.totalCompleted >= 50 },
+    { label: "Серия ×7", detail: "Поддерживать серию 7 дней", unlocked: hero.streakDays >= 7 },
+    { label: "Серия ×30", detail: "Поддерживать серию 30 дней", unlocked: hero.streakDays >= 30 },
+    { label: "Привычка закреплена", detail: "Отметить 10 привычек", unlocked: hero.habitCompletions >= 10 },
+    { label: "Сила привычки", detail: "Отметить 100 привычек", unlocked: hero.habitCompletions >= 100 },
+    { label: "Первый босс", detail: "Победить первого босса", unlocked: hero.bossCompleted >= 1 },
+    { label: "Охотник на боссов", detail: "Победить 5 боссов", unlocked: hero.bossCompleted >= 5 },
+    { label: "Уровень 5", detail: "Достичь 5 уровня", unlocked: hero.level >= 5 },
+    { label: "Уровень 10", detail: "Достичь 10 уровня", unlocked: hero.level >= 10 },
   ];
+  const today = new Date();
+  const weekDays = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(today);
+    date.setDate(today.getDate() - (6 - index));
+    const key = localDateKey(date);
+    return { key, label: new Intl.DateTimeFormat("ru-RU", { weekday: "short" }).format(date), active: hero.activityDates.includes(key), isToday: key === localDateKey(today) };
+  });
+  const unlockedCount = achievements.filter((item) => item.unlocked).length;
   const openForm = (type: QuestType) => { setFormType(type); setFormOpen(true); };
 
   return (
@@ -81,11 +96,25 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mb-8" aria-labelledby="achievements">
-        <SectionHeading title="Титулы и достижения" />
-        <div id="achievements" className="flex flex-wrap gap-2">
-          {achievements.map((item) => <span key={item.label} className={`rounded-full border px-3 py-1.5 text-xs ${item.unlocked ? "border-foreground text-foreground" : "border-border text-muted-foreground opacity-55"}`}>{item.unlocked ? "◆" : "◇"} {item.label}</span>)}
+      <section className="surface mb-8 p-5" aria-labelledby="weekly-pulse">
+        <SectionHeading title="Активность за неделю" meta={`${weekDays.filter((day) => day.active).length}/7 дней`} />
+        <div id="weekly-pulse" className="mt-4 grid grid-cols-7 gap-2">
+          {weekDays.map((day) => <div key={day.key} className="text-center">
+            <div aria-label={`${day.label}: ${day.active ? "была активность" : "без активности"}`} className={`mx-auto grid aspect-square w-full max-w-10 place-items-center rounded-xl border text-xs ${day.active ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"} ${day.isToday ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>{day.active ? "✓" : "·"}</div>
+            <span className="mt-2 block text-[10px] capitalize text-muted-foreground">{day.label}</span>
+          </div>)}
         </div>
+      </section>
+
+      <section className="mb-8" aria-labelledby="achievements">
+        <SectionHeading title="Достижения" meta={`${unlockedCount}/${achievements.length} открыто`} />
+        <div id="achievements" className="grid grid-cols-2 gap-2">
+          {achievements.map((item) => <div key={item.label} className={`rounded-xl border p-3 ${item.unlocked ? "border-foreground" : "border-border opacity-55"}`}>
+            <p className="text-sm font-medium">{item.unlocked ? "◆ " : "◇ "}{item.label}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>
+          </div>)}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">Достижения рассчитываются из реального прогресса и автоматически открываются при выполнении условий.</p>
       </section>
 
       {lore[0] && <section className="lore-line pl-4" aria-labelledby="latest-lore">
