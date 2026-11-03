@@ -70,8 +70,12 @@ export default function Skills() {
       <li key={skill.id}>
         <div className={`relative flex min-h-16 items-center justify-between gap-3 border-b border-border py-3 ${depth ? "ml-6 pl-5" : ""}`}>
           {depth > 0 && <span className="absolute bottom-0 left-0 top-0 border-l border-border" aria-hidden="true" />}
-          <div><p className="font-medium">{skill.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{depth === 0 ? "Корневой навык" : "Поднавык"}</p></div>
-          <span className="font-mono text-xs text-muted-foreground">{skill.xp} XP</span>
+          <div className="min-w-0 flex-1"><p className="font-medium">{skill.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{depth === 0 ? "Корневой навык" : "Поднавык"}</p></div>
+          <span className="shrink-0 font-mono text-xs text-muted-foreground">{skill.xp} XP</span>
+          <div className="flex shrink-0 items-center gap-1">
+            <button type="button" className="quiet-button grid h-9 w-9 place-items-center rounded-lg" aria-label={`Редактировать навык ${skill.name}`} onClick={() => { setEditingSkill(skill.id); setEditName(skill.name); setEditParentId(skill.parentId ?? ""); }}><Pencil size={16} aria-hidden="true" /></button>
+            <button type="button" className="quiet-button grid h-9 w-9 place-items-center rounded-lg text-destructive" aria-label={`Удалить навык ${skill.name} и его поднавыки`} onClick={() => { if (window.confirm(`Удалить «${skill.name}» и все вложенные поднавыки? Квесты сохранятся, но отвяжутся от удалённых навыков.`)) deleteSkill(skill.id); }}><Trash2 size={16} aria-hidden="true" /></button>
+          </div>
         </div>
         {children.length > 0 && <ul>{children.map((child) => renderNode(child.id, depth + 1))}</ul>}
       </li>
