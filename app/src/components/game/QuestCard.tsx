@@ -1,9 +1,9 @@
-import { Check, Clock3, RotateCcw, Sparkles } from "lucide-react";
+import { Check, Clock3, Copy, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import type { Quest } from "@contracts/game";
 import { useGameStore } from "@/store/gameStore";
 import { TypeBadge } from "./ui";
 
-export function QuestCard({ quest, onComplete, archived = false }: { quest: Quest; onComplete: (quest: Quest) => void; archived?: boolean }) {
+export function QuestCard({ quest, onComplete, archived = false, onDelete, onDuplicate }: { quest: Quest; onComplete: (quest: Quest) => void; archived?: boolean; onDelete?: (quest: Quest) => void; onDuplicate?: (quest: Quest) => void }) {
   const direction = useGameStore((state) => state.directions.find((item) => item.id === quest.directionId));
   const undoHabit = useGameStore((state) => state.undoHabit);
   const isHabit = quest.type === "HABIT";
@@ -25,6 +25,10 @@ export function QuestCard({ quest, onComplete, archived = false }: { quest: Ques
             <span className="ml-auto font-mono text-sm font-semibold text-foreground">+{quest.xp} XP</span>
           </div>
         </div>
+        {!archived && !isHabit && <div className="flex shrink-0 flex-col gap-1">
+          <button type="button" onClick={() => onDuplicate?.(quest)} className="quiet-button grid h-9 w-9 place-items-center rounded-lg" aria-label={`Копировать: ${quest.title}`}><Copy size={15} /></button>
+          <button type="button" onClick={() => onDelete?.(quest)} className="quiet-button grid h-9 w-9 place-items-center rounded-lg text-destructive" aria-label={`Удалить: ${quest.title}`}><Trash2 size={15} /></button>
+        </div>}
         {archived ? (
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-border text-muted-foreground" aria-label="Выполнено">
             <Check size={19} aria-hidden="true" />
