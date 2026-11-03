@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { Download, Moon, Sun, Upload, KeyRound } from "lucide-react";
+import { Download, FileText, Moon, Sun, Upload, KeyRound, Merge } from "lucide-react";
 import { toast } from "sonner";
 import { gameStateSchema } from "@contracts/game";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,7 +35,15 @@ export default function More() {
     toast.success("Экспорт JSON готов");
   };
 
-  const importData = async (file: File | undefined) => {
+  const exportMarkdown = () => {
+    const state = useGameStore.getState();
+    const lines = ["# LIFE RPG — сохранение", "", `Герой: ${state.hero.name}`, `Уровень: ${state.hero.level} · ${state.hero.xp} XP`, `Завершено: ${state.hero.totalCompleted}`, "", "## Активные квесты", ...state.quests.filter((quest) => !quest.done).map((quest) => `- [ ] ${quest.title} (${quest.minutes} мин, ${quest.xp} XP)`), "", "## Завершённые квесты", ...state.quests.filter((quest) => quest.done).map((quest) => `- [x] ${quest.title}`), "", "## Цели", ...state.goals.map((goal) => `- ${goal.title}: ${goal.current}/${goal.target} ${goal.unit}`), "", "## Направления", ...state.directions.map((direction) => `- ${direction.name}: ${direction.xp} XP`), "", "## Журнал", ...state.lore.map((entry) => `- ${entry.createdAt.slice(0, 10)} — **${entry.title}**: ${entry.text}`)];
+    const url = URL.createObjectURL(new Blob([lines.join("\\n")], { type: "text/markdown;charset=utf-8" }));
+    const anchor = document.createElement("a"); anchor.href = url; anchor.download = `life-rpg-${new Date().toISOString().slice(0, 10)}.md`; anchor.click(); URL.revokeObjectURL(url);
+    toast.success("Экспорт Markdown готов");
+  };
+
+  const importData = async (file: File | undefined, mode: "replace" | "merge") => {
     if (!file) return;
     try {
       const parsed = gameStateSchema.safeParse(JSON.parse(await file.text()));
@@ -98,7 +106,7 @@ export default function More() {
         <div className="grid grid-cols-2 gap-3">
           <button type="button" onClick={exportData} className="quiet-button inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm"><Download size={16} aria-hidden="true" />Экспорт</button>
           <button type="button" onClick={() => fileRef.current?.click()} className="quiet-button inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm"><Upload size={16} aria-hidden="true" />Импорт</button>
-          <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => void importData(event.target.files?.[0])} />
+          <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => void importData(event.target.files?.[0], "replace")} />
         </div>
       </section>
 
