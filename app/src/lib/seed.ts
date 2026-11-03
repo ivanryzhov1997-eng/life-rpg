@@ -1,202 +1,52 @@
-import { levelFromXp, localDateKey, type GameState } from "@contracts/game";
-
-function dateOffset(days: number) {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  return localDateKey(date);
-}
+import { levelFromXp, type GameState } from "@contracts/game";
 
 export function createInitialState(): GameState {
-  const now = new Date().toISOString();
-  const today = localDateKey();
   return {
     schemaVersion: 1,
     hero: {
-      name: "Алекс",
-      xp: 120,
-      level: levelFromXp(120),
-      streakDays: 3,
-      activityDates: [today, dateOffset(-1), dateOffset(-2)],
-      totalCompleted: 4,
-      habitCompletions: 6,
+      name: "Герой",
+      xp: 0,
+      level: levelFromXp(0),
+      streakDays: 0,
+      activityDates: [],
+      totalCompleted: 0,
+      habitCompletions: 0,
       bossCompleted: 0,
     },
-    directions: [
-      {
-        id: "focus",
-        name: "Фокус",
-        description: "Внимание, ясность и работа без переключений.",
-        stage: "novice",
-        xp: 80,
-      },
-      {
-        id: "body",
-        name: "Энергия",
-        description: "Сон, движение и ресурс для ежедневных побед.",
-        stage: "novice",
-        xp: 40,
-      },
-    ],
-    skills: [
-      { id: "attention", directionId: "focus", parentId: null, name: "Внимание", xp: 50 },
-      { id: "single-task", directionId: "focus", parentId: "attention", name: "Одна задача за раз", xp: 30 },
-      { id: "planning", directionId: "focus", parentId: null, name: "Планирование", xp: 30 },
-      { id: "movement", directionId: "body", parentId: null, name: "Движение", xp: 25 },
-      { id: "recovery", directionId: "body", parentId: null, name: "Восстановление", xp: 15 },
-    ],
-    goals: [
-      {
-        id: "deep-work",
-        title: "12 часов глубокой работы",
-        horizon: "short",
-        target: 12,
-        current: 3,
-        unit: "часов",
-        directionId: "focus",
-        createdAt: now,
-      },
-      {
-        id: "walks",
-        title: "20 прогулок без ленты",
-        horizon: "medium",
-        target: 20,
-        current: 6,
-        unit: "прогулок",
-        directionId: "body",
-        createdAt: now,
-      },
-    ],
-    quests: [
-      {
-        id: "habit-focus",
-        title: "10 минут без телефона",
-        type: "HABIT",
-        difficulty: 1,
-        xp: 10,
-        description: "Минимальное действие: один короткий блок внимания без переключений.",
-        completionCriteria: "Прошло 10 минут, телефон оставался в стороне.",
-        minutes: 10,
-        directionId: "focus",
-        skillId: "single-task",
-        goalId: null,
-        goalUnits: 0,
-        done: false,
-        completedAt: null,
-        fromAi: false,
-        lastCompletedDate: dateOffset(-1),
-        completionDates: [dateOffset(-2), dateOffset(-1)],
-        habitStreak: 2,
-        awardedXp: 0,
-        reflection: null,
-        createdAt: now,
-      },
-      {
-        id: "habit-walk",
-        title: "Прогулка без ленты",
-        type: "HABIT",
-        difficulty: 1,
-        xp: 10,
-        description: "Спокойная прогулка, чтобы сменить контекст и вернуть энергию.",
-        completionCriteria: "Пройдено не менее 10 минут без соцсетей.",
-        minutes: 10,
-        directionId: "body",
-        skillId: "movement",
-        goalId: "walks",
-        goalUnits: 1,
-        done: false,
-        completedAt: null,
-        fromAi: false,
-        lastCompletedDate: dateOffset(-1),
-        completionDates: [dateOffset(-1)],
-        habitStreak: 1,
-        awardedXp: 0,
-        reflection: null,
-        createdAt: now,
-      },
-      {
-        id: "main-next-step",
-        title: "Выбрать следующий шаг проекта",
-        type: "MAIN",
-        difficulty: 1,
-        xp: 80,
-        description: "Не строить большой план. Найти одно действие, которое сдвинет проект сегодня.",
-        completionCriteria: "Записан один шаг, который можно завершить максимум за 25 минут.",
-        minutes: 25,
-        directionId: "focus",
-        skillId: "planning",
-        goalId: "deep-work",
-        goalUnits: 0.5,
-        done: false,
-        completedAt: null,
-        fromAi: false,
-        lastCompletedDate: null,
-        completionDates: [],
-        habitStreak: 0,
-        awardedXp: 0,
-        reflection: null,
-        createdAt: now,
-      },
-      {
-        id: "side-inbox",
-        title: "Разобрать пять входящих",
-        type: "SIDE",
-        difficulty: 1,
-        xp: 20,
-        description: "Убрать небольшой хвост, не превращая задачу в генеральную уборку.",
-        completionCriteria: "Ровно пять сообщений обработаны: ответ, делегирование или архив.",
-        minutes: 15,
-        directionId: "focus",
-        skillId: "attention",
-        goalId: null,
-        goalUnits: 0,
-        done: false,
-        completedAt: null,
-        fromAi: false,
-        lastCompletedDate: null,
-        completionDates: [],
-        habitStreak: 0,
-        awardedXp: 0,
-        reflection: null,
-        createdAt: now,
-      },
-      {
-        id: "done-first",
-        title: "Составить карту недели",
-        type: "SIDE",
-        difficulty: 1,
-        xp: 20,
-        description: "Первый завершённый квест уже в архиве.",
-        completionCriteria: "На карте отмечены три главных события недели.",
-        minutes: 15,
-        directionId: "focus",
-        skillId: "planning",
-        goalId: null,
-        goalUnits: 0,
-        done: true,
-        completedAt: now,
-        fromAi: false,
-        lastCompletedDate: null,
-        completionDates: [],
-        habitStreak: 0,
-        awardedXp: 20,
-        reflection: null,
-        createdAt: now,
-      },
-    ],
-    lore: [
-      {
-        id: "lore-start",
-        title: "Глава I · Точка сборки",
-        text: "Герой не ждёт вдохновения. Он выбирает маленький следующий шаг — и возвращает себе управление.",
-        createdAt: now,
-      },
-    ],
+    directions: [],
+    skills: [],
+    goals: [],
+    quests: [],
+    lore: [],
     settings: {
       theme: "dark",
       preset: "rose",
       confirmCriteria: true,
       onboardingSeen: false,
     },
-    updatedAt: now,
+    updatedAt: new Date().toISOString(),
   };
+}
+
+export function isLegacyDemoSave(value: unknown): boolean {
+  if (!value || typeof value !== "object") return false;
+  const state = value as Partial<GameState>;
+  const hero = state.hero;
+  const directions = state.directions ?? [];
+  const skills = state.skills ?? [];
+  const goals = state.goals ?? [];
+  const quests = state.quests ?? [];
+  const lore = state.lore ?? [];
+  return hero?.name === "Алекс" &&
+    hero.xp === 120 &&
+    hero.totalCompleted === 4 &&
+    hero.streakDays === 3 &&
+    directions.length === 2 &&
+    directions.some((item) => item.id === "focus" && item.xp === 80) &&
+    directions.some((item) => item.id === "body" && item.xp === 40) &&
+    skills.length === 5 &&
+    goals.length === 2 &&
+    quests.length === 5 &&
+    quests.some((item) => item.id === "done-first" && item.done) &&
+    lore.some((item) => item.id === "lore-start");
 }
