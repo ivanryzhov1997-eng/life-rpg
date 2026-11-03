@@ -12,11 +12,16 @@ export default function Skills() {
   const directions = useGameStore((state) => state.directions);
   const skills = useGameStore((state) => state.skills);
   const addDirection = useGameStore((state) => state.addDirection);
+  const updateDirection = useGameStore((state) => state.updateDirection);
+  const deleteDirection = useGameStore((state) => state.deleteDirection);
   const addSkill = useGameStore((state) => state.addSkill);
   const updateSkill = useGameStore((state) => state.updateSkill);
   const deleteSkill = useGameStore((state) => state.deleteSkill);
   const [selectedId, setSelectedId] = useState(directions[0]?.id ?? "");
   const [directionOpen, setDirectionOpen] = useState(false);
+  const [directionEditOpen, setDirectionEditOpen] = useState(false);
+  const [editDirectionName, setEditDirectionName] = useState("");
+  const [editDirectionDescription, setEditDirectionDescription] = useState("");
   const [skillOpen, setSkillOpen] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -55,6 +60,7 @@ export default function Skills() {
         <div className="mb-4"><p className="game-label">AI / LIFE RPG</p><h2 id="ai-tools-empty" className="mt-1 text-lg font-semibold">ИИ-наставник</h2><p className="mt-1 text-sm text-muted-foreground">Подготовка квестов, диагностика и построение дерева навыков.</p></div>
         <AiPanel authenticated={isAuthenticated} />
       </section>
+      <Modal open={directionEditOpen} onOpenChange={setDirectionEditOpen} title="Изменить направление" description="Квесты и накопленный опыт сохранятся."><form onSubmit={(event) => { event.preventDefault(); if (editDirectionName.trim()) { updateDirection(selected.id, { name: editDirectionName, description: editDirectionDescription }); setDirectionEditOpen(false); } }} className="space-y-4 pt-2"><label className="block text-sm font-medium">Название<input className="field mt-1.5" value={editDirectionName} onChange={(event) => setEditDirectionName(event.target.value)} required maxLength={100} /></label><label className="block text-sm font-medium">Описание<textarea className="field mt-1.5" value={editDirectionDescription} onChange={(event) => setEditDirectionDescription(event.target.value)} maxLength={500} /></label><button type="submit" className="press-button w-full rounded-xl px-4 text-sm font-semibold">Сохранить</button></form></Modal>
       <DirectionModal open={directionOpen} onOpenChange={setDirectionOpen} name={name} setName={setName} description={description} setDescription={setDescription} onSubmit={submitDirection} />
     </>
   );
@@ -108,6 +114,7 @@ export default function Skills() {
       </div>
 
       <section className="surface mb-7 p-5" aria-label={`Стадия направления ${selected.name}`}>
+        <div className="mb-3 flex justify-end gap-2"><button type="button" className="quiet-button inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-xs" onClick={() => { setEditDirectionName(selected.name); setEditDirectionDescription(selected.description); setDirectionEditOpen(true); }}><Pencil size={14} />Изменить направление</button><button type="button" disabled={directions.length <= 1} className="quiet-button inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-xs text-destructive disabled:opacity-40" onClick={() => { if (directions.length > 1 && window.confirm(`Удалить направление «${selected.name}»? Его навыки удалятся, квесты перейдут в другое направление, цели станут общими.`)) { deleteDirection(selected.id); setSelectedId(directions.find((item) => item.id !== selected.id)?.id ?? ""); } }}><Trash2 size={14} />Удалить</button></div>
         <div className="flex items-start justify-between gap-4">
           <div><p className="game-label">Стадия направления</p><h2 className="mt-2 text-2xl font-semibold tracking-[-0.035em]">{STAGE_LABELS[stage]}</h2><p className="mt-2 max-w-[55ch] text-sm text-muted-foreground">{selected.description}</p></div>
           <GitBranch className="text-muted-foreground" size={28} strokeWidth={1.4} aria-hidden="true" />
