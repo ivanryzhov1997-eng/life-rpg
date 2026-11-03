@@ -73,6 +73,8 @@ export const heroSchema = z.object({
   level: z.number().int().min(1),
   streakDays: z.number().int().nonnegative(),
   activityDates: z.array(z.string()),
+  restDays: z.array(z.string()).default([]),
+  equippedTitle: z.string().nullable().default(null),
   totalCompleted: z.number().int().nonnegative(),
   habitCompletions: z.number().int().nonnegative(),
   bossCompleted: z.number().int().nonnegative(),
