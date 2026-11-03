@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
+import { toast } from "sonner";
 import { QUEST_TYPE_LABELS, type Quest, type QuestType } from "@contracts/game";
 import { useGameStore } from "@/store/gameStore";
 import { QuestCard } from "@/components/game/QuestCard";
@@ -11,14 +12,18 @@ type Filter = "ALL" | Exclude<QuestType, "HABIT">;
 
 export default function Quests() {
   const quests = useGameStore((state) => state.quests);
+  const deleteQuest = useGameStore((state) => state.deleteQuest);
+  const duplicateQuest = useGameStore((state) => state.duplicateQuest);
   const [tab, setTab] = useState<"active" | "done">("active");
   const [filter, setFilter] = useState<Filter>("ALL");
   const [formOpen, setFormOpen] = useState(false);
   const [formType, setFormType] = useState<QuestType>("SIDE");
   const [selected, setSelected] = useState<Quest | null>(null);
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<"newest" | "shortest" | "xp">("newest");
 
   const habits = useMemo(() => quests.filter((quest) => quest.type === "HABIT"), [quests]);
-  const active = useMemo(() => quests.filter((quest) => quest.type !== "HABIT" && !quest.done && (filter === "ALL" || quest.type === filter)), [quests, filter]);
+  const active = useMemo(() => quests.filter((quest) => quest.type !== "HABIT" && !quest.done && (filter === "ALL" || quest.type === filter) && `${quest.title} ${quest.description} ${quest.completionCriteria}`.toLowerCase().includes(search.toLowerCase())).sort((a, b) => sort === "shortest" ? a.minutes - b.minutes : sort === "xp" ? b.xp - a.xp : b.createdAt.localeCompare(a.createdAt)), [quests, filter, search, sort]);
   const done = useMemo(() => quests.filter((quest) => quest.type !== "HABIT" && quest.done).sort((a, b) => (b.completedAt ?? "").localeCompare(a.completedAt ?? "")), [quests]);
   const openForm = (type: QuestType) => { setFormType(type); setFormOpen(true); };
 
@@ -39,12 +44,16 @@ export default function Quests() {
           <section className="mb-8" aria-labelledby="habit-block">
             <SectionHeading title="Привычки" meta="ежедневный reset" action={<button type="button" onClick={() => openForm("HABIT")} className="quiet-button rounded-lg px-3 text-xs">Добавить</button>} />
             <div id="habit-block">
-              {habits.length ? habits.map((quest) => <QuestCard key={quest.id} quest={quest} onComplete={setSelected} />) : <EmptyState title="Нет ежедневного ритуала" text="Добавьте действие на 2–15 минут. Его можно отметить за три секунды и снять отметку сегодня." actionLabel="Создать привычку" onAction={() => openForm("HABIT")} />}
+              {habits.length ? habits.map((quest) => <QuestCard key={quest.id} quest={quest} onComplete={setSelected} onDelete={(item) => { if (window.confirm(`Удалить квест «${item.title}»?`)) { deleteQuest(item.id); toast.success("Квест удалён"); } }} onDuplicate={(item) => { duplicateQuest(item.id); toast.success("Квест скопирован"); }} />) : <EmptyState title="Нет ежедневного ритуала" text="Добавьте действие на 2–15 минут. Его можно отметить за три секунды и снять отметку сегодня." actionLabel="Создать привычку" onAction={() => openForm("HABIT")} />}
             </div>
           </section>
 
           <section aria-labelledby="one-time-block">
             <SectionHeading title="Разовые квесты" meta={`${active.length} активных`} />
+            <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+              <label className="relative"><Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input className="field pl-9" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Поиск по квестам" aria-label="Поиск по квестам" /></label>
+              <select className="field sm:w-48" value={sort} onChange={(event) => setSort(event.target.value as typeof sort)} aria-label="Сортировка"><option value="newest">Сначала новые</option><option value="shortest">Сначала короткие</option><option value="xp">Больше XP</option></select>
+            </div>
             <div className="mb-3 flex gap-2 overflow-x-auto pb-1" aria-label="Фильтр типа квеста">
               {(["ALL", "MAIN", "SIDE", "BOSS"] as Filter[]).map((item) => (
                 <button key={item} type="button" onClick={() => setFilter(item)} aria-pressed={filter === item} className={`min-h-11 shrink-0 rounded-full border px-4 text-xs ${filter === item ? "border-foreground text-foreground" : "border-border text-muted-foreground"}`}>
