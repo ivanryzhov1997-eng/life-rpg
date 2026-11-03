@@ -44,10 +44,13 @@ type GameActions = {
   duplicateQuest: (id: string) => string | null;
   acceptAiDrafts: (directionId: string, drafts: AiQuestDraft[]) => void;
   addDirection: (name: string, description: string) => void;
+  updateDirection: (id: string, input: { name: string; description: string }) => void;
+  deleteDirection: (id: string) => void;
   addSkill: (directionId: string, parentId: string | null, name: string) => string;
   updateSkill: (id: string, input: { name: string; parentId: string | null }) => void;
   deleteSkill: (id: string) => void;
   addGoal: (input: { title: string; horizon: Horizon; target: number; unit: string; directionId: string | null }) => void;
+  updateGoal: (id: string, input: { title: string; horizon: Horizon; target: number; unit: string; directionId: string | null }) => void;
   setGoalProgress: (id: string, current: number) => void;
   deleteGoal: (id: string) => void;
   setHeroName: (name: string) => void;
@@ -340,6 +343,10 @@ export const useGameStore = create<GameStore>()(
         }));
       },
 
+      updateDirection: (directionId, input) => set((state) => ({ directions: state.directions.map((direction) => direction.id === directionId ? { ...direction, name: input.name.trim(), description: input.description.trim() } : direction), updatedAt: now() })),
+
+      deleteDirection: (directionId) => set((state) => ({ directions: state.directions.filter((direction) => direction.id !== directionId), skills: state.skills.filter((skill) => skill.directionId !== directionId), quests: state.quests.map((quest) => quest.directionId === directionId ? { ...quest, directionId: state.directions.find((direction) => direction.id !== directionId)?.id ?? "", skillId: null } : quest), goals: state.goals.map((goal) => goal.directionId === directionId ? { ...goal, directionId: null } : goal), updatedAt: now() })),
+
       addSkill: (directionId, parentId, name) => {
         const skillId = id();
         set((state) => ({
@@ -372,6 +379,8 @@ export const useGameStore = create<GameStore>()(
         const goal: Goal = { ...input, id: id(), current: 0, createdAt: now() };
         set((state) => ({ goals: [...state.goals, goal], updatedAt: now() }));
       },
+
+      updateGoal: (goalId, input) => set((state) => ({ goals: state.goals.map((goal) => goal.id === goalId ? { ...goal, ...input, current: Math.min(input.target, goal.current) } : goal), updatedAt: now() })),
 
       setGoalProgress: (goalId, current) => set((state) => ({ goals: state.goals.map((goal) => goal.id === goalId ? { ...goal, current: Math.max(0, Math.min(goal.target, current)) } : goal), updatedAt: now() })),
 
