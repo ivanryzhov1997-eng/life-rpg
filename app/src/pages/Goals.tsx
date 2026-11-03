@@ -10,6 +10,7 @@ export default function Goals() {
   const directions = useGameStore((state) => state.directions);
   const quests = useGameStore((state) => state.quests);
   const addGoal = useGameStore((state) => state.addGoal);
+  const setGoalProgress = useGameStore((state) => state.setGoalProgress);
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [horizon, setHorizon] = useState<Horizon>("short");
