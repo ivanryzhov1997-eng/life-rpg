@@ -12,7 +12,6 @@ export function QuestForm({ open, onOpenChange, defaultType = "SIDE", initialQue
   const goals = useGameStore((state) => state.goals);
   const addQuest = useGameStore((state) => state.addQuest);
   const updateQuest = useGameStore((state) => state.updateQuest);
-  const updateQuest = useGameStore((state) => state.updateQuest);
   const [title, setTitle] = useState("");
   const [type, setType] = useState<QuestType>(defaultType);
   const [difficulty, setDifficulty] = useState(1);
