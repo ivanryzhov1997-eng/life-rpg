@@ -36,6 +36,7 @@ type CompletionResult = { xp: number; luck: boolean; levelUp: boolean } | null;
 type GameActions = {
   completeQuest: (id: string, reflection?: string) => CompletionResult;
   undoHabit: (id: string) => void;
+  undoQuest: (id: string) => void;
   rolloverHabits: () => void;
   addQuest: (input: NewQuestInput) => string;
   updateQuest: (id: string, input: NewQuestInput) => void;
@@ -223,6 +224,44 @@ export const useGameStore = create<GameStore>()(
                 ? { ...goal, current: Math.max(0, goal.current - quest.goalUnits) }
                 : goal,
             ),
+            updatedAt: now(),
+          };
+        });
+      },
+
+      undoQuest: (questId) => {
+        set((state) => {
+          const quest = state.quests.find((item) => item.id === questId);
+          if (!quest || quest.type === "HABIT" || !quest.done || !quest.completedAt) return state;
+          const completedDate = localDateKey(new Date(quest.completedAt));
+          const hasOtherActivity = state.quests.some((item) =>
+            item.id !== questId && (item.type === "HABIT"
+              ? item.completionDates.includes(completedDate)
+              : !!item.completedAt && localDateKey(new Date(item.completedAt)) === completedDate),
+          );
+          const activityDates = hasOtherActivity ? state.hero.activityDates : state.hero.activityDates.filter((date) => date !== completedDate);
+          const heroXp = Math.max(0, state.hero.xp - quest.awardedXp);
+          const timestamp = quest.completedAt;
+          return {
+            hero: {
+              ...state.hero, xp: heroXp, level: levelFromXp(heroXp),
+              activityDates, streakDays: calculateStreak(activityDates),
+              totalCompleted: Math.max(0, state.hero.totalCompleted - 1),
+              bossCompleted: Math.max(0, state.hero.bossCompleted - (quest.type === "BOSS" ? 1 : 0)),
+            },
+            quests: state.quests.map((item) => item.id === questId
+              ? { ...item, done: false, completedAt: null, awardedXp: 0, reflection: null }
+              : item),
+            directions: state.directions.map((direction) => {
+              if (direction.id !== quest.directionId) return direction;
+              const xp = Math.max(0, direction.xp - quest.awardedXp);
+              return { ...direction, xp, stage: stageFromXp(xp) };
+            }),
+            skills: state.skills.map((skill) => skill.id === quest.skillId
+              ? { ...skill, xp: Math.max(0, skill.xp - quest.awardedXp) } : skill),
+            goals: state.goals.map((goal) => goal.id === quest.goalId
+              ? { ...goal, current: Math.max(0, goal.current - quest.goalUnits) } : goal),
+            lore: state.lore.filter((entry) => entry.createdAt !== timestamp),
             updatedAt: now(),
           };
         });
