@@ -54,6 +54,8 @@ type GameActions = {
   setGoalProgress: (id: string, current: number) => void;
   deleteGoal: (id: string) => void;
   setHeroName: (name: string) => void;
+  setEquippedTitle: (title: string | null) => void;
+  markRestDay: () => void;
   setSettings: (settings: Partial<Settings>) => void;
   importState: (state: GameState) => void;
 };
@@ -141,7 +143,7 @@ export const useGameStore = create<GameStore>()(
               ...state.hero,
               xp: heroXp,
               level,
-              streakDays: calculateStreak(activityDates),
+              streakDays: calculateStreak([...activityDates, ...(state.hero.restDays ?? [])]),
               activityDates,
               totalCompleted: state.hero.totalCompleted + 1,
               habitCompletions: state.hero.habitCompletions + (isHabit ? 1 : 0),
@@ -201,7 +203,7 @@ export const useGameStore = create<GameStore>()(
               xp: Math.max(0, state.hero.xp - awardedXp),
               level: levelFromXp(Math.max(0, state.hero.xp - awardedXp)),
               activityDates,
-              streakDays: calculateStreak(activityDates),
+              streakDays: calculateStreak([...activityDates, ...(state.hero.restDays ?? [])]),
               totalCompleted: Math.max(0, state.hero.totalCompleted - 1),
               habitCompletions: Math.max(0, state.hero.habitCompletions - 1),
             },
@@ -282,7 +284,7 @@ export const useGameStore = create<GameStore>()(
               ? { ...quest, done: false, completedAt: null, awardedXp: 0 }
               : quest,
           ),
-          hero: { ...state.hero, streakDays: calculateStreak(state.hero.activityDates) },
+          hero: { ...state.hero, streakDays: calculateStreak([...state.hero.activityDates, ...(state.hero.restDays ?? [])]) },
         }));
       },
 
@@ -391,6 +393,13 @@ export const useGameStore = create<GameStore>()(
       deleteGoal: (goalId) => set((state) => ({ goals: state.goals.filter((goal) => goal.id !== goalId), quests: state.quests.map((quest) => quest.goalId === goalId ? { ...quest, goalId: null, goalUnits: 0 } : quest), updatedAt: now() })),
 
       setHeroName: (name) => set({ hero: { ...get().hero, name: name.trim() || "Герой" }, updatedAt: now() }),
+      setEquippedTitle: (title) => set((state) => ({ hero: { ...state.hero, equippedTitle: title }, updatedAt: now() })),
+      markRestDay: () => set((state) => {
+        const today = localDateKey();
+        if (state.hero.activityDates.includes(today) || (state.hero.restDays ?? []).includes(today)) return state;
+        const restDays = [...(state.hero.restDays ?? []), today];
+        return { hero: { ...state.hero, restDays, streakDays: calculateStreak([...state.hero.activityDates, ...restDays]) }, updatedAt: now() };
+      }),
       setSettings: (settings) =>
         set((state) => ({ settings: { ...state.settings, ...settings }, updatedAt: now() })),
       importState: (state) => set({ ...state }),
