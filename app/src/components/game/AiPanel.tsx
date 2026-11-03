@@ -5,9 +5,10 @@ import { QUEST_TYPE_LABELS, STAGE_LABELS } from "@contracts/game";
 import { trpc } from "@/providers/trpc";
 import { useGameStore } from "@/store/gameStore";
 
-type Mode = "day" | "mentor" | "diagnose" | "tree";
+type Mode = "day" | "direction" | "mentor" | "diagnose" | "tree";
 const modes: { id: Mode; label: string }[] = [
   { id: "day", label: "На день" },
+  { id: "direction", label: "Для направления" },
   { id: "mentor", label: "Наставник" },
   { id: "diagnose", label: "Диагноз" },
   { id: "tree", label: "Дерево" },
@@ -68,8 +69,8 @@ export function AiPanel({ authenticated }: { authenticated: boolean }) {
       </div>
       <div className="space-y-3">
         <label className="block text-sm font-medium">Направление · {STAGE_LABELS[direction.stage]}<select className="field mt-1.5" value={direction.id} onChange={(event) => { setDirectionId(event.target.value); assist.reset(); }}>{directions.map((item) => <option key={item.id} value={item.id}>{item.name} · {STAGE_LABELS[item.stage]}</option>)}</select></label>
-        {(mode === "day" || mode === "mentor") && <div className="grid grid-cols-2 gap-3"><label className="block text-sm font-medium">Минут<input type="number" min={5} max={240} className="field mt-1.5" value={minutes} onChange={(event) => setMinutes(Number(event.target.value))} /></label><label className="block text-sm font-medium">Энергия<select className="field mt-1.5" value={energy} onChange={(event) => setEnergy(event.target.value as typeof energy)}><option value="low">Низкая</option><option value="medium">Средняя</option><option value="high">Высокая</option></select></label></div>}
-        <label className="block text-sm font-medium">{mode === "diagnose" ? "Опишите текущий уровень" : mode === "tree" ? "Что хотите уметь" : "Контекст или вопрос"}<textarea className="field mt-1.5" value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={1200} placeholder={mode === "day" ? "Что важно учесть сегодня?" : "Например, знаю основы, но быстро теряю фокус…"} /></label>
+        {(mode === "day" || mode === "direction" || mode === "mentor") && <div className="grid grid-cols-2 gap-3"><label className="block text-sm font-medium">Минут<input type="number" min={5} max={240} className="field mt-1.5" value={minutes} onChange={(event) => setMinutes(Number(event.target.value))} /></label><label className="block text-sm font-medium">Энергия<select className="field mt-1.5" value={energy} onChange={(event) => setEnergy(event.target.value as typeof energy)}><option value="low">Низкая</option><option value="medium">Средняя</option><option value="high">Высокая</option></select></label></div>}
+        <label className="block text-sm font-medium">{mode === "diagnose" ? "Опишите текущий уровень" : mode === "tree" ? "Что хотите уметь" : mode === "direction" ? "Какая цель у направления и что уже умеете?" : "Контекст или вопрос"}<textarea className="field mt-1.5" value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={1200} placeholder={mode === "day" ? "Что важно учесть сегодня?" : mode === "direction" ? "Например, хочу научиться играть на гитаре с нуля…" : "Например, знаю основы, но быстро теряю фокус…"} /></label>
         <button type="button" onClick={generate} disabled={assist.isPending || statusQuery.data?.available === false} className="press-button w-full rounded-xl px-4 text-sm font-semibold">{assist.isPending ? "Готовим черновик…" : "Получить черновик"}</button>
         {statusQuery.data?.available === false && <p role="status" className="text-xs text-muted-foreground">ИИ сейчас отключён, но это не блокирует ручное ядро и локальный прогресс.</p>}
         {assist.error && <p role="alert" className="border-y border-border py-3 text-sm">{assist.error.message}</p>}
