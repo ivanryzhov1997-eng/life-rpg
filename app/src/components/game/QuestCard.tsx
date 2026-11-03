@@ -1,9 +1,9 @@
-import { Check, Clock3, Copy, RotateCcw, Sparkles, Trash2 } from "lucide-react";
+import { Check, Clock3, Copy, Pencil, RotateCcw, Sparkles, Trash2 } from "lucide-react";
 import type { Quest } from "@contracts/game";
 import { useGameStore } from "@/store/gameStore";
 import { TypeBadge } from "./ui";
 
-export function QuestCard({ quest, onComplete, archived = false, onDelete, onDuplicate }: { quest: Quest; onComplete: (quest: Quest) => void; archived?: boolean; onDelete?: (quest: Quest) => void; onDuplicate?: (quest: Quest) => void }) {
+export function QuestCard({ quest, onComplete, archived = false, onDelete, onDuplicate, onEdit, onUndo }: { quest: Quest; onComplete: (quest: Quest) => void; archived?: boolean; onDelete?: (quest: Quest) => void; onDuplicate?: (quest: Quest) => void; onEdit?: (quest: Quest) => void; onUndo?: (quest: Quest) => void }) {
   const direction = useGameStore((state) => state.directions.find((item) => item.id === quest.directionId));
   const undoHabit = useGameStore((state) => state.undoHabit);
   const isHabit = quest.type === "HABIT";
@@ -25,7 +25,7 @@ export function QuestCard({ quest, onComplete, archived = false, onDelete, onDup
             <span className="ml-auto font-mono text-sm font-semibold text-foreground">+{quest.xp} XP</span>
           </div>
         </div>
-        {!archived && !isHabit && <div className="flex shrink-0 flex-col gap-1">
+        {!archived && !isHabit && <div className="flex shrink-0 flex-col gap-1">\n          <button type="button" onClick={() => onEdit?.(quest)} className="quiet-button grid h-9 w-9 place-items-center rounded-lg" aria-label={`Редактировать: ${quest.title}`}><Pencil size={15} /></button>
           <button type="button" onClick={() => onDuplicate?.(quest)} className="quiet-button grid h-9 w-9 place-items-center rounded-lg" aria-label={`Копировать: ${quest.title}`}><Copy size={15} /></button>
           <button type="button" onClick={() => onDelete?.(quest)} className="quiet-button grid h-9 w-9 place-items-center rounded-lg text-destructive" aria-label={`Удалить: ${quest.title}`}><Trash2 size={15} /></button>
         </div>}
