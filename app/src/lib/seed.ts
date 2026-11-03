@@ -9,6 +9,8 @@ export function createInitialState(): GameState {
       level: levelFromXp(0),
       streakDays: 0,
       activityDates: [],
+      restDays: [],
+      equippedTitle: null,
       totalCompleted: 0,
       habitCompletions: 0,
       bossCompleted: 0,
