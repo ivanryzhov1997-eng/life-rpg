@@ -38,7 +38,17 @@ export default function Skills() {
     setName(""); setParentId(""); setSkillOpen(false);
   };
 
-  if (!selected) return <><PageHeader title="Навыки" /><EmptyState title="Создайте первое направление" text="Например, фокус, ремесло или энергия. Дерево начнётся с одного корневого навыка." actionLabel="Добавить направление" onAction={() => setDirectionOpen(true)} /><DirectionModal open={directionOpen} onOpenChange={setDirectionOpen} name={name} setName={setName} description={description} setDescription={setDescription} onSubmit={submitDirection} /></>;
+  if (!selected) return (
+    <>
+      <PageHeader title="Навыки" description="Создайте направление развития, чтобы ИИ мог строить для него квесты и дерево навыков." />
+      <EmptyState title="Создайте первое направление" text="Например, английский, программирование или гитара. После создания ИИ сможет учитывать цель, стадию и ваши навыки." actionLabel="Добавить направление" onAction={() => setDirectionOpen(true)} />
+      <section className="surface mt-7 p-5" aria-labelledby="ai-tools-empty">
+        <div className="mb-4"><p className="game-label">AI / LIFE RPG</p><h2 id="ai-tools-empty" className="mt-1 text-lg font-semibold">ИИ-наставник</h2><p className="mt-1 text-sm text-muted-foreground">Подготовка квестов, диагностика и построение дерева навыков.</p></div>
+        <AiPanel authenticated={isAuthenticated} />
+      </section>
+      <DirectionModal open={directionOpen} onOpenChange={setDirectionOpen} name={name} setName={setName} description={description} setDescription={setDescription} onSubmit={submitDirection} />
+    </>
+  );
 
   const directionSkills = skills.filter((skill) => skill.directionId === selected.id);
   const roots = directionSkills.filter((skill) => !skill.parentId);
