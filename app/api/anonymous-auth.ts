@@ -48,7 +48,9 @@ auth.post("/recovery-code", async (c) => {
 });
 
 auth.post("/recover", async (c) => {
-  const body = await c.req.json<{ code?: string }>().catch(() => ({}));
+  const body = await c.req.json<{ code?: string }>().catch(
+    (): { code?: string } => ({}),
+  );
   const code = body.code?.trim().replace(/\s+/g, "").toUpperCase();
   if (!code || code.length < 20 || code.length > 80) {
     return c.json({ error: "Invalid recovery code" }, 400);
