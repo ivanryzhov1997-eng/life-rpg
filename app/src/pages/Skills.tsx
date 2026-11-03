@@ -4,8 +4,11 @@ import { STAGE_LABELS, stageFromXp } from "@contracts/game";
 import { useGameStore } from "@/store/gameStore";
 import { Modal } from "@/components/game/Modal";
 import { EmptyState, PageHeader, ProgressBar } from "@/components/game/ui";
+import { AiPanel } from "@/components/game/AiPanel";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Skills() {
+  const { isAuthenticated } = useAuth();
   const directions = useGameStore((state) => state.directions);
   const skills = useGameStore((state) => state.skills);
   const addDirection = useGameStore((state) => state.addDirection);
@@ -75,6 +78,11 @@ export default function Skills() {
         </div>
         <div className="mt-5"><ProgressBar value={stagePercent} label={`Прогресс направления ${selected.name}`} /></div>
         <p className="mt-2 font-mono text-xs text-muted-foreground">{selected.xp} XP{stage !== "pro" ? ` · ${nextThreshold} XP до следующей стадии` : " · максимальная стадия"}</p>
+      </section>
+
+      <section className="surface mb-7 p-5" aria-labelledby="ai-tools">
+        <div className="mb-4"><p className="game-label">AI / LIFE RPG</p><h2 id="ai-tools" className="mt-1 text-lg font-semibold">ИИ-наставник</h2><p className="mt-1 text-sm text-muted-foreground">Диагностика, квесты на день и направление, построение дерева навыков.</p></div>
+        <AiPanel authenticated={isAuthenticated} />
       </section>
 
       <section aria-labelledby="skill-tree">
