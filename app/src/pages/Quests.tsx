@@ -62,7 +62,7 @@ export default function Quests() {
               ))}
             </div>
             <div id="one-time-block">
-              {active.length ? active.map((quest) => <QuestCard key={quest.id} quest={quest} onComplete={setSelected} />) : <EmptyState title="Здесь стало тихо" text="Добавьте следующий шаг или измените фильтр. Новичку достаточно одного реалистичного действия." actionLabel="Новый квест" onAction={() => openForm("SIDE")} />}
+              {active.length ? active.map((quest) => <QuestCard key={quest.id} quest={quest} onComplete={setSelected} onDelete={(item) => { if (window.confirm(`Удалить квест «${item.title}»?`)) { deleteQuest(item.id); toast.success("Квест удалён"); } }} onDuplicate={(item) => { duplicateQuest(item.id); toast.success("Квест скопирован"); }} />) : <EmptyState title="Здесь стало тихо" text="Добавьте следующий шаг или измените фильтр. Новичку достаточно одного реалистичного действия." actionLabel="Новый квест" onAction={() => openForm("SIDE")} />}
             </div>
           </section>
         </>
