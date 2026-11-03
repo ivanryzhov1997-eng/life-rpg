@@ -1,6 +1,12 @@
 name: RPG-LIFE iPhone preview
 
 on:
+  push:
+    branches:
+      - mobile-check
+    paths:
+      - "app/**"
+      - ".github/workflows/preview.yml"
   workflow_dispatch:
 
 permissions:
