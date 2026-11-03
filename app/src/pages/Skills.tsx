@@ -87,12 +87,22 @@ export default function Skills() {
     const children = directionSkills.filter((item) => item.parentId === skillId);
     const collapsed = collapsedIds.has(skillId);
     if (matchingIds && !matchingIds.has(skillId)) return null;
+    const skillStage = stageFromXp(skill.xp);
+    const skillFloor = skillStage === "novice" ? 0 : skillStage === "intermediate" ? 400 : skillStage === "advanced" ? 1500 : 5000;
+    const skillCeiling = skillStage === "novice" ? 400 : skillStage === "intermediate" ? 1500 : skillStage === "advanced" ? 5000 : 5000;
+    const skillProgress = skillStage === "pro" ? 100 : Math.min(100, ((skill.xp - skillFloor) / (skillCeiling - skillFloor)) * 100);
     return (
       <li key={skill.id} className={treeMode === "map" ? "border-l border-border pl-4" : ""}>
         <div className={"relative flex min-h-16 items-center justify-between gap-3 border-b border-border py-3 " + (depth ? "ml-6 pl-5 " : "") + (treeMode === "map" ? "surface mb-2 min-w-[260px] max-w-[360px] rounded-xl border px-3" : "")}>
           {depth > 0 && <span className="absolute bottom-0 left-0 top-0 border-l border-border" aria-hidden="true" />}
           <div className="min-w-0 flex-1"><p className="font-medium">{skill.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{depth === 0 ? "Корневой навык" : "Поднавык"}{children.length ? ` · ${children.length} поднавыков` : ""}</p></div>
-          <span className="shrink-0 font-mono text-xs text-muted-foreground">{skill.xp} XP</span>
+          <div className="w-20 shrink-0">
+            <p className="text-right font-mono text-[10px] text-muted-foreground">{skill.xp} XP</p>
+            <p className="text-right text-[10px] text-muted-foreground">{STAGE_LABELS[skillStage]}</p>
+            <div className="mt-1 h-1 overflow-hidden rounded-full bg-secondary" aria-label={`Прогресс навыка: ${Math.round(skillProgress)} процентов`}>
+              <div className="h-full rounded-full bg-primary" style={{ width: skillProgress + "%" }} />
+            </div>
+          </div>
           {children.length > 0 && <button type="button" className="quiet-button grid h-9 w-9 shrink-0 place-items-center rounded-lg" aria-label={collapsed ? `Развернуть ${skill.name}` : `Свернуть ${skill.name}`} aria-expanded={!collapsed} onClick={() => setCollapsedIds((current) => { const next = new Set(current); if (next.has(skillId)) next.delete(skillId); else next.add(skillId); return next; })}>{collapsed ? <ChevronRight size={16} aria-hidden="true" /> : <ChevronDown size={16} aria-hidden="true" />}</button>}
           <div className="flex shrink-0 items-center gap-1">
             <button type="button" className="quiet-button grid h-9 w-9 place-items-center rounded-lg" aria-label={`Редактировать навык ${skill.name}`} onClick={() => { setEditingSkill(skill.id); setEditName(skill.name); setEditParentId(skill.parentId ?? ""); }}><Pencil size={16} aria-hidden="true" /></button>
