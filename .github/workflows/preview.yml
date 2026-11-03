@@ -7,6 +7,7 @@ on:
     paths:
       - "app/**"
       - ".github/workflows/preview.yml"
+      - ".github/preview-refresh.txt"
   workflow_dispatch:
 
 permissions:
