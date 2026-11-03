@@ -15,7 +15,7 @@ import {
   type QuestType,
   type Settings,
 } from "@contracts/game";
-import { createInitialState } from "@/lib/seed";
+import { createInitialState, isLegacyDemoSave } from "@/lib/seed";
 
 export type NewQuestInput = {
   title: string;
@@ -289,7 +289,13 @@ export const useGameStore = create<GameStore>()(
     }),
     {
       name: "life-rpg-local-v1",
-      version: 1,
+      version: 2,
+      migrate: (persistedState, version) => {
+        if (version < 2 && isLegacyDemoSave(persistedState)) {
+          return createInitialState();
+        }
+        return persistedState as GameState;
+      },
       storage: createJSONStorage(() => offlineStorage),
       partialize: (state) => ({
         schemaVersion: state.schemaVersion,
