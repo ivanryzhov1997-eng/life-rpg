@@ -1,0 +1,70 @@
+name: RPG-LIFE iPhone preview
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - ".github/workflows/preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy-preview:
+    environment: github-pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current published site
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+
+      - name: Checkout new RPG-LIFE version
+        uses: actions/checkout@v4
+        with:
+          ref: mobile-check
+          path: source
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: source/app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: source/app
+        run: npm ci
+
+      - name: Build preview
+        working-directory: source/app
+        run: npm run build
+
+      - name: Assemble Pages artifact (keep current root site)
+        run: |
+          mkdir -p artifact/preview
+          cp -a site/. artifact/
+          cp -a source/app/dist/public/. artifact/preview/
+          cp artifact/preview/index.html artifact/preview/404.html
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: artifact
+
+      - name: Deploy preview
+        id: deployment
+        uses: actions/deploy-pages@v4
