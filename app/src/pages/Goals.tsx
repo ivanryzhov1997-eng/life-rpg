@@ -40,6 +40,7 @@ export default function Goals() {
               <div className="flex items-start justify-between gap-4"><div><h3 className="text-base font-medium">{goal.title}</h3><p className="mt-1 text-xs text-muted-foreground">{direction?.name ?? "Общая цель"} · {linked} связанных активных квестов</p></div><p className="shrink-0 font-mono text-sm"><strong className="text-xl text-foreground">{goal.current}</strong><span className="text-muted-foreground"> / {goal.target}</span></p></div>
               <div className="mt-4"><ProgressBar value={(goal.current / goal.target) * 100} label={`${goal.title}: ${goal.current} из ${goal.target} ${goal.unit}`} /></div>
               <p className="mt-2 text-xs text-muted-foreground">{goal.unit}{goal.current >= goal.target ? " · цель достигнута" : ""}</p>
+              <div className="mt-3 flex items-center gap-2"><button type="button" className="quiet-button min-h-9 rounded-lg px-3 text-xs" onClick={() => setGoalProgress(goal.id, goal.current - 1)}>−1</button><button type="button" className="quiet-button min-h-9 rounded-lg px-3 text-xs" onClick={() => setGoalProgress(goal.id, goal.current + 1)}>+1</button><span className="text-xs text-muted-foreground">Ручная корректировка прогресса</span></div>
             </article>;
           })}
         </section>;
