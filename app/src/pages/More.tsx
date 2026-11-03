@@ -104,8 +104,10 @@ export default function More() {
         <h2 id="data-title" className="mb-2 text-lg font-semibold">Экспорт и импорт</h2>
         <p className="mb-4 text-sm leading-relaxed text-muted-foreground">JSON включает квесты, привычки, дерево, цели и лор. Схема версионируется для миграций.</p>
         <div className="grid grid-cols-2 gap-3">
-          <button type="button" onClick={exportData} className="quiet-button inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm"><Download size={16} aria-hidden="true" />Экспорт</button>
-          <button type="button" onClick={() => fileRef.current?.click()} className="quiet-button inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm"><Upload size={16} aria-hidden="true" />Импорт</button>
+          <button type="button" onClick={exportData} className="quiet-button inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm"><Download size={16} aria-hidden="true" />JSON</button>
+          <button type="button" onClick={exportMarkdown} className="quiet-button inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm"><FileText size={16} aria-hidden="true" />Markdown</button>
+          <button type="button" onClick={() => fileRef.current?.click()} className="quiet-button inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm"><Upload size={16} aria-hidden="true" />Заменить</button>
+          <button type="button" onClick={() => { const input = document.createElement("input"); input.type = "file"; input.accept = "application/json,.json"; input.onchange = () => void importData(input.files?.[0], "merge"); input.click(); }} className="quiet-button inline-flex items-center justify-center gap-2 rounded-xl px-3 text-sm"><Merge size={16} aria-hidden="true" />Объединить</button>
           <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(event) => void importData(event.target.files?.[0], "replace")} />
         </div>
       </section>
