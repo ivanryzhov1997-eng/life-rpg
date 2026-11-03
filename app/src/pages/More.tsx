@@ -62,6 +62,8 @@ export default function More() {
             habitCompletions: Math.max(current.hero.habitCompletions, parsed.data.hero.habitCompletions),
             bossCompleted: Math.max(current.hero.bossCompleted, parsed.data.hero.bossCompleted),
             activityDates: [...new Set([...current.hero.activityDates, ...parsed.data.hero.activityDates])],
+            restDays: [...new Set([...(current.hero.restDays ?? []), ...(parsed.data.hero.restDays ?? [])])],
+            equippedTitle: current.hero.equippedTitle ?? parsed.data.hero.equippedTitle ?? null,
           },
           quests: mergeById(current.quests, parsed.data.quests),
           directions: mergeById(current.directions, parsed.data.directions),
