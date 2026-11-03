@@ -37,7 +37,7 @@ export function QuestForm({ open, onOpenChange, defaultType = "SIDE", initialQue
       setGoalId(initialQuest?.goalId ?? "");
       setGoalUnits(initialQuest?.goalUnits ?? 1);
     }
-  }, [open, defaultType, directions]);
+  }, [open, defaultType, directions, initialQuest]);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
