@@ -1,5 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { ChevronDown, ChevronRight, GitBranch, Pencil, Plus, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { ChevronDown, ChevronRight, GitBranch, ListTree, Network, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { STAGE_LABELS, stageFromXp } from "@contracts/game";
 import { useGameStore } from "@/store/gameStore";
 import { Modal } from "@/components/game/Modal";
@@ -25,6 +25,9 @@ export default function Skills() {
   const [editName, setEditName] = useState("");
   const [editParentId, setEditParentId] = useState("");
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
+  const [treeMode, setTreeMode] = useState<"list" | "map">("map");
+  const [treeSearch, setTreeSearch] = useState("");
+  const [treeZoom, setTreeZoom] = useState(100);
   const selected = directions.find((item) => item.id === selectedId) ?? directions[0];
 
   useEffect(() => {
@@ -58,6 +61,17 @@ export default function Skills() {
 
   const directionSkills = skills.filter((skill) => skill.directionId === selected.id);
   const roots = directionSkills.filter((skill) => !skill.parentId);
+  const matchingIds = useMemo(() => {
+    const query = treeSearch.trim().toLocaleLowerCase();
+    if (!query) return null;
+    const matches = new Set<string>();
+    for (const skill of directionSkills) {
+      if (!skill.name.toLocaleLowerCase().includes(query)) continue;
+      let current: (typeof directionSkills)[number] | undefined = skill;
+      while (current) { matches.add(current.id); current = current.parentId ? directionSkills.find((item) => item.id === current?.parentId) : undefined; }
+    }
+    return matches;
+  }, [directionSkills, treeSearch]);
   const stage = stageFromXp(selected.xp);
   const nextThreshold = stage === "novice" ? 400 : stage === "intermediate" ? 1500 : stage === "advanced" ? 5000 : 5000;
   const prevThreshold = stage === "novice" ? 0 : stage === "intermediate" ? 400 : stage === "advanced" ? 1500 : 5000;
@@ -68,9 +82,10 @@ export default function Skills() {
     if (!skill) return null;
     const children = directionSkills.filter((item) => item.parentId === skillId);
     const collapsed = collapsedIds.has(skillId);
+    if (matchingIds && !matchingIds.has(skillId)) return null;
     return (
-      <li key={skill.id}>
-        <div className={`relative flex min-h-16 items-center justify-between gap-3 border-b border-border py-3 ${depth ? "ml-6 pl-5" : ""}`}>
+      <li key={skill.id} className={treeMode === "map" ? "border-l border-border pl-4" : ""}>
+        <div className={"relative flex min-h-16 items-center justify-between gap-3 border-b border-border py-3 " + (depth ? "ml-6 pl-5 " : "") + (treeMode === "map" ? "surface mb-2 min-w-[260px] max-w-[360px] rounded-xl border px-3" : "")}>
           {depth > 0 && <span className="absolute bottom-0 left-0 top-0 border-l border-border" aria-hidden="true" />}
           <div className="min-w-0 flex-1"><p className="font-medium">{skill.name}</p><p className="mt-0.5 text-xs text-muted-foreground">{depth === 0 ? "Корневой навык" : "Поднавык"}{children.length ? ` · ${children.length} поднавыков` : ""}</p></div>
           <span className="shrink-0 font-mono text-xs text-muted-foreground">{skill.xp} XP</span>
@@ -108,8 +123,17 @@ export default function Skills() {
       </section>
 
       <section aria-labelledby="skill-tree">
-        <div className="mb-2 flex items-center justify-between"><h2 id="skill-tree" className="text-lg font-semibold">Дерево · {selected.name}</h2><span className="text-xs text-muted-foreground">{directionSkills.length} узлов</span></div>
-        {roots.length ? <ul>{roots.map((skill) => renderNode(skill.id))}</ul> : <EmptyState title="Ветка ещё не выросла" text="Добавьте корневой навык, затем конкретные поднавыки. Ничего не записывается без вашего подтверждения." actionLabel="Добавить корневой навык" onAction={() => setSkillOpen(true)} />}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3"><div><h2 id="skill-tree" className="text-lg font-semibold">Дерево · {selected.name}</h2><p className="mt-1 text-xs text-muted-foreground">{directionSkills.length} узлов · выберите вид и масштаб</p></div><div className="flex rounded-xl border border-border p-1" aria-label="Режим отображения дерева"><button type="button" onClick={() => setTreeMode("map")} aria-pressed={treeMode === "map"} className={"grid h-9 w-10 place-items-center rounded-lg " + (treeMode === "map" ? "bg-secondary" : "text-muted-foreground")} aria-label="Карта дерева"><Network size={16} /></button><button type="button" onClick={() => setTreeMode("list")} aria-pressed={treeMode === "list"} className={"grid h-9 w-10 place-items-center rounded-lg " + (treeMode === "list" ? "bg-secondary" : "text-muted-foreground")} aria-label="Список дерева"><ListTree size={16} /></button></div></div>
+        {roots.length ? <>
+          <div className="mb-3 flex flex-wrap items-center gap-2"><label className="relative min-w-[180px] flex-1"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" /><input className="field pl-9" value={treeSearch} onChange={(event) => setTreeSearch(event.target.value)} placeholder="Найти навык" aria-label="Поиск навыка в дереве" /></label><button type="button" className="quiet-button min-h-10 rounded-lg px-3 text-xs" onClick={() => setCollapsedIds(new Set())}>Развернуть всё</button><button type="button" className="quiet-button min-h-10 rounded-lg px-3 text-xs" onClick={() => setCollapsedIds(new Set(directionSkills.filter((skill) => directionSkills.some((child) => child.parentId === skill.id)).map((skill) => skill.id)))}>Свернуть всё</button></div>
+          {treeMode === "map" && <div className="mb-3 flex items-center gap-3"><span className="text-xs text-muted-foreground">Масштаб</span><input aria-label="Масштаб карты дерева" type="range" min="60" max="140" step="5" value={treeZoom} onChange={(event) => setTreeZoom(Number(event.target.value))} className="min-w-0 flex-1 accent-[oklch(var(--primary))]" /><span className="w-10 text-right font-mono text-xs text-muted-foreground">{treeZoom}%</span><button type="button" className="quiet-button rounded-lg px-2 py-1 text-xs" onClick={() => setTreeZoom(100)}>Сброс</button></div>}
+          <div className={treeMode === "map" ? "surface overflow-auto rounded-xl p-3" : ""}>
+            <div style={treeMode === "map" ? { width: treeZoom + "%", minWidth: "100%", transform: "scale(" + treeZoom / 100 + ")", transformOrigin: "top left", marginBottom: (treeZoom - 100) * 2 + "px" } : undefined}>
+              <ul className={treeMode === "map" ? "min-w-max" : ""}>{roots.map((skill) => renderNode(skill.id))}</ul>
+            </div>
+          </div>
+          {matchingIds && matchingIds.size === 0 && <p className="mt-3 text-sm text-muted-foreground">Совпадений нет. Попробуйте другое название.</p>}
+        </> : <EmptyState title="Ветка ещё не выросла" text="Добавьте корневой навык, затем конкретные поднавыки. Ничего не записывается без вашего подтверждения." actionLabel="Добавить корневой навык" onAction={() => setSkillOpen(true)} />}
       </section>
 
       <DirectionModal open={directionOpen} onOpenChange={setDirectionOpen} name={name} setName={setName} description={description} setDescription={setDescription} onSubmit={submitDirection} />
