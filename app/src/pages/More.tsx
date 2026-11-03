@@ -48,8 +48,30 @@ export default function More() {
     try {
       const parsed = gameStateSchema.safeParse(JSON.parse(await file.text()));
       if (!parsed.success) throw new Error("invalid");
-      importState(parsed.data);
-      toast.success("Прогресс импортирован");
+      if (mode === "replace") importState(parsed.data);
+      else {
+        const current = gameSnapshot(useGameStore.getState());
+        const mergeById = <T extends { id: string },>(a: T[], b: T[]) => [...new Map([...a, ...b].map((item) => [item.id, item])).values()];
+        importState({
+          ...current,
+          hero: {
+            ...current.hero,
+            xp: Math.max(current.hero.xp, parsed.data.hero.xp),
+            level: Math.max(current.hero.level, parsed.data.hero.level),
+            totalCompleted: Math.max(current.hero.totalCompleted, parsed.data.hero.totalCompleted),
+            habitCompletions: Math.max(current.hero.habitCompletions, parsed.data.hero.habitCompletions),
+            bossCompleted: Math.max(current.hero.bossCompleted, parsed.data.hero.bossCompleted),
+            activityDates: [...new Set([...current.hero.activityDates, ...parsed.data.hero.activityDates])],
+          },
+          quests: mergeById(current.quests, parsed.data.quests),
+          directions: mergeById(current.directions, parsed.data.directions),
+          skills: mergeById(current.skills, parsed.data.skills),
+          goals: mergeById(current.goals, parsed.data.goals),
+          lore: mergeById(current.lore, parsed.data.lore),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      toast.success(mode === "replace" ? "Прогресс заменён" : "Прогресс объединён");
     } catch {
       toast.error("Файл не похож на сейв LIFE RPG текущей версии");
     } finally {
