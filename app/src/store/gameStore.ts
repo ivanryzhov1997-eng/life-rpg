@@ -44,7 +44,7 @@ type GameActions = {
   duplicateQuest: (id: string) => string | null;
   acceptAiDrafts: (directionId: string, drafts: AiQuestDraft[]) => void;
   addDirection: (name: string, description: string) => void;
-  addSkill: (directionId: string, parentId: string | null, name: string) => string;
+  addSkill: (directionId: string, parentId: string | null, name: string) => string;\n  updateSkill: (id: string, input: { name: string; parentId: string | null }) => void;\n  deleteSkill: (id: string) => void;
   addGoal: (input: { title: string; horizon: Horizon; target: number; unit: string; directionId: string | null }) => void;
   setHeroName: (name: string) => void;
   setSettings: (settings: Partial<Settings>) => void;
@@ -345,7 +345,7 @@ export const useGameStore = create<GameStore>()(
         return skillId;
       },
 
-      addGoal: (input) => {
+      updateSkill: (skillId, input) => {\n        set((state) => {\n          const target = state.skills.find((skill) => skill.id === skillId);\n          if (!target || input.parentId === skillId) return state;\n          if (input.parentId && !state.skills.some((skill) => skill.id === input.parentId && skill.directionId === target.directionId)) return state;\n          let parent = input.parentId;\n          while (parent) { if (parent === skillId) return state; parent = state.skills.find((skill) => skill.id === parent)?.parentId ?? null; }\n          return { skills: state.skills.map((skill) => skill.id === skillId ? { ...skill, name: input.name.trim(), parentId: input.parentId } : skill), updatedAt: now() };\n        });\n      },\n\n      deleteSkill: (skillId) => {\n        set((state) => {\n          const remove = new Set([skillId]); let changed = true;\n          while (changed) { changed = false; for (const skill of state.skills) if (skill.parentId && remove.has(skill.parentId) && !remove.has(skill.id)) { remove.add(skill.id); changed = true; } }\n          return { skills: state.skills.filter((skill) => !remove.has(skill.id)), quests: state.quests.map((quest) => quest.skillId && remove.has(quest.skillId) ? { ...quest, skillId: null } : quest), updatedAt: now() };\n        });\n      },\n\n      addGoal: (input) => {
         const goal: Goal = { ...input, id: id(), current: 0, createdAt: now() };
         set((state) => ({ goals: [...state.goals, goal], updatedAt: now() }));
       },
