@@ -1,3 +1,4 @@
 Refresh preview after AI mentor and quest/tree generation UI integration.
 
 AI mentor visibility fix: 38bf99b324452c9400fe7276d35784f62abad769
+AI mentor onboarding UX: two required fields, optional details. Commit fea2016.
