@@ -1841,29 +1841,10 @@
           <div id="authSignedIn" style="display:none"><button class="btn btn-secondary btn-block" type="button" onclick="authSignOut()">Выйти из аккаунта</button></div>
         </div>
         <div class="save-section">
-          <h3>Облачный сейв (опционально)</h3>
-          <p class="text-dim" style="font-size:0.82rem;margin-bottom:10px;line-height:1.45">
-            По умолчанию <strong>выключен</strong>. Прогресс только на этом устройстве.
-            ИИ работает отдельно и не требует облака.
-            Включай только если нужен один сейв на телефон и планшет.
-          </p>
+          <h3>Облачная синхронизация</h3>
+          <p class="text-dim" style="font-size:0.82rem;line-height:1.45;margin-bottom:10px">После входа в аккаунт LIFE RPG сохраняет прогресс в облачном профиле. При первом входе локальный прогресс переносится в облако, если там ещё нет сохранения. При конфликте версий приложение запросит выбор.</p>
           <p id="cloudStatus" class="text-dim" style="font-size:0.8rem;margin-bottom:10px"></p>
-          <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:0.9rem;cursor:pointer">
-            <input type="checkbox" id="cloudEnableChk" style="width:18px;height:18px">
-            Включить синхронизацию через Supabase
-          </label>
-          <div id="cloudFields" style="display:none">
-            <div class="form-group">
-              <label>Supabase Project URL</label>
-              <input type="url" id="cloudSbUrl" placeholder="https://xxxx.supabase.co" autocomplete="off">
-            </div>
-            <div class="form-group">
-              <label>Отдельный anon key (не обязательно тот же, что у ИИ)</label>
-              <input type="text" id="cloudSbAnon" placeholder="sb_publishable_… или eyJ…" autocomplete="off">
-            </div>
-            <button class="btn btn-primary btn-block mb-8" onclick="saveCloudSettings()">Сохранить облако</button>
-            <button class="btn btn-secondary btn-block mb-8" onclick="syncCloudNow()">Синхронизировать сейчас</button>
-          </div>
+          <button class="btn btn-secondary btn-block" type="button" onclick="syncCloudNow()">Синхронизировать сейчас</button>
         </div>
         <div class="save-section">
           <h3>Данные</h3>
@@ -2374,11 +2355,16 @@
       try {await cloudSave(true);const {error}=await supabaseClient.auth.signOut();if(error)throw error;authUser=null;cloudReady=false;setCloudEnabled(false);updateAuthUI();toast('Вы вышли. Локальный прогресс сохранён.','success');}
       catch(e){toast(e.message||'Не удалось выйти','error');}
     }
+    let authSyncPromise = null;
     async function afterAuthReady() {
-      updateAuthUI();
-      const loaded=await cloudLoad();
-      if(!loaded&&!cloudLastError.startsWith('конфликт сохранений')) await cloudSave(true);
-      updateCloudStatusLine();
+      if (authSyncPromise) return authSyncPromise;
+      authSyncPromise = (async () => {
+        updateAuthUI();
+        const loaded = await cloudLoad();
+        if (!loaded && !cloudLastError.startsWith('конфликт сохранений')) await cloudSave(true);
+        updateCloudStatusLine();
+      })();
+      try { await authSyncPromise; } finally { authSyncPromise = null; }
     }
     function updateCloudStatusLine() {
       const el=document.getElementById('cloudStatus');if(!el)return;
