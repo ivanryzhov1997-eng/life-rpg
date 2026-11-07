@@ -1697,6 +1697,7 @@
 .habits-block { padding-bottom: 4px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
 </style>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
@@ -1825,29 +1826,25 @@
           <p id="aiStatusLine" class="text-dim" style="font-size:0.8rem"></p>
         </div>
         <div class="save-section">
-          <h3>Облачный сейв (опционально)</h3>
-          <p class="text-dim" style="font-size:0.82rem;margin-bottom:10px;line-height:1.45">
-            По умолчанию <strong>выключен</strong>. Прогресс только на этом устройстве.
-            ИИ работает отдельно и не требует облака.
-            Включай только если нужен один сейв на телефон и планшет.
-          </p>
-          <p id="cloudStatus" class="text-dim" style="font-size:0.8rem;margin-bottom:10px"></p>
-          <label style="display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:0.9rem;cursor:pointer">
-            <input type="checkbox" id="cloudEnableChk" style="width:18px;height:18px">
-            Включить синхронизацию через Supabase
-          </label>
-          <div id="cloudFields" style="display:none">
-            <div class="form-group">
-              <label>Supabase Project URL</label>
-              <input type="url" id="cloudSbUrl" placeholder="https://xxxx.supabase.co" autocomplete="off">
+          <div class="save-section" id="authSection">
+          <h3>Аккаунт LIFE RPG</h3>
+          <p class="text-dim" style="font-size:0.82rem;line-height:1.45;margin-bottom:10px">Войди или создай аккаунт, чтобы синхронизировать прогресс между устройствами. Локальное сохранение остаётся на устройстве.</p>
+          <p id="authStatus" class="text-dim" style="font-size:0.82rem;margin-bottom:10px">Проверка сессии…</p>
+          <div id="authForm">
+            <div class="form-group"><label for="authEmail">Email</label><input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
+            <div class="form-group"><label for="authPassword">Пароль (минимум 6 символов)</label><input id="authPassword" type="password" autocomplete="current-password" placeholder="Пароль"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary" type="button" onclick="authSignIn()">Войти</button>
+              <button class="btn btn-secondary" type="button" onclick="authSignUp()">Создать аккаунт</button>
             </div>
-            <div class="form-group">
-              <label>Отдельный anon key (не обязательно тот же, что у ИИ)</label>
-              <input type="text" id="cloudSbAnon" placeholder="sb_publishable_… или eyJ…" autocomplete="off">
-            </div>
-            <button class="btn btn-primary btn-block mb-8" onclick="saveCloudSettings()">Сохранить облако</button>
-            <button class="btn btn-secondary btn-block mb-8" onclick="syncCloudNow()">Синхронизировать сейчас</button>
           </div>
+          <div id="authSignedIn" style="display:none"><button class="btn btn-secondary btn-block" type="button" onclick="authSignOut()">Выйти из аккаунта</button></div>
+        </div>
+        <div class="save-section">
+          <h3>Облачная синхронизация</h3>
+          <p class="text-dim" style="font-size:0.82rem;line-height:1.45;margin-bottom:10px">После входа в аккаунт LIFE RPG сохраняет прогресс в облачном профиле. При первом входе локальный прогресс переносится в облако, если там ещё нет сохранения. При конфликте версий приложение запросит выбор.</p>
+          <p id="cloudStatus" class="text-dim" style="font-size:0.8rem;margin-bottom:10px"></p>
+          <button class="btn btn-secondary btn-block" type="button" onclick="syncCloudNow()">Синхронизировать сейчас</button>
         </div>
         <div class="save-section">
           <h3>Данные</h3>
@@ -1961,13 +1958,24 @@
     const DEFAULT_PROXY_URL = 'https://sghoucsrxbywiafpxxyw.supabase.co/functions/v1/Qroq-proxy';
     const DEFAULT_SUPABASE_ANON_KEY = 'sb_publishable_vUKnyvXGOcqUdq4tBv03FA_RWkH30qP';
     // Облачный сейв (тот же проект Supabase). Можно вставить в Настройки.
-    const DEFAULT_SUPABASE_URL = ''; // облако выкл. по умолчанию — только ИИ через proxy
+    const DEFAULT_SUPABASE_URL = 'https://sghoucsrxbywiafpxxyw.supabase.co';
     const CLOUD_TABLE = 'life_rpg_saves';
     const LS_SB_URL = 'life_rpg_v4_sb_url';
     const LS_SB_ANON = 'life_rpg_v4_sb_anon';
     const LS_PROXY = 'life_rpg_v4_proxy_url';
     const LS_PROXY_ANON = 'life_rpg_v4_proxy_anon';
     const LS_CLOUD_ON = 'life_rpg_v4_cloud_on';
+    const AUTH_SUPABASE_URL = DEFAULT_SUPABASE_URL;
+    const AUTH_SUPABASE_KEY = DEFAULT_SUPABASE_ANON_KEY;
+    let supabaseClient = null;
+    let authUser = null;
+    try {
+      if (window.supabase && window.supabase.createClient) {
+        supabaseClient = window.supabase.createClient(AUTH_SUPABASE_URL, AUTH_SUPABASE_KEY, {
+          auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+        });
+      }
+    } catch (e) { console.warn('Supabase Auth init failed', e); }
 
     const QUEST_XP = {
       SIDE:  { 1: 20,  2: 50,  3: 120, 4: 280,  5: 650  },
@@ -2281,7 +2289,7 @@
     function getSupabaseAnon() {
       // Не используем AI anon key для облака — иначе сейвы открыты тем же ключом, что и proxy.
       try {
-        return (localStorage.getItem(LS_SB_ANON) || '').trim();
+        return (localStorage.getItem(LS_SB_ANON) || DEFAULT_SUPABASE_ANON_KEY || '').trim();
       } catch (e) {
         return '';
       }
@@ -2308,81 +2316,71 @@
       } catch (e) {}
     }
 
-    function cloudConfigured() {
-      // Явное согласие + URL + key. ИИ работает без этого.
-      return !!(isCloudEnabled() && getSupabaseUrl() && getSupabaseAnon());
-    }
+    function cloudConfigured() { return !!(isCloudEnabled() && supabaseClient && authUser); }
 
-    function updateCloudStatusLine() {
-      const el = document.getElementById('cloudStatus');
-      if (!el) return;
-      const chk = document.getElementById('cloudEnableChk');
-      const fields = document.getElementById('cloudFields');
-      if (chk) chk.checked = isCloudEnabled();
-      if (fields) fields.style.display = isCloudEnabled() ? 'block' : 'none';
-      if (!isCloudEnabled()) {
-        el.textContent = 'Статус: выключен · данные только на устройстве';
-        return;
-      }
-      const tid = getTelegramUserId();
-      if (!cloudConfigured()) {
-        el.textContent = 'Статус: включи и укажи Project URL + key';
-        return;
-      }
-      if (!tid) {
-        el.textContent = 'Статус: открой через Telegram-бота (нет user id)';
-        return;
-      }
-      el.textContent = 'Статус: TG id ' + tid + (cloudReady ? ' · синхронизируется' : '') + (cloudLastError ? ' · ' + cloudLastError : '');
+    async function authRefreshUser() {
+      if (!supabaseClient) return null;
+      const { data, error } = await supabaseClient.auth.getUser();
+      if (error) throw error;
+      authUser = data.user || null; updateAuthUI(); return authUser;
     }
-
-    function saveCloudSettings() {
-      const chk = document.getElementById('cloudEnableChk');
-      setCloudEnabled(!!(chk && chk.checked));
+    function updateAuthUI() {
+      const status=document.getElementById('authStatus'), form=document.getElementById('authForm'), signed=document.getElementById('authSignedIn');
+      if (!status) return;
+      status.textContent = !supabaseClient ? 'Supabase Auth не загрузился. Обнови страницу.' : authUser ? 'Вход выполнен: '+(authUser.email||'аккаунт') : 'Не выполнен вход. Прогресс хранится локально.';
+      if(form) form.style.display=authUser?'none':'block';
+      if(signed) signed.style.display=authUser?'block':'none';
+      updateCloudStatusLine();
+    }
+    async function authSignUp() {
+      if(!supabaseClient){toast('Supabase Auth недоступен','error');return;}
+      const email=(document.getElementById('authEmail')?.value||'').trim(), password=document.getElementById('authPassword')?.value||'';
+      if(!email||password.length<6){toast('Укажи email и пароль от 6 символов','error');return;}
       try {
-        const url = (document.getElementById('cloudSbUrl')?.value || '').trim().replace(/\/$/, '');
-        const anon = (document.getElementById('cloudSbAnon')?.value || '').trim();
-        if (url) localStorage.setItem(LS_SB_URL, url);
-        else localStorage.removeItem(LS_SB_URL);
-        if (anon) localStorage.setItem(LS_SB_ANON, anon);
-        else localStorage.removeItem(LS_SB_ANON);
-      } catch (e) {}
-      updateCloudStatusLine();
-      if (!isCloudEnabled()) {
-        toast('Облако выключено · сейв только локально', 'success');
-        return;
-      }
-      toast(cloudConfigured() ? 'Облако включено' : 'Укажи URL и key', cloudConfigured() ? 'success' : 'error');
-      if (cloudConfigured() && getTelegramUserId()) syncCloudNow();
+        const {data,error}=await supabaseClient.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
+        if(error) throw error;
+        if(data.session){authUser=data.user||data.session.user;setCloudEnabled(true);await afterAuthReady();toast('Аккаунт создан','success');}
+        else {const el=document.getElementById('authStatus');if(el)el.textContent='Письмо отправлено на '+email+'. Подтверди email, затем войди.';toast('Проверь почту и подтверди регистрацию','success');}
+      } catch(e){toast(e.message||'Ошибка регистрации','error');}
     }
-
-    function populateCloudSettings() {
-      const u = document.getElementById('cloudSbUrl');
-      const a = document.getElementById('cloudSbAnon');
-      if (u) u.value = getSupabaseUrl();
-      if (a) a.value = getSupabaseAnon();
-      const chk = document.getElementById('cloudEnableChk');
-      if (chk && !chk._bound) {
-        chk._bound = true;
-        chk.addEventListener('change', () => {
-          setCloudEnabled(chk.checked);
-          updateCloudStatusLine();
-        });
-      }
-      updateCloudStatusLine();
+    async function authSignIn() {
+      if(!supabaseClient){toast('Supabase Auth недоступен','error');return;}
+      const email=(document.getElementById('authEmail')?.value||'').trim(), password=document.getElementById('authPassword')?.value||'';
+      if(!email||!password){toast('Укажи email и пароль','error');return;}
+      try {const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;authUser=data.user||data.session?.user||null;setCloudEnabled(true);await afterAuthReady();toast('Вход выполнен','success');}
+      catch(e){toast(e.message||'Ошибка входа','error');}
     }
-
-    async function cloudFetch(path, options) {
-      const base = getSupabaseUrl();
-      const anon = getSupabaseAnon();
-      const opts = options || {};
-      const headers = Object.assign({
-        'apikey': anon,
-        'Authorization': 'Bearer ' + anon,
-        'Content-Type': 'application/json'
-      }, opts.headers || {});
-      const res = await fetch(base + path, Object.assign({}, opts, { headers }));
-      return res;
+    async function authSignOut() {
+      if(!supabaseClient)return;
+      try {await cloudSave(true);const {error}=await supabaseClient.auth.signOut();if(error)throw error;authUser=null;cloudReady=false;setCloudEnabled(false);updateAuthUI();toast('Вы вышли. Локальный прогресс сохранён.','success');}
+      catch(e){toast(e.message||'Не удалось выйти','error');}
+    }
+    let authSyncPromise = null;
+    async function afterAuthReady() {
+      if (authSyncPromise) return authSyncPromise;
+      authSyncPromise = (async () => {
+        updateAuthUI();
+        // cloudLoad uploads local data only when the remote row is confirmed absent.
+        // Never upload after a failed GET or an authentication/network error.
+        await cloudLoad();
+        updateCloudStatusLine();
+      })();
+      try { await authSyncPromise; } finally { authSyncPromise = null; }
+    }
+    function updateCloudStatusLine() {
+      const el=document.getElementById('cloudStatus');if(!el)return;
+      const chk=document.getElementById('cloudEnableChk'), fields=document.getElementById('cloudFields');
+      if(chk)chk.checked=isCloudEnabled();if(fields)fields.style.display='none';
+      if(!authUser){el.textContent='Статус: войди в аккаунт для облачной синхронизации.';return;}
+      el.textContent='Статус: '+(authUser.email||authUser.id)+(cloudReady?' · синхронизировано':'')+(cloudLastError?' · '+cloudLastError:'');
+    }
+    function saveCloudSettings(){setCloudEnabled(true);if(authUser)syncCloudNow();else toast('Сначала войди в аккаунт','error');}
+    function populateCloudSettings(){updateAuthUI();updateCloudStatusLine();}
+    async function cloudFetch(path,options) {
+      if(!supabaseClient||!authUser)throw new Error('Требуется вход в аккаунт');
+      const {data,error}=await supabaseClient.auth.getSession();if(error||!data.session)throw new Error('Сессия истекла. Войди снова.');
+      const opts=options||{},headers=Object.assign({'apikey':AUTH_SUPABASE_KEY,'Authorization':'Bearer '+data.session.access_token,'Content-Type':'application/json'},opts.headers||{});
+      return fetch(AUTH_SUPABASE_URL+path,Object.assign({},opts,{headers}));
     }
 
     function backupLocalBeforeCloudReplace() {
@@ -2405,14 +2403,14 @@
     }
 
     async function cloudLoad(forceCloudReplace = false) {
-      const tid = getTelegramUserId();
-      if (!cloudConfigured() || !tid) {
+      const uid = authUser && authUser.id;
+      if (!cloudConfigured() || !uid) {
         updateCloudStatusLine();
         return false;
       }
       try {
         const res = await cloudFetch(
-          '/rest/v1/' + CLOUD_TABLE + '?telegram_id=eq.' + encodeURIComponent(tid) + '&select=data,updated_at',
+          '/rest/v1/' + CLOUD_TABLE + '?user_id=eq.' + encodeURIComponent(uid) + '&select=data,updated_at',
           { method: 'GET' }
         );
         if (!res.ok) {
@@ -2478,15 +2476,15 @@
     }
 
     async function cloudSave(force) {
-      const tid = getTelegramUserId();
-      if (!cloudConfigured() || !tid) return;
+      const uid = authUser && authUser.id;
+      if (!cloudConfigured() || !uid) return;
       try {
         const payload = JSON.parse(JSON.stringify(state));
         if (payload.ai) delete payload.ai.apiKey;
         payload.schemaVersion = SCHEMA_VERSION;
         const savedAt = new Date().toISOString();
         const body = [{
-          telegram_id: Number(tid),
+          user_id: uid,
           data: payload,
           updated_at: savedAt
         }];
@@ -2525,7 +2523,7 @@
     }
 
     function scheduleCloudSave() {
-      if (!cloudConfigured() || !getTelegramUserId()) return;
+      if (!cloudConfigured() || !authUser) return;
       clearTimeout(cloudSaveTimer);
       cloudSaveTimer = setTimeout(() => { cloudSave(false); }, 1200);
     }
@@ -2535,10 +2533,7 @@
         toast('Сначала URL и key', 'error');
         return;
       }
-      if (!getTelegramUserId()) {
-        toast('Открой приложение из Telegram-бота', 'error');
-        return;
-      }
+      if (!authUser) { toast('Сначала войди в аккаунт', 'error'); return; }
       toast('Синхронизация…');
       const loaded = await cloudLoad();
       if (loaded) {
@@ -6654,6 +6649,15 @@ ${rules.prompt}
     async function boot() {
       try {
         try {
+          if (supabaseClient) {
+            const {data}=await supabaseClient.auth.getSession();
+            authUser=data.session?.user||null;
+            supabaseClient.auth.onAuthStateChange((_event,session)=>{
+              const oldId=authUser&&authUser.id;authUser=session?.user||null;updateAuthUI();
+              if(authUser&&authUser.id!==oldId) setTimeout(() => afterAuthReady(), 0);
+            });
+          }
+          updateAuthUI();
           if (cloudConfigured()) await cloudLoad();
         } catch (e) {
           console.warn('cloudLoad', e);
