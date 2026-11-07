@@ -2360,8 +2360,9 @@
       if (authSyncPromise) return authSyncPromise;
       authSyncPromise = (async () => {
         updateAuthUI();
-        const loaded = await cloudLoad();
-        if (!loaded && !cloudLastError.startsWith('конфликт сохранений')) await cloudSave(true);
+        // cloudLoad uploads local data only when the remote row is confirmed absent.
+        // Never upload after a failed GET or an authentication/network error.
+        await cloudLoad();
         updateCloudStatusLine();
       })();
       try { await authSyncPromise; } finally { authSyncPromise = null; }
@@ -6653,7 +6654,7 @@ ${rules.prompt}
             authUser=data.session?.user||null;
             supabaseClient.auth.onAuthStateChange((_event,session)=>{
               const oldId=authUser&&authUser.id;authUser=session?.user||null;updateAuthUI();
-              if(authUser&&authUser.id!==oldId) afterAuthReady();
+              if(authUser&&authUser.id!==oldId) setTimeout(() => afterAuthReady(), 0);
             });
           }
           updateAuthUI();
