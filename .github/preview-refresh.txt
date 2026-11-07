@@ -4,3 +4,5 @@ AI mentor visibility fix: 38bf99b324452c9400fe7276d35784f62abad769
 AI mentor onboarding UX: two required fields, optional details. Commit fea2016.
 AI mentor input validation: reject short/no-vowel/repeated-letter goals; reject nonsensical AI goals.
 Commit f3d92ec.
+
+AI mentor validation: validate both goal and current level; inline field errors; disabled create button until both are meaningful. Commit eeef1695c394e927cb971852e0bb1534a383c241.
