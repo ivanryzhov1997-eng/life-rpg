@@ -6,7 +6,8 @@ import { defineConfig } from "vite"
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: "/life-rpg/preview/",
+  // Railway serves the app from the domain root, not /life-rpg/preview/.
+  base: "/",
   plugins: [
     devServer({ entry: "api/boot.ts", exclude: [/^\/(?!api\/).*$/] }),
     react()],
