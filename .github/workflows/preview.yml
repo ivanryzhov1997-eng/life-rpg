@@ -1,13 +1,13 @@
-name: RPG-LIFE iPhone preview
+name: Deploy Supabase Auth app to GitHub Pages
 
 on:
   push:
     branches:
       - main
     paths:
-      - "app/**"
+      - "index.html"
+      - "assets/**"
       - ".github/workflows/preview.yml"
-      - ".github/preview-refresh.txt"
   workflow_dispatch:
 
 permissions:
@@ -20,43 +20,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy-preview:
-    environment: github-pages
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout current published site
+      - name: Checkout Supabase Auth app
         uses: actions/checkout@v4
         with:
           ref: main
-          path: site
 
-      - name: Checkout new RPG-LIFE version
-        uses: actions/checkout@v4
-        with:
-          ref: mobile-check
-          path: source
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: source/app/package-lock.json
-
-      - name: Install dependencies
-        working-directory: source/app
-        run: npm ci
-
-      - name: Build preview
-        working-directory: source/app
-        run: npm run build
-
-      - name: Assemble Pages artifact (keep current root site)
+      - name: Assemble static site
         run: |
-          mkdir -p artifact/preview
-          cp -a site/. artifact/
-          cp -a source/app/dist/public/. artifact/preview/
-          cp artifact/preview/index.html artifact/preview/404.html
+          mkdir -p artifact/assets
+          cp index.html artifact/index.html
+          cp -a assets/css artifact/assets/
+          cp -a assets/js artifact/assets/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -66,6 +46,6 @@ jobs:
         with:
           path: artifact
 
-      - name: Deploy preview
+      - name: Deploy Supabase Auth app
         id: deployment
         uses: actions/deploy-pages@v4
