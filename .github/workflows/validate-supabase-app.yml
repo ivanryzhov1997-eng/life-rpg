@@ -1,0 +1,66 @@
+name: Validate Supabase Auth app
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "index.html"
+      - "assets/**"
+      - ".github/workflows/validate-supabase-app.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check required files and script order
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const html = fs.readFileSync('index.html', 'utf8');
+          const expected = [
+            './assets/js/01-core.js',
+            './assets/js/02-cloud-auth.js',
+            './assets/js/03-state-and-systems.js',
+            './assets/js/04-ai.js',
+            './assets/js/05-quests-goals-directions.js',
+            './assets/js/06-skills-lore-save.js',
+            './assets/js/07-navigation-mentor.js',
+            './assets/js/08-theme-init.js'
+          ];
+          if (!html.includes('./assets/css/app.css')) throw new Error('CSS link missing from index.html');
+          let previous = -1;
+          for (const path of expected) {
+            if (!fs.existsSync(path)) throw new Error('Missing file: ' + path);
+            const position = html.indexOf('src="' + path + '"');
+            if (position < 0) throw new Error('Script not linked: ' + path);
+            if (position <= previous) throw new Error('Script order is incorrect at: ' + path);
+            previous = position;
+          }
+          if (!fs.existsSync('assets/css/app.css')) throw new Error('Missing app.css');
+          console.log('HTML references, files and script order: OK');
+          NODE
+
+      - name: Check combined JavaScript syntax
+        run: |
+          cat assets/js/01-core.js \
+              assets/js/02-cloud-auth.js \
+              assets/js/03-state-and-systems.js \
+              assets/js/04-ai.js \
+              assets/js/05-quests-goals-directions.js \
+              assets/js/06-skills-lore-save.js \
+              assets/js/07-navigation-mentor.js \
+              assets/js/08-theme-init.js > /tmp/life-rpg-combined.js
+          node --check /tmp/life-rpg-combined.js
