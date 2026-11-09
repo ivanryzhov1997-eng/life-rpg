@@ -90,7 +90,7 @@ jobs:
           const next = { marker: 'after' };
           assert.equal(context.replaceState(next), next);
           assert.equal(context.getState(), next);
-          assert.throws(() => context.replaceState(null), TypeError);
+          assert.throws(() => context.replaceState(null), error => error && error.name === 'TypeError');
           console.log('State store replacement API: OK');
           NODE
 
