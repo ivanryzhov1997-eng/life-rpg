@@ -55,13 +55,14 @@
       toast('Markdown экспортирован');
     }
 
-    function mergeImportedState(incoming) {
+    function mergeImportedState(incoming, target) {
       const src = migrateState(incoming);
-      // merge directions by name
+      const draft = target || state;
+      // Merge directions by name.
       src.directions.forEach(d => {
-        const existing = state.directions.find(x => x.name === d.name);
+        const existing = draft.directions.find(x => x.name === d.name);
         if (!existing) {
-          state.directions.push(d);
+          draft.directions.push(d);
         } else {
           (d.nodes || []).forEach(n => {
             if (!(existing.nodes || []).some(en => en.name === n.name && en.parentId === n.parentId)) {
@@ -71,51 +72,56 @@
           });
         }
       });
-      // merge quests by title+done uniqueness soft
       src.quests.forEach(q => {
-        const exists = state.quests.some(x => x.title === q.title && x.done === q.done && x.type === q.type);
-        if (!exists) state.quests.push(q);
+        const exists = draft.quests.some(x => x.title === q.title && x.done === q.done && x.type === q.type);
+        if (!exists) draft.quests.push(q);
       });
       src.lore.forEach(l => {
-        const exists = state.lore.some(x => x.text === l.text && x.date === l.date);
-        if (!exists) state.lore.push(l);
+        const exists = draft.lore.some(x => x.text === l.text && x.date === l.date);
+        if (!exists) draft.lore.push(l);
       });
-      (src.reflections || []).forEach(r => state.reflections.push(r));
-      // keep higher XP hero
-      if ((src.hero.xp || 0) > (state.hero.xp || 0)) {
-        state.hero.xp = src.hero.xp;
-        if (src.hero.name) state.hero.name = src.hero.name;
+      (src.reflections || []).forEach(item => draft.reflections.push(item));
+      if ((src.hero.xp || 0) > (draft.hero.xp || 0)) {
+        draft.hero.xp = src.hero.xp;
+        if (src.hero.name) draft.hero.name = src.hero.name;
       }
+      return draft;
     }
-
     function importSave(e, merge) {
       const file = e.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
+        const previousState = snapshotState();
         try {
           const data = JSON.parse(ev.target.result);
           const err = validateImport(data);
           if (err) throw new Error(err);
-          if (merge) {
-            mergeImportedState(data);
-            toast('Данные добавлены к текущим', 'success');
-          } else {
-            replaceState(migrateState(data));
-            toast('Сохранение загружено', 'success');
+          const candidate = merge
+            ? mergeImportedState(data, JSON.parse(JSON.stringify(previousState)))
+            : migrateState(data);
+          replaceState(candidate);
+          if (!save()) {
+            replaceState(previousState);
+            renderAll();
+            toast('Импорт отменён: не удалось сохранить данные на устройстве', 'error');
+            return;
           }
-          save();
           renderAll();
+          toast(merge ? 'Данные добавлены к текущим' : 'Сохранение загружено', 'success');
         } catch (err) {
+          replaceState(previousState);
+          renderAll();
           toast('Импорт: ' + (err.message || 'некорректный JSON'), 'error');
         }
       };
+      reader.onerror = () => toast('Не удалось прочитать файл импорта', 'error');
       reader.readAsText(file);
       e.target.value = '';
     }
-
     function resetAll() {
       if (!confirm('Сбросить ВЕСЬ прогресс? Это нельзя отменить.')) return;
+      const previousState = snapshotState();
       if (!confirm('Точно? Все квесты, навыки и лор будут удалены.')) return;
       const keepModel = state.ai?.model;
       const keepDiff = state.ai?.preferredDifficulty;
@@ -132,7 +138,12 @@
         reflections: [],
         ai: { model: keepModel || 'openai/gpt-oss-20b', preferredDifficulty: keepDiff }
       }));
-      save();
+      if (!save()) {
+        replaceState(previousState);
+        renderAll();
+        toast('Сброс отменён: не удалось сохранить изменения', 'error');
+        return;
+      }
       closeTreeView();
       renderAll();
       toast('Прогресс сброшен');
