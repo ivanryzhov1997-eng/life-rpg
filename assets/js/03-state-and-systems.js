@@ -177,7 +177,7 @@
               return false;
             }
             if (localExists) backupLocalBeforeCloudReplace();
-            state = migrateState(row.data);
+            replaceState(migrateState(row.data));
             // Mirror the accepted cloud version locally only after a backup was made.
             const toSave = JSON.parse(JSON.stringify(state));
             if (toSave.ai) delete toSave.ai.apiKey;
@@ -399,7 +399,7 @@
           const data = JSON.parse(raw);
           const err = validateImport(data);
           if (!err) {
-            state = migrateState(data);
+            replaceState(migrateState(data));
           } else {
             console.warn('Invalid save:', err);
           }
@@ -497,7 +497,7 @@
       bar.style.display = 'flex';
       document.getElementById('undoBtn').onclick = () => {
         if (!window._undo) return;
-        state = window._undo.snapshot;
+        replaceState(window._undo.snapshot);
         window._undo = null;
         save();
         renderAll();
