@@ -301,13 +301,19 @@
       try {
         const toSave = createPersistedState(state, SCHEMA_VERSION);
         const savedAt = new Date().toISOString();
+        // Persist the primary record first. Metadata failure must not turn a
+        // successful primary write into a reported failure.
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-        localStorage.setItem(LOCAL_UPDATED_AT_KEY, savedAt);
+        try { localStorage.setItem(LOCAL_UPDATED_AT_KEY, savedAt); } catch (e) {
+          console.warn('Save timestamp failed', e);
+        }
         maybeDailyBackup(toSave);
         scheduleCloudSave();
+        return true;
       } catch (e) {
         console.warn('Save failed', e);
         toast('Ошибка сохранения', 'error');
+        return false;
       }
     }
 
