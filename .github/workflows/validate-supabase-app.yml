@@ -34,9 +34,9 @@ jobs:
           const expected = [
             './assets/js/state/initial-state.js',
             './assets/js/state/store.js',
-            './assets/js/state/migrations.js',
             './assets/js/01-core.js',
             './assets/js/02-cloud-auth.js',
+            './assets/js/state/migrations.js',
             './assets/js/03-state-and-systems.js',
             './assets/js/04-ai.js',
             './assets/js/05-quests-goals-directions.js',
@@ -96,13 +96,40 @@ jobs:
           console.log('State store replacement API: OK');
           NODE
 
+      - name: Test state migrations and validation
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/migrations.js', 'utf8'), context);
+          const input = {
+            hero: { xp: 120 },
+            directions: [{ name: 'Python', nodes: [{}] }],
+            quests: [{ title: 'Test', difficulty: 2 }],
+            ai: { model: 'llama-3.3-70b-versatile' }
+          };
+          const xp = { SIDE: { 2: 50 }, HABIT: { 2: 30 } };
+          const migrated = context.normalizeStateData(input, 5, xp);
+          assert.equal(migrated.schemaVersion, 5);
+          assert.equal(migrated.hero.xp, 120);
+          assert.equal(migrated.quests[0].type, 'SIDE');
+          assert.equal(migrated.quests[0].xp, 50);
+          assert.equal(migrated.ai.model, 'openai/gpt-oss-120b');
+          assert.equal(input.directions[0].xp, undefined, 'migration must not mutate source data');
+          assert.equal(context.validateImport({ hero: { xp: 1 } }), null);
+          assert.equal(context.validateImport({ hero: { xp: 'bad' } }), 'hero.xp не число');
+          console.log('State migrations and validation: OK');
+          NODE
+
       - name: Check combined JavaScript syntax
         run: |
           cat assets/js/state/initial-state.js \
               assets/js/state/store.js \
-              assets/js/state/migrations.js \
               assets/js/01-core.js \
               assets/js/02-cloud-auth.js \
+              assets/js/state/migrations.js \
               assets/js/03-state-and-systems.js \
               assets/js/04-ai.js \
               assets/js/05-quests-goals-directions.js \
