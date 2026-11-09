@@ -122,8 +122,7 @@
           const k = localStorage.key(i);
           if (k && k.startsWith(CLOUD_PRE_REPLACE_BACKUP_PREFIX)) keys.push(k);
         }
-        keys.sort().reverse();
-        keys.slice(5).forEach(k => localStorage.removeItem(k));
+        getBackupKeysToDelete(keys, CLOUD_PRE_REPLACE_BACKUP_PREFIX, 5).forEach(k => localStorage.removeItem(k));
       } catch (e) {
         // A backup failure must not silently authorize overwriting local progress.
         throw new Error('Не удалось создать резервную копию локального сохранения');
@@ -307,7 +306,7 @@
 
     function maybeDailyBackup(data) {
       try {
-        const key = 'life_rpg_v4_backup_' + todayStr().replace(/-/g, '');
+        const key = createDailyBackupKey(todayStr());
         if (!localStorage.getItem(key)) {
           localStorage.setItem(key, JSON.stringify(data));
         }
@@ -317,8 +316,7 @@
           const k = localStorage.key(i);
           if (k && k.startsWith('life_rpg_v4_backup_')) keys.push(k);
         }
-        keys.sort().reverse();
-        keys.slice(7).forEach(k => localStorage.removeItem(k));
+        getBackupKeysToDelete(keys, 'life_rpg_v4_backup_', 7).forEach(k => localStorage.removeItem(k));
       } catch(e) {}
     }
 
