@@ -16,3 +16,11 @@ function classifyCloudRows(rows, validate) {
   if (error) return { kind: 'invalid', error };
   return { kind: 'record', row };
 }
+
+// Decide whether syncCloudNow may fall back to uploading local state.
+// Upload is safe only when cloudLoad completed successfully and found no row.
+function getCloudSyncFallback(lastError) {
+  if (lastError && lastError.startsWith('конфликт сохранений')) return 'conflict';
+  if (lastError) return 'blocked';
+  return 'upload';
+}
