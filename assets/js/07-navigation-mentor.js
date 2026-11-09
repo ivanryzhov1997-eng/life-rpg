@@ -121,8 +121,8 @@
     }
     function resetAll() {
       if (!confirm('Сбросить ВЕСЬ прогресс? Это нельзя отменить.')) return;
-      const previousState = snapshotState();
       if (!confirm('Точно? Все квесты, навыки и лор будут удалены.')) return;
+      const previousState = snapshotState();
       const keepModel = state.ai?.model;
       const keepDiff = state.ai?.preferredDifficulty;
       replaceState(migrateState({
