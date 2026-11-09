@@ -56,6 +56,25 @@ jobs:
           console.log('HTML references, files and script order: OK');
           NODE
 
+
+      - name: Test initial state factory
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/initial-state.js', 'utf8'), context);
+          const first = context.createInitialState(5);
+          const second = context.createInitialState(5);
+          assert.equal(first.schemaVersion, 5);
+          assert.equal(first.hero.xp, 0);
+          assert.deepEqual(Object.keys(first), ['schemaVersion','hero','directions','quests','goals','lore','activityLog','rewardLedger','stats','streak','unlockedTitles','unlockedAchievements','reflections','ai','ui']);
+          first.directions.push({ id: 'test' });
+          assert.equal(second.directions.length, 0, 'factory must return independent arrays');
+          console.log('Initial state factory: OK');
+          NODE
+
       - name: Check combined JavaScript syntax
         run: |
           cat assets/js/state/initial-state.js \\
