@@ -172,7 +172,10 @@
             updateCloudStatusLine();
             return false;
           }
-          localExists = !!localRaw && !validateImport(JSON.parse(localRaw));
+          if (localRaw) {
+            try { localExists = !validateImport(JSON.parse(localRaw)); }
+            catch (e) { localExists = false; }
+          }
           const hasLocalData = localRaw !== null && localRaw !== '';
           const localMs = Date.parse(localUpdatedAt);
           const cloudMs = Date.parse(row.updated_at || '');
