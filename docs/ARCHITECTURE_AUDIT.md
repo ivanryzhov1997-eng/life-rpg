@@ -266,9 +266,9 @@ function replaceState(nextState) {
 
 1. Получить актуальную схему `life_rpg_saves` и подтвердить имя JSONB-колонки. Это отдельная проверка, до изменений кода.
 2. Добавить чистую функцию `createInitialState()` и тесты для начального состояния.
-3. Выделить `migrateState()` и `validateImport()` в отдельный модуль без DOM и сетевых вызовов.
-4. Создать `state/store.js` с `getState()` и `replaceState()`.
-5. Перевести все пять точек полной замены на `replaceState()`.
+3. Создать `state/store.js` с `getState()` и `replaceState()`.
+4. Перевести все пять точек полной замены на `replaceState()`.
+5. Выделить нормализацию и валидацию сохранений в отдельный модуль без DOM и сетевых вызовов.
 6. Проверить локальную загрузку, импорт с заменой, импорт слиянием, reset и cloud conflict flow.
 7. Лишь после этих проверок включать ES Modules и переносить остальные домены.
 
@@ -284,9 +284,10 @@ function replaceState(nextState) {
 
 - `assets/js/state/initial-state.js`: вынесена чистая фабрика `createInitialState(schemaVersion)`.
 - `assets/js/state/store.js`: добавлены `getState()` и проверяющий входной объект `replaceState(nextState)`.
+- `assets/js/state/migrations.js`: извлечены `normalizeStateData(data, schemaVersion, questXp)` и `validateImport(data)`. Нормализация получает зависимости явно, клонирует входной JSON и не меняет исходный объект. Перенос legacy API key оставлен в `migrateState()`-обёртке, где он сохраняется через существующие `getApiKey()`/`setApiKey()`.
 - `index.html`: оба state-файла подключаются до `01-core.js`; остальной порядок скриптов сохранён.
 - Пять полных замен переведены на `replaceState()`: `cloudLoad()`, `load()`, undo handler, `importSave(..., false)` и `resetAll()`.
 - Повторный поиск по всем feature-файлам показал, что единственное прямое присваивание осталось в объявлении `let state = createInitialState(...)` в `01-core.js`.
-- GitHub Actions дополнен проверкой наличия/порядка файлов, независимости initial state, контракта store и синтаксиса объединённого JavaScript.
+- GitHub Actions дополнен проверкой наличия/порядка файлов, независимости initial state, контракта store, миграции/валидации и синтаксиса объединённого JavaScript. Последний запуск `734b6ef` завершился успешно.
 
-Это пока не доказывает browser runtime. В частности, необходимо отдельно проверить, что classic-script функция из `store.js`, загруженная до объявления `let state` в следующем classic script, корректно разрешает глобальную lexical binding во всех целевых браузерах; CI-тест использует Node VM и не заменяет iPhone Safari test. Также требуется функционально проверить все пять сценариев замены, включая cloud conflict flow.
+Это пока не доказывает browser runtime. В частности, необходимо отдельно проверить, что classic-script функция из `store.js`, загруженная до объявления `let state` в следующем classic script, корректно разрешает глобальную lexical binding во всех целевых браузерах; CI-тест использует Node VM и не заменяет iPhone Safari test. Также требуется функционально проверить все пять сценариев замены, включая cloud conflict flow, и отдельно проверить перенос legacy API key.
