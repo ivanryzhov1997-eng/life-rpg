@@ -151,45 +151,55 @@
           return false;
         }
         const rows = await res.json();
-        if (rows && rows[0] && rows[0].data) {
-          const row = rows[0];
-          const err = validateImport(row.data);
-          if (!err) {
-            // Compare timestamps before replacing local progress. Legacy local saves without
-            // metadata are treated as conflicts, not as permission to overwrite them.
-            let localRaw = null;
-            let localExists = false;
-            let localUpdatedAt = '';
-            try {
-              localRaw = localStorage.getItem(STORAGE_KEY);
-              localExists = !!localRaw && !validateImport(JSON.parse(localRaw));
-              localUpdatedAt = localStorage.getItem(LOCAL_UPDATED_AT_KEY) || '';
-            } catch (e) {}
-            const localMs = Date.parse(localUpdatedAt);
-            const cloudMs = Date.parse(row.updated_at || '');
-            const needsConflictChoice = localExists && (
-              !Number.isFinite(localMs) || !Number.isFinite(cloudMs) || localMs > cloudMs + 1000
-            );
-            if (needsConflictChoice && !forceCloudReplace) {
-              cloudReady = false;
-              cloudLastError = 'конфликт сохранений: локальные данные не заменены';
-              updateCloudStatusLine();
-              return false;
-            }
-            if (localExists) backupLocalBeforeCloudReplace();
-            replaceState(migrateState(row.data));
-            // Mirror the accepted cloud version locally only after a backup was made.
-            const toSave = createPersistedState(state, SCHEMA_VERSION);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-            if (row.updated_at) localStorage.setItem(LOCAL_UPDATED_AT_KEY, row.updated_at);
-            else localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
-            cloudReady = true;
-            cloudLastError = '';
-            updateCloudStatusLine();
-            return true;
-          }
+        if (!Array.isArray(rows)) {
+          throw new Error('Некорректный ответ облачного хранилища');
         }
-        // no remote row yet — upload local
+        if (rows.length > 1) {
+          throw new Error('В облаке найдено несколько сохранений для одного аккаунта');
+        }
+        if (rows.length === 1) {
+          const row = rows[0];
+          const err = row && row.data ? validateImport(row.data) : 'облачная запись не содержит data';
+          if (err) {
+            cloudReady = false;
+            cloudLastError = 'повреждённое облачное сохранение: ' + err;
+            updateCloudStatusLine();
+            return false;
+          }
+          // Compare timestamps before replacing local progress. Legacy local saves without
+          // metadata are treated as conflicts, not as permission to overwrite them.
+          let localRaw = null;
+          let localExists = false;
+          let localUpdatedAt = '';
+          try {
+            localRaw = localStorage.getItem(STORAGE_KEY);
+            localExists = !!localRaw && !validateImport(JSON.parse(localRaw));
+            localUpdatedAt = localStorage.getItem(LOCAL_UPDATED_AT_KEY) || '';
+          } catch (e) {}
+          const localMs = Date.parse(localUpdatedAt);
+          const cloudMs = Date.parse(row.updated_at || '');
+          const needsConflictChoice = localExists && (
+            !Number.isFinite(localMs) || !Number.isFinite(cloudMs) || localMs > cloudMs + 1000
+          );
+          if (needsConflictChoice && !forceCloudReplace) {
+            cloudReady = false;
+            cloudLastError = 'конфликт сохранений: локальные данные не заменены';
+            updateCloudStatusLine();
+            return false;
+          }
+          if (localExists) backupLocalBeforeCloudReplace();
+          replaceState(migrateState(row.data));
+          // Mirror the accepted cloud version locally only after a backup was made.
+          const toSave = createPersistedState(state, SCHEMA_VERSION);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+          if (row.updated_at) localStorage.setItem(LOCAL_UPDATED_AT_KEY, row.updated_at);
+          else localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
+          cloudReady = true;
+          cloudLastError = '';
+          updateCloudStatusLine();
+          return true;
+        }
+        // An empty result is the only proof that no remote row exists.
         cloudReady = true;
         cloudLastError = '';
         await cloudSave(true);
