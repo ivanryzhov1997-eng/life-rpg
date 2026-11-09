@@ -244,24 +244,23 @@ assets/js/
 Предлагаемый минимальный API:
 
 ```js
-// state/store.js — целевая форма, пока не подключена
-let state = createInitialState();
-
-export function getState() {
+// state/store.js — текущий совместимый classic-script API
+function getState() {
   return state;
 }
 
-export function replaceState(nextState) {
+function replaceState(nextState) {
+  if (!nextState || typeof nextState !== 'object' || Array.isArray(nextState)) {
+    throw new TypeError('replaceState expects a state object');
+  }
   state = nextState;
-  notifySubscribers();
-}
-
-export function subscribe(listener) {
-  // подписка UI на изменения — следующий этап, не обязательный для первого коммита
+  return state;
 }
 ```
 
-В первом проходе можно сохранить прямое чтение/изменение вложенных полей через `getState()`, чтобы не переписывать все экраны одновременно. Все четыре сценария полной замены должны перейти на `replaceState()`. Позже можно добавить actions/reducers и уведомления, если это оправдано.
+Файл загружается обычным `<script>` до `01-core.js`. Он обращается к глобальной lexical binding `state`, объявленной в `01-core.js`, только при вызове функций после инициализации core. Это переходный слой, не ES Module.
+
+В первом проходе можно сохранить прямое чтение/изменение вложенных полей через `getState()`, чтобы не переписывать все экраны одновременно. Все пять найденных сценариев полной замены должны проходить через `replaceState()`: cloud load, local load, undo, import с заменой и reset. Позже можно добавить actions/reducers и уведомления, если это оправдано.
 
 ## 8. Порядок безопасного внедрения
 
@@ -269,7 +268,7 @@ export function subscribe(listener) {
 2. Добавить чистую функцию `createInitialState()` и тесты для начального состояния.
 3. Выделить `migrateState()` и `validateImport()` в отдельный модуль без DOM и сетевых вызовов.
 4. Создать `state/store.js` с `getState()` и `replaceState()`.
-5. Перевести только четыре точки полной замены на `replaceState()`.
+5. Перевести все пять точек полной замены на `replaceState()`.
 6. Проверить локальную загрузку, импорт с заменой, импорт слиянием, reset и cloud conflict flow.
 7. Лишь после этих проверок включать ES Modules и переносить остальные домены.
 
@@ -280,3 +279,14 @@ export function subscribe(listener) {
 **Не проверено runtime:** реальные данные localStorage на устройстве пользователя; восстановление после перезагрузки; сценарии с двумя устройствами; сетевые ошибки; auth refresh; реальные REST-запросы к Supabase из браузера; сохранение и восстановление на iPhone.
 
 **Вывод:** сначала нужно исправить/подтвердить контракт облачной колонки и ввести единый механизм замены состояния. Только после этого безопасно делать первый модульный перенос.
+
+## 10. Фактический прогресс рефакторинга (2026-11-09)
+
+- `assets/js/state/initial-state.js`: вынесена чистая фабрика `createInitialState(schemaVersion)`.
+- `assets/js/state/store.js`: добавлены `getState()` и проверяющий входной объект `replaceState(nextState)`.
+- `index.html`: оба state-файла подключаются до `01-core.js`; остальной порядок скриптов сохранён.
+- Пять полных замен переведены на `replaceState()`: `cloudLoad()`, `load()`, undo handler, `importSave(..., false)` и `resetAll()`.
+- Повторный поиск по всем feature-файлам показал, что единственное прямое присваивание осталось в объявлении `let state = createInitialState(...)` в `01-core.js`.
+- GitHub Actions дополнен проверкой наличия/порядка файлов, независимости initial state, контракта store и синтаксиса объединённого JavaScript.
+
+Это пока не доказывает browser runtime. В частности, необходимо отдельно проверить, что classic-script функция из `store.js`, загруженная до объявления `let state` в следующем classic script, корректно разрешает глобальную lexical binding во всех целевых браузерах; CI-тест использует Node VM и не заменяет iPhone Safari test. Также требуется функционально проверить все пять сценариев замены, включая cloud conflict flow.
