@@ -33,6 +33,7 @@ jobs:
           const html = fs.readFileSync('index.html', 'utf8');
           const expected = [
             './assets/js/state/initial-state.js',
+            './assets/js/state/store.js',
             './assets/js/01-core.js',
             './assets/js/02-cloud-auth.js',
             './assets/js/03-state-and-systems.js',
@@ -52,6 +53,7 @@ jobs:
             previous = position;
           }
           if (!fs.existsSync('assets/js/state/initial-state.js')) throw new Error('Missing initial-state.js');
+          if (!fs.existsSync('assets/js/state/store.js')) throw new Error('Missing store.js');
           if (!fs.existsSync('assets/css/app.css')) throw new Error('Missing app.css');
           console.log('HTML references, files and script order: OK');
           NODE
@@ -75,9 +77,27 @@ jobs:
           console.log('Initial state factory: OK');
           NODE
 
+      - name: Test state store replacement API
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext('let state = { marker: "before" };', context);
+          vm.runInNewContext(fs.readFileSync('assets/js/state/store.js', 'utf8'), context);
+          assert.equal(context.getState().marker, 'before');
+          const next = { marker: 'after' };
+          assert.equal(context.replaceState(next), next);
+          assert.equal(context.getState(), next);
+          assert.throws(() => context.replaceState(null), TypeError);
+          console.log('State store replacement API: OK');
+          NODE
+
       - name: Check combined JavaScript syntax
         run: |
           cat assets/js/state/initial-state.js \
+              assets/js/state/store.js \
               assets/js/01-core.js \
               assets/js/02-cloud-auth.js \
               assets/js/03-state-and-systems.js \
