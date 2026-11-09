@@ -286,8 +286,8 @@
         toast('Синхронизация остановлена: ' + cloudLastError, 'error');
         return;
       }
-      // No error and no remote row: initial upload is safe.
-      await cloudSave(true);
+      // cloudLoad already uploaded the local save when it confirmed an empty remote table.
+      toast('Локальное сохранение отправлено в облако', 'success');
     }
 
     function save() {
