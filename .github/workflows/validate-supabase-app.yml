@@ -34,6 +34,7 @@ jobs:
           const expected = [
             './assets/js/state/initial-state.js',
             './assets/js/state/store.js',
+            './assets/js/state/serialization.js',
             './assets/js/01-core.js',
             './assets/js/02-cloud-auth.js',
             './assets/js/state/migrations.js',
@@ -55,6 +56,7 @@ jobs:
           }
           if (!fs.existsSync('assets/js/state/initial-state.js')) throw new Error('Missing initial-state.js');
           if (!fs.existsSync('assets/js/state/store.js')) throw new Error('Missing store.js');
+          if (!fs.existsSync('assets/js/state/serialization.js')) throw new Error('Missing serialization.js');
           if (!fs.existsSync('assets/js/state/migrations.js')) throw new Error('Missing migrations.js');
           if (!fs.existsSync('assets/css/app.css')) throw new Error('Missing app.css');
           console.log('HTML references, files and script order: OK');
@@ -147,10 +149,31 @@ jobs:
           console.log('State replacement boundary: OK');
           NODE
 
+      - name: Test state serialization
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/serialization.js', 'utf8'), context);
+          const source = { schemaVersion: 1, hero: { xp: 90 }, ai: { apiKey: 'secret', model: 'model-a' } };
+          const saved = context.createPersistedState(source, 5);
+          assert.equal(saved.schemaVersion, 5);
+          assert.equal(saved.hero.xp, 90);
+          assert.equal(saved.ai.apiKey, undefined);
+          assert.equal(saved.ai.model, 'model-a');
+          assert.equal(source.ai.apiKey, 'secret', 'serializer must not mutate live state');
+          saved.hero.xp = 0;
+          assert.equal(source.hero.xp, 90, 'snapshot must be detached');
+          console.log('State serialization: OK');
+          NODE
+
       - name: Check combined JavaScript syntax
         run: |
           cat assets/js/state/initial-state.js \
               assets/js/state/store.js \
+              assets/js/state/serialization.js \
               assets/js/01-core.js \
               assets/js/02-cloud-auth.js \
               assets/js/state/migrations.js \
