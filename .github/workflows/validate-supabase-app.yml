@@ -38,6 +38,7 @@ jobs:
             './assets/js/01-core.js',
             './assets/js/02-cloud-auth.js',
             './assets/js/state/migrations.js',
+            './assets/js/state/cloud-response.js',
             './assets/js/03-state-and-systems.js',
             './assets/js/04-ai.js',
             './assets/js/05-quests-goals-directions.js',
@@ -58,6 +59,7 @@ jobs:
           if (!fs.existsSync('assets/js/state/store.js')) throw new Error('Missing store.js');
           if (!fs.existsSync('assets/js/state/serialization.js')) throw new Error('Missing serialization.js');
           if (!fs.existsSync('assets/js/state/migrations.js')) throw new Error('Missing migrations.js');
+          if (!fs.existsSync('assets/js/state/cloud-response.js')) throw new Error('Missing cloud-response.js');
           if (!fs.existsSync('assets/css/app.css')) throw new Error('Missing app.css');
           console.log('HTML references, files and script order: OK');
           NODE
@@ -167,6 +169,24 @@ jobs:
           saved.hero.xp = 0;
           assert.equal(source.hero.xp, 90, 'snapshot must be detached');
           console.log('State serialization: OK');
+          NODE
+
+      - name: Test cloud response classification
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/cloud-response.js', 'utf8'), context);
+          const validate = data => data && data.hero ? null : 'invalid payload';
+          assert.equal(context.classifyCloudRows([], validate).kind, 'empty');
+          assert.equal(context.classifyCloudRows([{ data: { hero: {} } }], validate).kind, 'record');
+          assert.equal(context.classifyCloudRows([{ data: { bad: true } }], validate).kind, 'invalid');
+          assert.equal(context.classifyCloudRows([{}], validate).kind, 'invalid');
+          assert.equal(context.classifyCloudRows({}, validate).kind, 'invalid');
+          assert.equal(context.classifyCloudRows([{ data: { hero: {} } }, { data: { hero: {} } }], validate).kind, 'invalid');
+          console.log('Cloud response classification: OK');
           NODE
 
       - name: Check combined JavaScript syntax
