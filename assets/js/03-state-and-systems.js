@@ -165,9 +165,15 @@
           let localUpdatedAt = '';
           try {
             localRaw = localStorage.getItem(STORAGE_KEY);
-            localExists = !!localRaw && !validateImport(JSON.parse(localRaw));
             localUpdatedAt = localStorage.getItem(LOCAL_UPDATED_AT_KEY) || '';
-          } catch (e) {}
+          } catch (e) {
+            cloudReady = false;
+            cloudLastError = 'не удалось прочитать локальное сохранение перед заменой';
+            updateCloudStatusLine();
+            return false;
+          }
+          localExists = !!localRaw && !validateImport(JSON.parse(localRaw));
+          const hasLocalData = localRaw !== null && localRaw !== '';
           const localMs = Date.parse(localUpdatedAt);
           const cloudMs = Date.parse(row.updated_at || '');
           const needsConflictChoice = localExists && (
@@ -179,7 +185,7 @@
             updateCloudStatusLine();
             return false;
           }
-          if (localExists) backupLocalBeforeCloudReplace();
+          if (hasLocalData) backupLocalBeforeCloudReplace();
           replaceState(migrateState(row.data));
           // Mirror the accepted cloud version locally only after a backup was made.
           const toSave = createPersistedState(state, SCHEMA_VERSION);
