@@ -150,22 +150,15 @@
           updateCloudStatusLine();
           return false;
         }
-        const rows = await res.json();
-        if (!Array.isArray(rows)) {
-          throw new Error('Некорректный ответ облачного хранилища');
+        const cloudResult = classifyCloudRows(await res.json(), validateImport);
+        if (cloudResult.kind === 'invalid') {
+          cloudReady = false;
+          cloudLastError = 'повреждённое облачное сохранение: ' + cloudResult.error;
+          updateCloudStatusLine();
+          return false;
         }
-        if (rows.length > 1) {
-          throw new Error('В облаке найдено несколько сохранений для одного аккаунта');
-        }
-        if (rows.length === 1) {
-          const row = rows[0];
-          const err = row && row.data ? validateImport(row.data) : 'облачная запись не содержит data';
-          if (err) {
-            cloudReady = false;
-            cloudLastError = 'повреждённое облачное сохранение: ' + err;
-            updateCloudStatusLine();
-            return false;
-          }
+        if (cloudResult.kind === 'record') {
+          const row = cloudResult.row;
           // Compare timestamps before replacing local progress. Legacy local saves without
           // metadata are treated as conflicts, not as permission to overwrite them.
           let localRaw = null;
