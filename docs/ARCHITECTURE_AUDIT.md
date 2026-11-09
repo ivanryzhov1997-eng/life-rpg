@@ -375,7 +375,7 @@ function replaceState(nextState) {
 
 `authSignOut()` вызывает `cloudSave(true)` перед `supabaseClient.auth.signOut()`. `cloudSave()` перехватывает сетевые и HTTP-ошибки внутри себя, поэтому sign out продолжится даже при неудачном cloud save. Локальный сейв остаётся независимым; сообщение после выхода утверждает только, что локальный прогресс сохранён.
 
-`afterAuthReady()` использует единственный `authSyncPromise`, чтобы параллельные вызовы не запускали несколько `cloudLoad()` одновременно. В просмотренном `02-cloud-auth.js` нет обработчика `onAuthStateChange`; инициализация Supabase-клиента и восстановление сессии находятся в другом инициализационном пути и требуют отдельной проверки. Browser runtime и поведение обновления/истечения токена не подтверждены.
+`afterAuthReady()` использует единственный `authSyncPromise`, чтобы параллельные вызовы не запускали несколько `cloudLoad()` одновременно. В `01-core.js` создаётся Supabase client с `persistSession`, `autoRefreshToken` и `detectSessionInUrl`. В `08-theme-init.js` при старте вызывается `getSession()`, затем регистрируется `onAuthStateChange`; при появлении нового user ID запускается `afterAuthReady()` через `setTimeout`. Это подтверждает наличие пути восстановления сессии и подписки на auth events в коде. Однако реальный browser runtime, token refresh, смена аккаунта и истечение сессии на устройстве не проверены.
 
 ### Решение по этому этапу
 
