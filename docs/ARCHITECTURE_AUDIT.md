@@ -284,10 +284,11 @@ function replaceState(nextState) {
 
 - `assets/js/state/initial-state.js`: вынесена чистая фабрика `createInitialState(schemaVersion)`.
 - `assets/js/state/store.js`: добавлены `getState()` и проверяющий входной объект `replaceState(nextState)`.
+- `assets/js/state/serialization.js`: добавлена `createPersistedState(state, schemaVersion)`, которая создаёт независимый снимок, удаляет `ai.apiKey` и выставляет актуальную версию схемы. Используется локальным сохранением, облачным сохранением и JSON-экспортом.
 - `assets/js/state/migrations.js`: извлечены `normalizeStateData(data, schemaVersion, questXp)` и `validateImport(data)`. Нормализация получает зависимости явно, клонирует входной JSON и не меняет исходный объект. Перенос legacy API key оставлен в `migrateState()`-обёртке, где он сохраняется через существующие `getApiKey()`/`setApiKey()`.
 - `index.html`: оба state-файла подключаются до `01-core.js`; остальной порядок скриптов сохранён.
 - Пять полных замен переведены на `replaceState()`: `cloudLoad()`, `load()`, undo handler, `importSave(..., false)` и `resetAll()`.
 - Повторный поиск по всем feature-файлам показал, что единственное прямое присваивание осталось в объявлении `let state = createInitialState(...)` в `01-core.js`.
-- GitHub Actions дополнен проверкой наличия/порядка файлов, независимости initial state, контракта store, миграции/валидации и синтаксиса объединённого JavaScript. Последний запуск `734b6ef` завершился успешно.
+- GitHub Actions дополнен проверкой наличия/порядка файлов, независимости initial state, контракта store, миграции/валидации, безопасной сериализации, запрета прямых замен `state` в feature-файлах и синтаксиса объединённого JavaScript. Последний запуск `c30bacaa` завершился успешно.
 
 Это пока не доказывает browser runtime. В частности, необходимо отдельно проверить, что classic-script функция из `store.js`, загруженная до объявления `let state` в следующем classic script, корректно разрешает глобальную lexical binding во всех целевых браузерах; CI-тест использует Node VM и не заменяет iPhone Safari test. Также требуется функционально проверить все пять сценариев замены, включая cloud conflict flow, и отдельно проверить перенос legacy API key.
