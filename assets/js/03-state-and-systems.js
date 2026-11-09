@@ -179,8 +179,7 @@
             if (localExists) backupLocalBeforeCloudReplace();
             replaceState(migrateState(row.data));
             // Mirror the accepted cloud version locally only after a backup was made.
-            const toSave = JSON.parse(JSON.stringify(state));
-            if (toSave.ai) delete toSave.ai.apiKey;
+            const toSave = createPersistedState(state, SCHEMA_VERSION);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
             if (row.updated_at) localStorage.setItem(LOCAL_UPDATED_AT_KEY, row.updated_at);
             else localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
@@ -207,9 +206,7 @@
       const uid = authUser && authUser.id;
       if (!cloudConfigured() || !uid) return;
       try {
-        const payload = JSON.parse(JSON.stringify(state));
-        if (payload.ai) delete payload.ai.apiKey;
-        payload.schemaVersion = SCHEMA_VERSION;
+        const payload = createPersistedState(state, SCHEMA_VERSION);
         const savedAt = new Date().toISOString();
         const body = [{
           user_id: uid,
@@ -287,9 +284,7 @@
 
     function save() {
       try {
-        const toSave = JSON.parse(JSON.stringify(state));
-        if (toSave.ai) delete toSave.ai.apiKey;
-        toSave.schemaVersion = SCHEMA_VERSION;
+        const toSave = createPersistedState(state, SCHEMA_VERSION);
         const savedAt = new Date().toISOString();
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
         localStorage.setItem(LOCAL_UPDATED_AT_KEY, savedAt);
