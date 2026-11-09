@@ -24,3 +24,16 @@ function getCloudSyncFallback(lastError) {
   if (lastError) return 'blocked';
   return 'upload';
 }
+
+function inspectLocalSave(raw, updatedAt, validate) {
+  const timestamp = updatedAt || '';
+  if (raw === null || raw === '') {
+    return { hasData: false, isValid: false, updatedAt: timestamp };
+  }
+  try {
+    const error = validate(JSON.parse(raw));
+    return { hasData: true, isValid: !error, updatedAt: timestamp };
+  } catch (e) {
+    return { hasData: true, isValid: false, updatedAt: timestamp };
+  }
+}
