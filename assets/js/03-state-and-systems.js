@@ -172,12 +172,10 @@
             updateCloudStatusLine();
             return false;
           }
-          if (localRaw) {
-            try { localExists = !validateImport(JSON.parse(localRaw)); }
-            catch (e) { localExists = false; }
-          }
-          const hasLocalData = localRaw !== null && localRaw !== '';
-          const localMs = Date.parse(localUpdatedAt);
+          const localInfo = inspectLocalSave(localRaw, localUpdatedAt, validateImport);
+          localExists = localInfo.isValid;
+          const hasLocalData = localInfo.hasData;
+          const localMs = Date.parse(localInfo.updatedAt);
           const cloudMs = Date.parse(row.updated_at || '');
           const needsConflictChoice = localExists && (
             !Number.isFinite(localMs) || !Number.isFinite(cloudMs) || localMs > cloudMs + 1000
