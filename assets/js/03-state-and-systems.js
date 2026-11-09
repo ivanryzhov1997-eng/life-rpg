@@ -269,7 +269,8 @@
         renderAll();
         return;
       }
-      if (cloudLastError.startsWith('конфликт сохранений')) {
+      const fallback = getCloudSyncFallback(cloudLastError);
+      if (fallback === 'conflict') {
         const useCloud = confirm(
           'Найдены разные локальное и облачное сохранения. Перед заменой локальная версия будет сохранена в резервную копию.\n\n' +
           'ОК — загрузить облачную версию.\nОтмена — оставить локальный прогресс и записать его в облако.'
@@ -282,6 +283,11 @@
         }
         return;
       }
+      if (fallback === 'blocked') {
+        toast('Синхронизация остановлена: ' + cloudLastError, 'error');
+        return;
+      }
+      // No error and no remote row: initial upload is safe.
       await cloudSave(true);
     }
 
