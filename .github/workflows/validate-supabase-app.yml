@@ -88,8 +88,8 @@ jobs:
           const vm = require('node:vm');
           const assert = require('node:assert/strict');
           const context = {};
-          vm.runInNewContext('let state = { marker: "before" };', context);
           vm.runInNewContext(fs.readFileSync('assets/js/state/store.js', 'utf8'), context);
+          vm.runInNewContext('let state = { marker: "before" };', context);
           assert.equal(context.getState().marker, 'before');
           const next = { marker: 'after' };
           assert.equal(context.replaceState(next), next);
