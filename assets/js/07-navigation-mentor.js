@@ -1,9 +1,7 @@
 
     // ===================== SAVE / EXPORT / IMPORT =====================
     function exportSave() {
-      const data = JSON.parse(JSON.stringify(state));
-      if (data.ai) delete data.ai.apiKey;
-      data.schemaVersion = SCHEMA_VERSION;
+      const data = createPersistedState(state, SCHEMA_VERSION);
       data.backupMeta = { app: 'LIFE RPG', format: 'json-backup', exportedAt: new Date().toISOString(), includesActivityLog: true };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
