@@ -103,7 +103,7 @@
             mergeImportedState(data);
             toast('Данные добавлены к текущим', 'success');
           } else {
-            state = migrateState(data);
+            replaceState(migrateState(data));
             toast('Сохранение загружено', 'success');
           }
           save();
@@ -121,7 +121,7 @@
       if (!confirm('Точно? Все квесты, навыки и лор будут удалены.')) return;
       const keepModel = state.ai?.model;
       const keepDiff = state.ai?.preferredDifficulty;
-      state = migrateState({
+      replaceState(migrateState({
         hero: { name: 'Безымянный герой', xp: 0, titleId: 'newbie' },
         directions: [],
         quests: [],
@@ -133,7 +133,7 @@
         unlockedAchievements: [],
         reflections: [],
         ai: { model: keepModel || 'openai/gpt-oss-20b', preferredDifficulty: keepDiff }
-      });
+      }));
       save();
       closeTreeView();
       renderAll();
