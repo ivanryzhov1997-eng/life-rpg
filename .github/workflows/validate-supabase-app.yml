@@ -191,6 +191,22 @@ jobs:
           assert.equal(context.getCloudSyncFallback(''), 'upload');
           assert.equal(context.getCloudSyncFallback('конфликт сохранений: local/cloud'), 'conflict');
           assert.equal(context.getCloudSyncFallback('HTTP 500'), 'blocked');
+          assert.deepEqual(
+            JSON.parse(JSON.stringify(context.inspectLocalSave(null, '', validate))),
+            { hasData: false, isValid: false, updatedAt: '' }
+          );
+          assert.deepEqual(
+            JSON.parse(JSON.stringify(context.inspectLocalSave('{"hero":{}}', '2026-11-09T10:00:00Z', validate))),
+            { hasData: true, isValid: true, updatedAt: '2026-11-09T10:00:00Z' }
+          );
+          assert.deepEqual(
+            JSON.parse(JSON.stringify(context.inspectLocalSave('not-json', '', validate))),
+            { hasData: true, isValid: false, updatedAt: '' }
+          );
+          assert.deepEqual(
+            JSON.parse(JSON.stringify(context.inspectLocalSave('{"bad":true}', '', validate))),
+            { hasData: true, isValid: false, updatedAt: '' }
+          );
           console.log('Cloud response classification and sync fallback: OK');
           NODE
 
