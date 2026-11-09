@@ -2,7 +2,7 @@
 // No DOM, network, localStorage, or application globals are accessed here.
 // Dependencies are explicit so this module can be tested in isolation.
 function normalizeStateData(data, schemaVersion, questXp) {
-      data = data && typeof data === 'object' ? data : {};
+      data = data && typeof data === 'object' ? JSON.parse(JSON.stringify(data)) : {};
       const SCHEMA_VERSION = schemaVersion;
       const QUEST_XP = questXp;
       const s = {
