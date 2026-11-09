@@ -77,8 +77,8 @@ jobs:
 
       - name: Check combined JavaScript syntax
         run: |
-          cat assets/js/state/initial-state.js \\
-              assets/js/01-core.js \\
+          cat assets/js/state/initial-state.js \
+              assets/js/01-core.js \
               assets/js/02-cloud-auth.js \
               assets/js/03-state-and-systems.js \
               assets/js/04-ai.js \
