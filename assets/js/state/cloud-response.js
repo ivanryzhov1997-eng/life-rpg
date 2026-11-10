@@ -92,3 +92,13 @@ function needsCloudConflictChoice(localInfo, cloudRow, localOwner, userId) {
   const cloudVersion = cloudRow && cloudRow.updated_at || '';
   return !localVersion || !cloudVersion || localVersion !== cloudVersion;
 }
+ 
+// updated_at doubles as a version token for the existing single-row save table.
+// Advance by at least 1 ms so the value always changes even without a DB trigger.
+function nextCloudVersion(baseUpdatedAt, nowMs = Date.now()) {
+  const now = Number.isFinite(nowMs) ? nowMs : Date.now();
+  if (!baseUpdatedAt) return new Date(now).toISOString();
+  const baseMs = Date.parse(baseUpdatedAt);
+  if (!Number.isFinite(baseMs)) throw new Error('Некорректная базовая версия облачного сохранения');
+  return new Date(Math.max(now, baseMs + 1)).toISOString();
+}
