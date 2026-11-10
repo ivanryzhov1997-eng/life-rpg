@@ -254,6 +254,19 @@ jobs:
           assert.equal(context.hasHabitRewardForDay(quest, ledger, '2026-11-11'), false);
           assert.equal(context.hasHabitRewardForDay({ id: 'habit-1', lastHabitRewardDay: '2026-11-11' }, ledger, '2026-11-11'), true);
           assert.equal(context.hasHabitRewardForDay({ id: 'habit-2' }, ledger, '2026-11-10'), false);
+          const streak = { habitStreak: 12, lastHabitDay: '2026-11-10', habitBest: 12 };
+          context.recordHabitStreakUndo(streak, '2026-11-10');
+          assert.equal(streak.habitStreak, 11);
+          assert.equal(streak.lastHabitDay, null);
+          context.applyHabitStreakCompletion(streak, '2026-11-10', '2026-11-09', true);
+          assert.equal(streak.habitStreak, 12, 'same-day recheck must restore the previous streak');
+          assert.equal(streak.lastHabitDay, '2026-11-10');
+          assert.equal(streak.habitStreakUndoDay, undefined);
+          const missed = { habitStreak: 12, lastHabitDay: '2026-11-10', habitBest: 12 };
+          context.recordHabitStreakUndo(missed, '2026-11-10');
+          context.applyHabitStreakCompletion(missed, '2026-11-11', '2026-11-10', false);
+          assert.equal(missed.habitStreak, 1, 'an undone day must break the streak');
+          assert.equal(missed.habitStreakUndoDay, undefined);
           const quests = fs.readFileSync('assets/js/05-quests-goals-directions.js', 'utf8');
           if (!/hasHabitRewardForDay\(q, state\.rewardLedger, todayKey\(\)\)/.test(quests)) {
             throw new Error('Quest completion must consult the daily reward ledger');
@@ -261,8 +274,8 @@ jobs:
           if (!/if \(rewardAlreadyGrantedToday\)[\s\S]*Привычка отмечена\. XP за сегодня уже начислен\./.test(quests)) {
             throw new Error('Repeated same-day habit completion must not issue another reward');
           }
-          if (!/habitStreakBeforeUndo =/.test(quests) || !/q\.habitStreak = Math\.max\(0, Number\(q\.habitStreakBeforeUndo\)/.test(quests)) {
-            throw new Error('Same-day habit recheck must restore the previous streak');
+          if (!/recordHabitStreakUndo\(q, todayKey\(\)\)/.test(quests) || !/applyHabitStreakCompletion\(/.test(quests)) {
+            throw new Error('Quest handlers must use tested habit streak transition helpers');
           }
           console.log('Daily habit reward idempotency: OK');
           NODE
