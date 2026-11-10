@@ -291,6 +291,30 @@ jobs:
           console.log('AI mutation persistence guards: OK');
           NODE
 
+      - name: Guard destructive import and reset backups
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('assets/js/07-navigation-mentor.js', 'utf8');
+          const helperStart = source.indexOf('function backupCurrentSave(prefix)');
+          const importStart = source.indexOf('function importSave(');
+          const resetStart = source.indexOf('function resetAll(');
+          const modalStart = source.indexOf('// ===================== MODAL & NAV', resetStart);
+          assert.ok(helperStart >= 0 && importStart > helperStart && resetStart > importStart && modalStart > resetStart,
+            'backup helper, import and reset handlers must exist');
+          const helper = source.slice(helperStart, importStart);
+          const importer = source.slice(importStart, resetStart);
+          const reset = source.slice(resetStart, modalStart);
+          assert.ok(helper.includes('localStorage.setItem(key, raw)') && helper.includes('getBackupKeysToDelete(keys, prefix, 5)'),
+            'backup helper must preserve raw save and retain five backups');
+          assert.ok(importer.includes("if (!merge) backupCurrentSave('life_rpg_v5_preimport_')"),
+            'replace import must back up current save before publishing imported state');
+          assert.ok(reset.indexOf("backupCurrentSave('life_rpg_v5_prereset_')") < reset.indexOf('replaceState(migrateState('),
+            'reset must back up current save before replacing state');
+          console.log('Destructive import/reset backup guards: OK');
+          NODE
+
       - name: Guard serialized cloud writes and checked local saves
         run: |
           node <<'NODE'
