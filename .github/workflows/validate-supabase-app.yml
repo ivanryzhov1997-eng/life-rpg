@@ -143,7 +143,7 @@ jobs:
           let nextId = 0;
           const createId = () => 'generated-' + (++nextId);
           const target = {
-            hero: { name: 'Local', xp: 80 },
+            hero: { name: 'Local Hero', xp: 80, titleId: 'local-title' },
             directions: [{ id: 'dir-local', name: 'Python', xp: 100, nodes: [{ id: 'skill-local', name: 'API', parentId: null, xp: 50 }] }],
             goals: [{ id: 'goal-local', title: 'Build API', horizon: 'medium', directionId: 'dir-local', metric: { target: 10, current: 2, unitLabel: 'tasks' }, status: 'active' }],
             quests: [
@@ -155,7 +155,7 @@ jobs:
             unlockedTitles: ['newbie'], unlockedAchievements: []
           };
           const incoming = {
-            hero: { name: 'Imported', xp: 120 },
+            hero: { name: 'Backup Hero', xp: 120, titleId: 'backup-title' },
             directions: [{ id: 'dir-import', name: 'Python', xp: 180, nodes: [{ id: 'skill-import', name: 'API', parentId: null, xp: 90 }, { id: 'child-import', name: 'Auth', parentId: 'skill-import' }] }],
             goals: [{ id: 'goal-import', title: 'Build API', horizon: 'medium', directionId: 'dir-import', metric: { target: 10, current: 7, unitLabel: 'tasks' }, status: 'active' }],
             quests: [
@@ -187,6 +187,8 @@ jobs:
           assert.equal(merged.activityLog[0].goalId, 'goal-local');
           assert.equal(merged.reflections[0].questId, 'quest-import');
           assert.equal(merged.hero.xp, 120);
+          assert.equal(merged.hero.name, 'Local Hero', 'merge must preserve the local hero name');
+          assert.equal(merged.hero.titleId, 'local-title', 'merge must preserve the locally selected title');
           assert.equal(merged.stats.completed, 5);
           const repeated = context.mergeImportedStateData(incoming, merged, migrate, createId);
           assert.equal(repeated.directions.length, 1, 'reimport must not duplicate directions');
