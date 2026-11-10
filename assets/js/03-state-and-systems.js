@@ -141,6 +141,7 @@
           { method: 'GET' }
         );
         if (!res.ok) {
+          cloudReady = false;
           const t = await res.text().catch(() => '');
           cloudLastError = 'load HTTP ' + res.status;
           if (res.status === 404 || /relation|does not exist/i.test(t)) {
@@ -228,6 +229,7 @@
         updateCloudStatusLine();
         return false;
       } catch (e) {
+        cloudReady = false;
         cloudLastError = (e && e.message) || 'load fail';
         updateCloudStatusLine();
         return false;
@@ -253,6 +255,7 @@
           body: JSON.stringify(body)
         });
         if (!res.ok) {
+          cloudReady = false;
           const t = await res.text().catch(() => '');
           cloudLastError = 'save HTTP ' + res.status;
           if (/relation|does not exist/i.test(t)) cloudLastError = 'нет таблицы life_rpg_saves';
@@ -273,6 +276,7 @@
         updateCloudStatusLine();
         if (force) toast('Сейв в облаке', 'success');
       } catch (e) {
+        cloudReady = false;
         cloudLastError = (e && e.message) || 'save fail';
         updateCloudStatusLine();
         if (force) toast('Облако: ' + cloudLastError, 'error');
