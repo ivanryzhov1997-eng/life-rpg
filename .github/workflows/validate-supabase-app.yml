@@ -225,6 +225,32 @@ jobs:
           console.log('Account-bound cloud operations: OK');
           NODE
 
+      - name: Guard corrupt local save recovery
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const core = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const nav = fs.readFileSync('assets/js/07-navigation-mentor.js', 'utf8');
+          const html = fs.readFileSync('index.html', 'utf8');
+          if (!/function markCorruptLocalSave\(raw, reason\)/.test(core)) {
+            throw new Error('Invalid local save must be preserved as raw data');
+          }
+          if (!/function save\(\)[\s\S]*if \(localSaveWriteBlocked\)[\s\S]*return false/.test(core)) {
+            throw new Error('Writes must stop while a corrupt save is unresolved');
+          }
+          if (!/resolveCorruptLocalSave\(prefix\)/.test(core)) {
+            throw new Error('Recovery must back up the original raw save before unblocking writes');
+          }
+          if (!/if \(localSaveWriteBlocked\)[\s\S]*resolveCorruptLocalSave\(prefix\)/.test(nav)
+              || !/resolveCorruptLocalSave\('life_rpg_v5_prereset_'\)/.test(nav)) {
+            throw new Error('Import and reset must resolve corrupt saves with a backup first');
+          }
+          if (!/id="corruptSaveNotice"/.test(html) || !/exportCorruptSave\(\)/.test(nav)) {
+            throw new Error('The user must be able to download the original corrupt save');
+          }
+          console.log('Corrupt local save recovery: OK');
+          NODE
+
       - name: Guard direction deletion references
         run: |
           node <<'NODE'
