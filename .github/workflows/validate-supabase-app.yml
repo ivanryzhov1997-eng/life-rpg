@@ -275,6 +275,22 @@ jobs:
           console.log('Undo overwrite guard: OK');
           NODE
 
+      - name: Guard AI mutations when local save fails
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const quests = fs.readFileSync('assets/js/05-quests-goals-directions.js', 'utf8');
+          const mentor = fs.readFileSync('assets/js/07-navigation-mentor.js', 'utf8');
+          assert.ok((quests.match(/if \(!save\(\)\) \{/g) || []).length >= 2,
+            'AI quest acceptance flows must roll back when save fails');
+          assert.ok(quests.includes("if (added && !save())") && quests.includes('replaceState(snap)'),
+            'AI skill tree acceptance must roll back when save fails');
+          assert.ok(mentor.includes("if(!save()){replaceState(snap);renderAll();toast('Маршрут не принят:") ,
+            'AI mentor acceptance must roll back when save fails');
+          console.log('AI mutation persistence guards: OK');
+          NODE
+
       - name: Check combined JavaScript syntax
         run: |
           cat assets/js/state/initial-state.js \
