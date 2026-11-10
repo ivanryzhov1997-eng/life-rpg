@@ -33,11 +33,11 @@ function readDefaultKeyMap(name: string): string {
 }
 
 function getPublishableKey(): string {
-  return Deno.env.get("SUPABASE_ANON_KEY") || readDefaultKeyMap("SUPABASE_PUBLISHABLE_KEYS");
+  return readDefaultKeyMap("SUPABASE_PUBLISHABLE_KEYS") || Deno.env.get("SUPABASE_ANON_KEY") || "";
 }
 
 function getServiceKey(): string {
-  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || readDefaultKeyMap("SUPABASE_SECRET_KEYS");
+  return readDefaultKeyMap("SUPABASE_SECRET_KEYS") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 }
 
 function jsonResponse(body: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
