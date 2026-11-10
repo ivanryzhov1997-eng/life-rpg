@@ -3,7 +3,15 @@
     let cloudSaveTimer = null;
     let cloudReady = false;
     let cloudLastError = '';
+    let cloudBaseUserId = null;
+    let cloudBaseUpdatedAt = null;
+    let cloudSaveQueue = Promise.resolve();
     const LOCAL_CLOUD_OWNER_KEY = 'life_rpg_v5_cloud_owner';
+
+    function resetCloudBase() {
+      cloudBaseUserId = null;
+      cloudBaseUpdatedAt = null;
+    }
 
     function getSupabaseUrl() {
       // Облачный сейв — ТОЛЬКО если пользователь сам включил в Настройках.
@@ -75,7 +83,7 @@
       try {
         const {data,error}=await supabaseClient.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
         if(error) throw error;
-        if(data.session){const previousUserId=authUser&&authUser.id;authUser=data.user||data.session.user;if(previousUserId!==authUser?.id){cloudReady=false;cloudLastError='';clearTimeout(cloudSaveTimer);cloudSaveTimer=null;}setCloudEnabled(true);await afterAuthReady();toast('Аккаунт создан','success');}
+        if(data.session){const previousUserId=authUser&&authUser.id;authUser=data.user||data.session.user;if(previousUserId!==authUser?.id){cloudReady=false;resetCloudBase();cloudLastError='';clearTimeout(cloudSaveTimer);cloudSaveTimer=null;}setCloudEnabled(true);await afterAuthReady();toast('Аккаунт создан','success');}
         else {const el=document.getElementById('authStatus');if(el)el.textContent='Письмо отправлено на '+email+'. Подтверди email, затем войди.';toast('Проверь почту и подтверди регистрацию','success');}
       } catch(e){toast(e.message||'Ошибка регистрации','error');}
     }
@@ -83,7 +91,7 @@
       if(!supabaseClient){toast('Supabase Auth недоступен','error');return;}
       const email=(document.getElementById('authEmail')?.value||'').trim(), password=document.getElementById('authPassword')?.value||'';
       if(!email||!password){toast('Укажи email и пароль','error');return;}
-      try {const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;const previousUserId=authUser&&authUser.id;authUser=data.user||data.session?.user||null;if(previousUserId!==authUser?.id){cloudReady=false;cloudLastError='';clearTimeout(cloudSaveTimer);cloudSaveTimer=null;}setCloudEnabled(true);await afterAuthReady();toast('Вход выполнен','success');}
+      try {const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;const previousUserId=authUser&&authUser.id;authUser=data.user||data.session?.user||null;if(previousUserId!==authUser?.id){cloudReady=false;resetCloudBase();cloudLastError='';clearTimeout(cloudSaveTimer);cloudSaveTimer=null;}setCloudEnabled(true);await afterAuthReady();toast('Вход выполнен','success');}
       catch(e){toast(e.message||'Ошибка входа','error');}
     }
     async function authSignOut() {
@@ -101,6 +109,7 @@
         if (error) throw error;
         authUser = null;
         cloudReady = false;
+        resetCloudBase();
         setCloudEnabled(false);
         updateAuthUI();
         toast(syncRequired && !synced
@@ -186,6 +195,12 @@
         updateCloudStatusLine();
         return false;
       }
+      // Freeze writes while reconciling and wait for any already-running save.
+      // The next write must use the exact server version observed by this load.
+      cloudReady = false;
+      resetCloudBase();
+      await cloudSaveQueue;
+      if (!authUser || authUser.id !== uid) return false;
       try {
         const res = await cloudFetch(
           '/rest/v1/' + CLOUD_TABLE + '?user_id=eq.' + encodeURIComponent(uid) + '&select=data,updated_at',
@@ -215,6 +230,14 @@
         }
         if (cloudResult.kind === 'record') {
           const row = cloudResult.row;
+          if (!row.updated_at) {
+            cloudReady = false;
+            cloudLastError = 'облачная запись не содержит updated_at; безопасная синхронизация невозможна';
+            updateCloudStatusLine();
+            return false;
+          }
+          cloudBaseUserId = uid;
+          cloudBaseUpdatedAt = row.updated_at;
           // Compare timestamps before replacing local progress. Legacy local saves without
           // metadata are treated as conflicts, not as permission to overwrite them.
           let localRaw = null;
@@ -310,6 +333,9 @@
           updateCloudStatusLine();
           return true;
         }
+        // The empty result establishes the initial insert version for this account.
+        cloudBaseUserId = uid;
+        cloudBaseUpdatedAt = null;
         // An empty remote table does not authorize uploading the empty in-memory
         // state when the device's existing save is corrupt and write-blocked.
         if (localSaveWriteBlocked) {
@@ -354,9 +380,7 @@
       }
     }
 
-    // Serialize cloud writes. Concurrent POSTs can otherwise complete out of order
-    // and let an older snapshot overwrite a newer one on the server.
-    let cloudSaveQueue = Promise.resolve();
+    // Serialize cloud writes within this tab. Cross-device writes use updated_at CAS.
     function cloudSave(force) {
       // Bind each queued write to the account that requested it. A pending write
       // must never execute later under a different user's session.
@@ -386,6 +410,12 @@
         updateCloudStatusLine();
         return false;
       }
+      if (cloudBaseUserId !== uid) {
+        cloudReady = false;
+        cloudLastError = 'облачная версия аккаунта ещё не загружена; запись заблокирована';
+        updateCloudStatusLine();
+        return false;
+      }
       // Persist ownership before any network write. If this fails, the save
       // must not be uploaded because a later account switch could misattribute it.
       if (!setLocalCloudOwner(uid)) {
@@ -395,37 +425,47 @@
         return false;
       }
       try {
-        const payload = createPersistedState(state, SCHEMA_VERSION);
-        const savedAt = new Date().toISOString();
-        const body = [{
-          user_id: uid,
-          data: payload,
-          updated_at: savedAt
-        }];
-        const res = await cloudFetch('/rest/v1/' + CLOUD_TABLE, {
-          method: 'POST',
-          headers: {
-            'Prefer': 'resolution=merge-duplicates,return=minimal'
-          },
-          body: JSON.stringify(body)
+        const persistedData = createPersistedState(state, SCHEMA_VERSION);
+        const persistedSnapshot = JSON.stringify(persistedData);
+        const body = { user_id: uid, data: persistedData };
+        const request = buildCloudWriteRequest(CLOUD_TABLE, uid, cloudBaseUpdatedAt, body);
+        const res = await cloudFetch(request.path, {
+          method: request.method,
+          headers: { 'Prefer': request.prefer },
+          body: JSON.stringify(request.body)
         }, uid);
         if (!authUser || authUser.id !== uid) return false;
+        const responseText = await res.text().catch(() => '');
         if (!res.ok) {
           cloudReady = false;
-          const t = await res.text().catch(() => '');
           if (!authUser || authUser.id !== uid) return false;
           cloudLastError = 'save HTTP ' + res.status;
-          if (/relation|does not exist/i.test(t)) cloudLastError = 'нет таблицы life_rpg_saves';
+          if (/relation|does not exist/i.test(responseText)) cloudLastError = 'нет таблицы life_rpg_saves';
           updateCloudStatusLine();
           if (force) toast('Облако: ' + cloudLastError, 'error');
           return false;
         }
+        let rows = [];
+        try { rows = responseText ? JSON.parse(responseText) : []; }
+        catch (parseError) { throw new Error('Некорректный ответ после облачной записи'); }
+        const writeResult = classifyCloudWriteRows(rows);
+        if (writeResult.kind === 'conflict') {
+          cloudReady = false;
+          cloudLastError = 'конфликт сохранений: облачная версия изменилась на другом устройстве';
+          updateCloudStatusLine();
+          if (force) toast('Облако: обнаружена более новая версия. Запусти синхронизацию и выбери нужную копию.', 'error');
+          return false;
+        }
+        if (writeResult.kind !== 'saved') {
+          throw new Error(writeResult.error || 'Некорректный ответ облачного сохранения');
+        }
+        cloudBaseUserId = uid;
+        cloudBaseUpdatedAt = writeResult.row.updated_at;
+        // Only mark the local snapshot as synced if it did not change while the
+        // network request was in flight. Use the server timestamp, not device time.
         try {
-          const currentLocalMs = Date.parse(localStorage.getItem(LOCAL_UPDATED_AT_KEY) || '');
-          const uploadedMs = Date.parse(savedAt);
-          // Do not let a slow cloud request mark newer local edits as already synced.
-          if (!Number.isFinite(currentLocalMs) || currentLocalMs <= uploadedMs) {
-            localStorage.setItem(LOCAL_UPDATED_AT_KEY, savedAt);
+          if (JSON.stringify(createPersistedState(state, SCHEMA_VERSION)) === persistedSnapshot) {
+            localStorage.setItem(LOCAL_UPDATED_AT_KEY, cloudBaseUpdatedAt);
           }
         } catch (e) {}
         cloudReady = true;
