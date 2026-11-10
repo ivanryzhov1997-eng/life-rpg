@@ -325,11 +325,17 @@ jobs:
           const fs = require('node:fs');
           const vm = require('node:vm');
           const assert = require('node:assert/strict');
+          // The app's day boundary follows the device's local calendar, not UTC.
+          process.env.TZ = 'Europe/Amsterdam';
           const context = {};
           vm.runInNewContext(fs.readFileSync('assets/js/state/reward-utils.js', 'utf8'), context);
           const quest = { id: 'habit-1' };
-          const ledger = [{ eventId: 'event-1', questId: 'habit-1', at: Date.UTC(2026, 10, 10, 8), habit: true }];
-          assert.equal(context.hasHabitRewardForDay(quest, ledger, '2026-11-10'), true);
+          // 23:30 UTC on Nov 9 is 00:30 local time on Nov 10 in Amsterdam.
+          const ledger = [{ eventId: 'event-1', questId: 'habit-1', at: Date.UTC(2026, 10, 9, 23, 30), habit: true }];
+          assert.equal(context.hasHabitRewardForDay(quest, ledger, '2026-11-10'), true,
+            'late UTC event must count for the next local calendar day');
+          assert.equal(context.hasHabitRewardForDay(quest, ledger, '2026-11-09'), false,
+            'the UTC date must not be mistaken for the local reward day');
           assert.equal(context.hasHabitRewardForDay(quest, ledger, '2026-11-11'), false);
           assert.equal(context.hasHabitRewardForDay({ id: 'habit-1', lastHabitRewardDay: '2026-11-11' }, ledger, '2026-11-11'), true);
           assert.equal(context.hasHabitRewardForDay({ id: 'habit-2' }, ledger, '2026-11-10'), false);
