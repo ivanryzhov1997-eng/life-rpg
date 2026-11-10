@@ -80,7 +80,16 @@
         const exists = draft.lore.some(x => x.text === l.text && x.date === l.date);
         if (!exists) draft.lore.push(l);
       });
-      (src.reflections || []).forEach(item => draft.reflections.push(item));
+      // Backups retain reflection IDs, so importing the same backup twice
+      // must not duplicate its activity log. Legacy entries without IDs fall
+      // back to exact serialized equality rather than fuzzy text matching.
+      (src.reflections || []).forEach(item => {
+        const duplicate = draft.reflections.some(existing => {
+          if (item.id && existing.id) return item.id === existing.id;
+          return JSON.stringify(item) === JSON.stringify(existing);
+        });
+        if (!duplicate) draft.reflections.push(item);
+      });
       if ((src.hero.xp || 0) > (draft.hero.xp || 0)) {
         draft.hero.xp = src.hero.xp;
         if (src.hero.name) draft.hero.name = src.hero.name;
