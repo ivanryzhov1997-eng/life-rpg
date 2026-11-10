@@ -663,13 +663,13 @@
       const toDelete = collectSkillSubtreeIds(dir.nodes || [], id);
 
       state.quests.forEach(q => {
-        if (q.targetType === 'SKILL' && toDelete.has(q.targetId)) {
+        if (q.targetType === 'SKILL' && toDelete.has(String(q.targetId))) {
           q.targetType = 'GENERAL';
           q.targetId = null;
         }
       });
 
-      dir.nodes = (dir.nodes || []).filter(n => !toDelete.has(n.id));
+      dir.nodes = (dir.nodes || []).filter(n => !toDelete.has(String(n.id)));
       if (!save()) return;
       renderTree(currentTreeDirId);
       renderHero();
