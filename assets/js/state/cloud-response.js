@@ -37,3 +37,9 @@ function inspectLocalSave(raw, updatedAt, validate) {
     return { hasData: true, isValid: false, updatedAt: timestamp };
   }
 }
+
+ 
+// Prevent an existing local save from being silently copied between accounts.
+function isLocalSaveOwnedByAnotherAccount(localOwner, userId, hasLocalData) {
+  return !!(hasLocalData && localOwner && userId && localOwner !== userId);
+}
