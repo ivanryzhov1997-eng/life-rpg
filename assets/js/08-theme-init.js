@@ -129,6 +129,7 @@
                 clearTimeout(cloudSaveTimer);
                 cloudSaveTimer = null;
                 cloudReady = false;
+                resetCloudBase();
                 cloudLastError = '';
                 if (newId) setTimeout(() => afterAuthReady(), 0);
               }
