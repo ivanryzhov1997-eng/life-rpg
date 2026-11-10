@@ -524,6 +524,19 @@
       }
       const fallback = getCloudSyncFallback(cloudLastError);
       if (fallback === 'conflict') {
+        // Refresh the server version before asking. This also handles the
+        // first-insert race where another device created the row after our GET.
+        const refreshed = await cloudLoad();
+        if (!authUser || authUser.id !== requestedUserId) return;
+        if (refreshed || (cloudReady && !cloudLastError)) {
+          renderAll();
+          toast('Облачная версия синхронизирована', 'success');
+          return;
+        }
+        if (cloudBaseUserId !== requestedUserId || !cloudBaseUpdatedAt) {
+          toast('Не удалось получить актуальную облачную версию. Повтори синхронизацию.', 'error');
+          return;
+        }
         const useCloud = confirm(
           'Найдены разные локальное и облачное сохранения. Перед заменой локальная версия будет сохранена в резервную копию.\n\n' +
           'ОК — загрузить облачную версию.\nОтмена — оставить локальный прогресс и записать его в облако.'
