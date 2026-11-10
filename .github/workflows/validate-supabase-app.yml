@@ -585,7 +585,7 @@ jobs:
             get length() { return store.size; },
             key: index => Array.from(store.keys())[index] ?? null
           };
-          const context = { localStorage, STORAGE_KEY: 'life_rpg_v4', getBackupKeysToDelete: backupUtils.getBackupKeysToDelete };
+          const context = { localStorage, STORAGE_KEY: 'life_rpg_v4', getBackupKeysToDelete: backupUtils.getBackupKeysToDelete, backupRawSave: backupUtils.backupRawSave };
           vm.runInNewContext(source.slice(start, end), context);
           const created = context.backupCurrentSave('test_backup_');
           assert.equal(created, true);
