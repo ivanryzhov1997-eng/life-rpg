@@ -619,7 +619,7 @@
           LOCAL_UPDATED_AT_KEY,
           state,
           SCHEMA_VERSION,
-          new Date().toISOString()
+          'local:' + uid()
         );
         lastPersistedStateSnapshot = snapshotState();
         maybeDailyBackup(toSave);
