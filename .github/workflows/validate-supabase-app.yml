@@ -566,11 +566,21 @@ jobs:
           const persist = cloudLoad.indexOf('localStorage.setItem(STORAGE_KEY, serialized)', stage);
           const publish = cloudLoad.indexOf('replaceState(nextState)', persist);
           const rollback = cloudLoad.indexOf('localStorage.setItem(STORAGE_KEY, previousRaw)', persist);
+          const ownerWrite = cloudLoad.indexOf('setLocalCloudOwner(uid)', persist);
           assert.ok(stage >= 0 && persist > stage && publish > persist,
             'live state must be replaced only after the cloud snapshot is persisted locally');
           assert.ok(rollback > persist && rollback < publish,
             'failed local persistence must attempt rollback before publishing cloud state');
-          console.log('Cloud state replacement ordering: OK');
+          assert.ok(ownerWrite > persist && ownerWrite < publish,
+            'local owner metadata must be persisted before publishing the cloud state');
+          assert.ok(/if \(ownerRead\)[\s\S]*previousOwner/.test(cloudLoad),
+            'failed replacement must restore the previous local owner marker');
+          const workerStart = source.indexOf('async function performCloudSave(', end);
+          const scheduleStart = source.indexOf('function scheduleCloudSave(', workerStart);
+          const worker = source.slice(workerStart, scheduleStart);
+          assert.ok(worker.indexOf('if (!setLocalCloudOwner(uid))') < worker.indexOf('const res = await cloudFetch'),
+            'cloud POST must not start until local ownership is persisted');
+          console.log('Cloud state and owner replacement ordering: OK');
           NODE
 
       - name: Guard undo against overwriting later edits
