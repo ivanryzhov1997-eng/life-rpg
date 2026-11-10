@@ -112,12 +112,15 @@
           const data = JSON.parse(ev.target.result);
           const err = validateImport(data);
           if (err) throw new Error(err);
+          if (localSaveWriteBlocked && merge) {
+            toast('Слияние невозможно: локальное сохранение повреждено. Используй «Импорт (заменить)» или полный сброс.', 'error');
+            return;
+          }
           const candidate = merge
             ? mergeImportedState(data, JSON.parse(JSON.stringify(previousState)))
             : migrateState(data);
           if (localSaveWriteBlocked) {
-            const prefix = merge ? 'life_rpg_v5_premerge_' : 'life_rpg_v5_preimport_';
-            if (!resolveCorruptLocalSave(prefix)) return;
+            if (!resolveCorruptLocalSave('life_rpg_v5_preimport_')) return;
           } else if (!merge) {
             backupCurrentSave('life_rpg_v5_preimport_');
           }
