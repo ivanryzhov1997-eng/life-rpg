@@ -3,6 +3,7 @@ CREATE TABLE `users` (
   `unionId` varchar(255) NOT NULL,
   `name` varchar(255),
   `email` varchar(320),
+  `recoveryCodeHash` varchar(64),
   `avatar` text,
   `role` enum('user','admin') NOT NULL DEFAULT 'user',
   `createdAt` timestamp NOT NULL DEFAULT (now()),
