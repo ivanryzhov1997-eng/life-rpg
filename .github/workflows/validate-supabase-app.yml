@@ -213,6 +213,21 @@ jobs:
           console.log('Account-bound cloud operations: OK');
           NODE
 
+      - name: Guard direction deletion references
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const source = fs.readFileSync('assets/js/06-skills-lore-save.js', 'utf8');
+          const start = source.indexOf('function deleteDirection(id)');
+          const end = source.indexOf('// ===================== SKILL TREE', start);
+          if (start < 0 || end < 0) throw new Error('deleteDirection function not found');
+          const body = source.slice(start, end);
+          if (!/state\.goals\.forEach\(goal => \{[\s\S]*goal\.directionId === id[\s\S]*goal\.directionId = null/.test(body)) {
+            throw new Error('Deleting a direction must unlink goals that reference it');
+          }
+          console.log('Direction deletion references: OK');
+          NODE
+
       - name: Enforce state replacement boundary
         run: |
           node <<'NODE'
