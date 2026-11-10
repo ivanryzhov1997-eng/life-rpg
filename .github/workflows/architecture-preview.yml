@@ -1,0 +1,60 @@
+name: Publish isolated architecture preview
+
+on:
+  push:
+    branches:
+      - architecture/audit-and-modularization
+    paths:
+      - "index.html"
+      - "assets/**"
+      - ".github/workflows/architecture-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy-preview:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}preview/
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout current production site
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: production
+
+      - name: Checkout architecture candidate
+        uses: actions/checkout@v4
+        with:
+          ref: architecture/audit-and-modularization
+          path: candidate
+
+      - name: Assemble production root and isolated preview path
+        run: |
+          mkdir -p artifact/assets artifact/preview/assets
+          cp production/index.html artifact/index.html
+          cp -a production/assets/. artifact/assets/
+          cp candidate/index.html artifact/preview/index.html
+          cp -a candidate/assets/. artifact/preview/assets/
+          cp candidate/index.html artifact/preview/404.html
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: artifact
+
+      - name: Deploy production root with architecture preview
+        id: deployment
+        uses: actions/deploy-pages@v4
