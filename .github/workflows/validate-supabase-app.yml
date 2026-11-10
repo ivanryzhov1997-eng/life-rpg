@@ -527,6 +527,13 @@ jobs:
           assert.equal(context.classifyCloudWriteRows([{ updated_at: '2026-11-10T10:00:00Z' }]).kind, 'saved');
           assert.equal(context.classifyCloudWriteRows([]).kind, 'conflict');
           assert.equal(context.classifyCloudWriteRows([{}]).kind, 'invalid');
+          const baseMs = Date.parse('2026-11-10T10:00:00.999999Z');
+          assert.equal(Date.parse(context.nextCloudVersion('2026-11-10T10:00:00.999999Z', baseMs)), baseMs + 1,
+            'the next cloud version must advance even when the client clock has not advanced');
+          assert.equal(context.nextCloudVersion(null, 1234), '1970-01-01T00:00:01.234Z',
+            'the initial insert must receive a deterministic timestamp token');
+          assert.throws(() => context.nextCloudVersion('not-a-date', 1234),
+            'invalid base versions must be rejected');
           assert.equal(context.needsCloudConflictChoice(
             { hasData: true, isValid: true, updatedAt: 'v1' }, { updated_at: 'v1' }, 'user-a', 'user-a'
           ), false, 'matching server version and owner is already synchronized');
@@ -582,8 +589,10 @@ jobs:
             cloudLoad.includes('needsCloudConflictChoice(localInfo, row, getLocalCloudOwner(), uid)'),
             'cloudLoad must bind the server timestamp and detect local divergence without comparing device clocks');
           assert.ok(worker.includes('buildCloudWriteRequest(CLOUD_TABLE, uid, cloudBaseUpdatedAt, body)') &&
-            worker.includes('classifyCloudWriteRows(rows)'),
-            'cloud writes must use the conditional request builder and inspect affected rows');
+            worker.includes('classifyCloudWriteRows(rows)') &&
+            worker.includes('nextCloudVersion(cloudBaseUpdatedAt)') &&
+            worker.includes('updated_at: nextUpdatedAt'),
+            'cloud writes must use conditional requests and advance the version token');
           assert.ok(worker.indexOf('cloudBaseUpdatedAt = writeResult.row.updated_at') >
             worker.indexOf('classifyCloudWriteRows(rows)'),
             'the next write base must come from the server representation');
