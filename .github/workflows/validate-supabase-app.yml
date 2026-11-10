@@ -291,6 +291,38 @@ jobs:
           console.log('AI mutation persistence guards: OK');
           NODE
 
+      - name: Test destructive backup helper
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const backupUtils = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/backup-utils.js', 'utf8'), backupUtils);
+          const source = fs.readFileSync('assets/js/07-navigation-mentor.js', 'utf8');
+          const start = source.indexOf('function backupCurrentSave(prefix)');
+          const end = source.indexOf('// ===================== SAVE / EXPORT / IMPORT', start);
+          assert.ok(start >= 0 && end > start, 'backup helper must be present');
+          const store = new Map([['life_rpg_v4', '{"hero":{"xp":42}}']]);
+          const localStorage = {
+            getItem: key => store.has(key) ? store.get(key) : null,
+            setItem: (key, value) => store.set(key, String(value)),
+            removeItem: key => store.delete(key),
+            get length() { return store.size; },
+            key: index => Array.from(store.keys())[index] ?? null
+          };
+          const context = { localStorage, STORAGE_KEY: 'life_rpg_v4', getBackupKeysToDelete: backupUtils.getBackupKeysToDelete };
+          vm.runInNewContext(source.slice(start, end), context);
+          const created = context.backupCurrentSave('test_backup_');
+          assert.equal(created, true);
+          const keys = Array.from(store.keys()).filter(key => key.startsWith('test_backup_'));
+          assert.equal(keys.length, 1);
+          assert.equal(store.get(keys[0]), '{"hero":{"xp":42}}', 'backup must preserve exact raw save');
+          store.delete('life_rpg_v4');
+          assert.equal(context.backupCurrentSave('empty_backup_'), false, 'no save should not create an empty backup');
+          console.log('Destructive backup helper: OK');
+          NODE
+
       - name: Guard destructive import and reset backups
         run: |
           node <<'NODE'
