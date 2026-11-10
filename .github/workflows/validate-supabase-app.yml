@@ -375,6 +375,27 @@ jobs:
           console.log('Reflection import deduplication guard: OK');
           NODE
 
+      - name: Guard sign-out when cloud sync fails
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const saveStart = source.indexOf('async function cloudSave(');
+          const saveEnd = source.indexOf('function scheduleCloudSave(', saveStart);
+          const signOutStart = source.indexOf('async function authSignOut(');
+          const signOutEnd = source.indexOf('let authSyncPromise', signOutStart);
+          const save = source.slice(saveStart, saveEnd);
+          const signOut = source.slice(signOutStart, signOutEnd);
+          assert.ok(save.includes('return true;') && save.includes('return false;'),
+            'cloudSave must report success/failure');
+          assert.ok(signOut.indexOf('if (syncRequired && !synced)') < signOut.indexOf('supabaseClient.auth.signOut()'),
+            'sign-out must ask before proceeding after failed cloud sync');
+          assert.ok(signOut.includes('Локальная копия остаётся на этом устройстве'),
+            'sign-out warning must explain local data remains on device');
+          console.log('Sign-out cloud sync guard: OK');
+          NODE
+
       - name: Check combined JavaScript syntax
         run: |
           cat assets/js/state/initial-state.js \
