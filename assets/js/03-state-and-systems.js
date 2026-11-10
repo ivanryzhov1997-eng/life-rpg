@@ -230,9 +230,9 @@
         }
         if (cloudResult.kind === 'record') {
           const row = cloudResult.row;
-          if (!row.updated_at) {
+          if (!row.updated_at || !Number.isFinite(Date.parse(row.updated_at))) {
             cloudReady = false;
-            cloudLastError = 'облачная запись не содержит updated_at; безопасная синхронизация невозможна';
+            cloudLastError = 'облачная запись не содержит корректную версию updated_at; безопасная синхронизация невозможна';
             updateCloudStatusLine();
             return false;
           }
@@ -426,7 +426,16 @@
       try {
         const persistedData = createPersistedState(state, SCHEMA_VERSION);
         const persistedSnapshot = JSON.stringify(persistedData);
-        const body = { user_id: uid, data: persistedData };
+        const baseMs = cloudBaseUpdatedAt ? Date.parse(cloudBaseUpdatedAt) : NaN;
+        if (cloudBaseUpdatedAt && !Number.isFinite(baseMs)) {
+          throw new Error('Некорректная базовая версия облачного сохранения');
+        }
+        // life_rpg_saves has no updated_at trigger. Advance the version token
+        // explicitly and monotonically so a stale PATCH can never match again.
+        const nextUpdatedAt = cloudBaseUpdatedAt
+          ? new Date(Math.max(Date.now(), baseMs + 1)).toISOString()
+          : new Date().toISOString();
+        const body = { user_id: uid, data: persistedData, updated_at: nextUpdatedAt };
         const request = buildCloudWriteRequest(CLOUD_TABLE, uid, cloudBaseUpdatedAt, body);
         const res = await cloudFetch(request.path, {
           method: request.method,
