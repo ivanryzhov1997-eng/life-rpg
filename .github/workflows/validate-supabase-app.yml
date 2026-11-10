@@ -914,7 +914,7 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
           const assert = require('node:assert/strict');
-          const path = 'supabase/migrations/20261110153500_pin_set_updated_at_search_path.sql';
+          const path = 'supabase/migrations/20261110131242_pin_set_updated_at_search_path.sql';
           assert.ok(fs.existsSync(path), 'trigger hardening migration must be tracked');
           const sql = fs.readFileSync(path, 'utf8');
           assert.match(sql, /CREATE OR REPLACE FUNCTION public\.set_updated_at\(\)/i);
@@ -941,7 +941,7 @@ jobs:
           const fs = require('node:fs');
           const assert = require('node:assert/strict');
           const proxy = fs.readFileSync('supabase/functions/Qroq-proxy/index.ts', 'utf8');
-          const migration = fs.readFileSync('supabase/migrations/20261110154500_add_ai_proxy_rate_limits.sql', 'utf8');
+          const migration = fs.readFileSync('supabase/migrations/20261110131247_add_ai_proxy_rate_limits.sql', 'utf8');
           const auth = fs.readFileSync('assets/js/02-cloud-auth.js', 'utf8');
           const config = fs.readFileSync('supabase/config.toml', 'utf8');
           assert.ok(proxy.includes('MAX_BODY_BYTES'), 'proxy must cap request body size');
