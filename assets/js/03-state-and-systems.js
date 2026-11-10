@@ -487,7 +487,9 @@
           toast('Отмена недоступна: после операции состояние уже изменилось. Новые данные сохранены.', 'error');
           return;
         }
-        const previous = window._undo.snapshot;
+        const undoEntry = window._undo;
+        const previous = undoEntry.snapshot;
+        const after = undoEntry.afterSnapshot;
         window._undo = null;
         if (undoTimer) clearTimeout(undoTimer);
         replaceState(previous);
@@ -495,8 +497,7 @@
         if (!persisted) {
           // Restore the post-operation state if the undo itself could not be saved.
           // This keeps the in-memory view consistent with the last known local save.
-          const currentAfter = window._undo?.afterSnapshot;
-          if (currentAfter) replaceState(currentAfter);
+          replaceState(after);
           bar.style.display = 'none';
           toast('Не удалось сохранить отмену', 'error');
           renderAll();
