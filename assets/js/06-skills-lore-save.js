@@ -135,6 +135,9 @@
         }
       });
 
+      state.goals.forEach(goal => {
+        if (goal.directionId === id) goal.directionId = null;
+      });
       state.directions = state.directions.filter(d => d.id !== id);
       if (!save()) return;
       if (currentTreeDirId === id) closeTreeView();
