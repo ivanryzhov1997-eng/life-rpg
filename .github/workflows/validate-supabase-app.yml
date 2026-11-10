@@ -909,6 +909,21 @@ jobs:
           console.log('Sign-out cloud sync guard: OK');
           NODE
 
+      - name: Guard hardened database trigger migration
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const path = 'supabase/migrations/20261110153500_pin_set_updated_at_search_path.sql';
+          assert.ok(fs.existsSync(path), 'trigger hardening migration must be tracked');
+          const sql = fs.readFileSync(path, 'utf8');
+          assert.match(sql, /CREATE OR REPLACE FUNCTION public\.set_updated_at\(\)/i);
+          assert.match(sql, /SECURITY INVOKER/i, 'trigger must not become SECURITY DEFINER');
+          assert.match(sql, /SET search_path = pg_catalog/i, 'function search_path must be pinned');
+          assert.match(sql, /NEW\.updated_at = now\(\)/i, 'existing timestamp behavior must remain');
+          console.log('Trigger migration security guard: OK');
+          NODE
+
       - name: Check combined JavaScript syntax
         run: |
           cat assets/js/state/initial-state.js \
