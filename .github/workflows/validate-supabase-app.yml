@@ -201,7 +201,7 @@ jobs:
             ['fetch validates session user', /data\.session\.user\?\.id !== userId/],
             ['cloud load checks account after response', /if \(!authUser \|\| authUser\.id !== uid\) return false/],
             ['manual sync is bound to initiating user', /const requestedUserId = authUser\.id/],
-            ['delayed save captures account ID', /function scheduleCloudSave\(\)[\\s\\S]*const requestedUserId = authUser\.id/],
+            ['delayed save captures account ID', /function scheduleCloudSave\(\)[\s\S]*const requestedUserId = authUser\.id/],
             ['delayed save rejects account switch', /authUser\.id !== requestedUserId/]
           ];
           for (const [label, pattern] of required) {
