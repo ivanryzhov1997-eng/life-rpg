@@ -40,6 +40,7 @@ jobs:
             './assets/js/state/migrations.js',
             './assets/js/state/cloud-response.js',
             './assets/js/state/backup-utils.js',
+            './assets/js/state/merge.js',
             './assets/js/03-state-and-systems.js',
             './assets/js/04-ai.js',
             './assets/js/05-quests-goals-directions.js',
@@ -127,6 +128,64 @@ jobs:
           assert.equal(context.validateImport({ hero: { xp: 1 } }), null);
           assert.equal(context.validateImport({ hero: { xp: 'bad' } }), 'hero.xp не число');
           console.log('State migrations and validation: OK');
+          NODE
+
+      - name: Test ID-mapped import merge
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/merge.js', 'utf8'), context);
+          const migrate = value => JSON.parse(JSON.stringify(value));
+          let nextId = 0;
+          const createId = () => 'generated-' + (++nextId);
+          const target = {
+            hero: { name: 'Local', xp: 80 },
+            directions: [{ id: 'dir-local', name: 'Python', nodes: [{ id: 'skill-local', name: 'API', parentId: null }] }],
+            goals: [{ id: 'goal-local', title: 'Build API', horizon: 'medium', directionId: 'dir-local', metric: { target: 10, current: 2, unitLabel: 'tasks' }, status: 'active' }],
+            quests: [], lore: [], reflections: [], activityLog: [], rewardLedger: [],
+            stats: { completed: 2 }, streak: { current: 1, longest: 2, lastDate: '2026-11-08' },
+            unlockedTitles: ['newbie'], unlockedAchievements: []
+          };
+          const incoming = {
+            hero: { name: 'Imported', xp: 120 },
+            directions: [{ id: 'dir-import', name: 'Python', nodes: [{ id: 'skill-import', name: 'API', parentId: null }, { id: 'child-import', name: 'Auth', parentId: 'skill-import' }] }],
+            goals: [{ id: 'goal-import', title: 'Build API', horizon: 'medium', directionId: 'dir-import', metric: { target: 10, current: 7, unitLabel: 'tasks' }, status: 'active' }],
+            quests: [{ id: 'quest-import', title: 'Implement auth', type: 'SIDE', done: true, targetType: 'SKILL', targetId: 'child-import', goalId: 'goal-import', goalUnits: 2 }],
+            rewardLedger: [{ eventId: 'event-import', questId: 'quest-import', xp: 40, at: 100 }],
+            activityLog: [{ id: 'event-import', questId: 'quest-import', goalId: 'goal-import', title: 'Implement auth', xp: 40, at: 100 }],
+            reflections: [{ id: 'reflection-import', questId: 'quest-import', text: 'Done' }],
+            lore: [{ text: 'Imported lore', date: '2026-11-09' }],
+            stats: { completed: 5 }, streak: { current: 3, longest: 4, lastDate: '2026-11-09' },
+            unlockedTitles: ['newbie', 'builder'], unlockedAchievements: ['first-quest']
+          };
+          const merged = context.mergeImportedStateData(incoming, target, migrate, createId);
+          const python = merged.directions.find(x => x.id === 'dir-local');
+          assert.equal(merged.directions.length, 1, 'same direction by name must merge');
+          assert.equal(python.nodes.length, 2, 'skill nodes must merge by mapped parent');
+          const auth = python.nodes.find(x => x.name === 'Auth');
+          assert.equal(merged.quests[0].targetId, auth.id, 'quest skill target must be remapped');
+          assert.equal(merged.quests[0].goalId, 'goal-local', 'quest goal must be remapped');
+          assert.equal(merged.goals[0].metric.current, 7, 'goal progress must retain the greater value');
+          assert.equal(merged.goals[0].directionId, 'dir-local', 'goal direction must be remapped');
+          assert.equal(merged.rewardLedger[0].questId, 'quest-import');
+          assert.equal(merged.activityLog[0].questId, 'quest-import');
+          assert.equal(merged.activityLog[0].goalId, 'goal-local');
+          assert.equal(merged.reflections[0].questId, 'quest-import');
+          assert.equal(merged.hero.xp, 120);
+          assert.equal(merged.stats.completed, 5);
+          const repeated = context.mergeImportedStateData(incoming, merged, migrate, createId);
+          assert.equal(repeated.directions.length, 1, 'reimport must not duplicate directions');
+          assert.equal(repeated.quests.length, 1, 'reimport must not duplicate quests');
+          assert.equal(repeated.goals.length, 1, 'reimport must not duplicate goals');
+          assert.equal(repeated.rewardLedger.length, 1, 'reimport must not duplicate rewards');
+          assert.equal(repeated.activityLog.length, 1, 'reimport must not duplicate activity events');
+          assert.equal(repeated.reflections.length, 1, 'reimport must not duplicate reflections');
+          assert.equal(repeated.lore.length, 1, 'reimport must not duplicate lore');
+          assert.equal(target.directions[0].nodes.length, 1, 'merge must not mutate destination input');
+          console.log('ID-mapped import merge: OK');
           NODE
 
       - name: Enforce state replacement boundary
