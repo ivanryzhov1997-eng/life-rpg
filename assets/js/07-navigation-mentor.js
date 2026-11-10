@@ -1,18 +1,11 @@
 
     // Preserve the current durable save before destructive replace/reset operations.
     function backupCurrentSave(prefix) {
-      let raw;
       try {
-        raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return false;
-        const key = prefix + new Date().toISOString().replace(/[:.]/g, '-');
-        localStorage.setItem(key, raw);
-        const keys = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const itemKey = localStorage.key(i);
-          if (itemKey && itemKey.startsWith(prefix)) keys.push(itemKey);
-        }
-        getBackupKeysToDelete(keys, prefix, 5).forEach(itemKey => localStorage.removeItem(itemKey));
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-') + '-' + uid();
+        backupRawSave(localStorage, raw, prefix, stamp, 5);
         return true;
       } catch (error) {
         throw new Error('Не удалось создать резервную копию перед разрушительной операцией');
@@ -21,6 +14,10 @@
 
     // ===================== SAVE / EXPORT / IMPORT =====================
     function exportSave() {
+      if (localSaveWriteBlocked) {
+        toast('Экспорт остановлен: сначала скачай исходный файл или импортируй резервную копию.', 'error');
+        return;
+      }
       const data = createPersistedState(state, SCHEMA_VERSION);
       data.backupMeta = { app: 'LIFE RPG', format: 'json-backup', exportedAt: new Date().toISOString(), includesActivityLog: true };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -34,6 +31,29 @@
       a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast('Резервная копия экспортирована (без API-ключа)');
+    }
+
+    function exportCorruptSave() {
+      if (!localSaveWriteBlocked) {
+        toast('Повреждённый сейв не обнаружен', 'error');
+        return;
+      }
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw == null) throw new Error('Исходный файл не найден');
+        const blob = new Blob([raw], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'life-rpg-corrupt-save-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast('Исходный файл сохранения скачан', 'success');
+      } catch (error) {
+        toast(error.message || 'Не удалось скачать повреждённый сейв', 'error');
+      }
     }
 
     function exportMarkdown() {
@@ -91,7 +111,12 @@
           const candidate = merge
             ? mergeImportedState(data, JSON.parse(JSON.stringify(previousState)))
             : migrateState(data);
-          if (!merge) backupCurrentSave('life_rpg_v5_preimport_');
+          if (localSaveWriteBlocked) {
+            const prefix = merge ? 'life_rpg_v5_premerge_' : 'life_rpg_v5_preimport_';
+            if (!resolveCorruptLocalSave(prefix)) return;
+          } else if (!merge) {
+            backupCurrentSave('life_rpg_v5_preimport_');
+          }
           replaceState(candidate);
           if (!save()) {
             replaceState(previousState);
@@ -116,7 +141,11 @@
       if (!confirm('Точно? Все квесты, навыки и лор будут удалены.')) return;
       const previousState = snapshotState();
       try {
-        backupCurrentSave('life_rpg_v5_prereset_');
+        if (localSaveWriteBlocked) {
+          if (!resolveCorruptLocalSave('life_rpg_v5_prereset_')) return;
+        } else {
+          backupCurrentSave('life_rpg_v5_prereset_');
+        }
       } catch (backupError) {
         toast(backupError.message || 'Сброс остановлен: резервная копия не создана', 'error');
         return;
