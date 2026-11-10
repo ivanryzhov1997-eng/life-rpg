@@ -202,7 +202,9 @@ function mergeImportedStateData(incoming, target, migrate, createId) {
     if (!lore.some(x => x.text === item.text && x.date === item.date)) lore.push(clone(item));
   });
 
-  if ((src.hero?.xp || 0) > (out.hero?.xp || 0)) out.hero = Object.assign({}, out.hero || {}, clone(src.hero));
+  // Merge progression without replacing local profile preferences (name/title).
+  out.hero = Object.assign({}, out.hero || {});
+  out.hero.xp = Math.max(Number(out.hero.xp) || 0, Number(src.hero?.xp) || 0);
   out.stats = Object.assign({}, out.stats || {});
   Object.keys(src.stats || {}).forEach(key => {
     if (typeof src.stats[key] === 'number') out.stats[key] = Math.max(Number(out.stats[key]) || 0, src.stats[key]);
