@@ -253,24 +253,33 @@
           const serialized = JSON.stringify(toSave);
           let previousRaw = null;
           let previousTimestamp = null;
+          let previousOwner = null;
+          let ownerRead = false;
           try {
             previousRaw = localStorage.getItem(STORAGE_KEY);
             previousTimestamp = localStorage.getItem(LOCAL_UPDATED_AT_KEY);
+            previousOwner = localStorage.getItem(LOCAL_CLOUD_OWNER_KEY);
+            ownerRead = true;
             localStorage.setItem(STORAGE_KEY, serialized);
             if (row.updated_at) localStorage.setItem(LOCAL_UPDATED_AT_KEY, row.updated_at);
             else localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
+            if (!setLocalCloudOwner(uid)) throw new Error('Не удалось закрепить владельца локального сохранения');
           } catch (storageError) {
-            // Best-effort rollback of the two local records. The live state has
-            // not been replaced yet, so even a rollback failure cannot desync it.
+            // Roll back the save, timestamp and owner marker together. The live
+            // state has not been replaced yet, so a partial mirror is not published.
             try {
               if (previousRaw === null) localStorage.removeItem(STORAGE_KEY);
               else localStorage.setItem(STORAGE_KEY, previousRaw);
               if (previousTimestamp === null) localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
               else localStorage.setItem(LOCAL_UPDATED_AT_KEY, previousTimestamp);
+              if (ownerRead) {
+                if (previousOwner === null) localStorage.removeItem(LOCAL_CLOUD_OWNER_KEY);
+                else localStorage.setItem(LOCAL_CLOUD_OWNER_KEY, previousOwner);
+              }
             } catch (rollbackError) {
               console.error('Cloud mirror rollback failed', rollbackError);
             }
-            throw new Error('Не удалось сохранить облачную версию на устройстве; локальный прогресс оставлен без изменений');
+            throw new Error('Не удалось сохранить облачную версию и владельца на устройстве; локальный прогресс оставлен без изменений');
           }
           if (!authUser || authUser.id !== uid) {
             try {
@@ -278,6 +287,10 @@
               else localStorage.setItem(STORAGE_KEY, previousRaw);
               if (previousTimestamp === null) localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
               else localStorage.setItem(LOCAL_UPDATED_AT_KEY, previousTimestamp);
+              if (ownerRead) {
+                if (previousOwner === null) localStorage.removeItem(LOCAL_CLOUD_OWNER_KEY);
+                else localStorage.setItem(LOCAL_CLOUD_OWNER_KEY, previousOwner);
+              }
             } catch (rollbackError) {
               console.error('Cloud account-switch rollback failed', rollbackError);
             }
@@ -292,7 +305,6 @@
           }
           replaceState(nextState);
           lastPersistedStateSnapshot = snapshotState();
-          setLocalCloudOwner(uid);
           cloudReady = true;
           cloudLastError = '';
           updateCloudStatusLine();
@@ -374,6 +386,14 @@
         updateCloudStatusLine();
         return false;
       }
+      // Persist ownership before any network write. If this fails, the save
+      // must not be uploaded because a later account switch could misattribute it.
+      if (!setLocalCloudOwner(uid)) {
+        cloudReady = false;
+        cloudLastError = 'не удалось закрепить локальное сохранение за аккаунтом';
+        updateCloudStatusLine();
+        return false;
+      }
       try {
         const payload = createPersistedState(state, SCHEMA_VERSION);
         const savedAt = new Date().toISOString();
@@ -408,7 +428,6 @@
             localStorage.setItem(LOCAL_UPDATED_AT_KEY, savedAt);
           }
         } catch (e) {}
-        setLocalCloudOwner(uid);
         cloudReady = true;
         cloudLastError = '';
         updateCloudStatusLine();
