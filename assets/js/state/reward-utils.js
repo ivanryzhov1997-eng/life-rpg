@@ -6,7 +6,10 @@ function hasHabitRewardForDay(quest, rewardLedger, dayKey) {
   return rewardLedger.some(event => {
     if (!event || event.questId !== quest.id || !event.habit || event.at == null) return false;
     const date = new Date(event.at);
-    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === dayKey;
+    if (Number.isNaN(date.getTime())) return false;
+    const eventDay = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0')
+      + '-' + String(date.getDate()).padStart(2, '0');
+    return eventDay === dayKey;
   });
 }
 
