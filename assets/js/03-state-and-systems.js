@@ -3,6 +3,7 @@
     let cloudSaveTimer = null;
     let cloudReady = false;
     let cloudLastError = '';
+    const LOCAL_CLOUD_OWNER_KEY = 'life_rpg_v5_cloud_owner';
 
     function getSupabaseUrl() {
       // Облачный сейв — ТОЛЬКО если пользователь сам включил в Настройках.
@@ -45,6 +46,13 @@
     }
 
     function cloudConfigured() { return !!(isCloudEnabled() && supabaseClient && authUser); }
+    function getLocalCloudOwner() {
+      try { return localStorage.getItem(LOCAL_CLOUD_OWNER_KEY) || ''; } catch (e) { return ''; }
+    }
+    function setLocalCloudOwner(userId) {
+      try { localStorage.setItem(LOCAL_CLOUD_OWNER_KEY, String(userId)); return true; }
+      catch (e) { return false; }
+    }
 
     async function authRefreshUser() {
       if (!supabaseClient) return null;
@@ -284,6 +292,7 @@
           }
           replaceState(nextState);
           lastPersistedStateSnapshot = snapshotState();
+          setLocalCloudOwner(uid);
           cloudReady = true;
           cloudLastError = '';
           updateCloudStatusLine();
@@ -294,6 +303,27 @@
         if (localSaveWriteBlocked) {
           cloudReady = false;
           cloudLastError = 'повреждённое локальное сохранение: облачная запись заблокирована';
+          updateCloudStatusLine();
+          return false;
+        }
+        // A device save previously synced to another account is not guest data.
+        // Never copy it to a new empty account without explicit user confirmation.
+        let localRawForOwnerCheck = null;
+        try { localRawForOwnerCheck = localStorage.getItem(STORAGE_KEY); }
+        catch (storageError) {
+          cloudReady = false;
+          cloudLastError = 'не удалось проверить владельца локального сохранения';
+          updateCloudStatusLine();
+          return false;
+        }
+        const localInfoForOwnerCheck = inspectLocalSave(
+          localRawForOwnerCheck,
+          localStorage.getItem(LOCAL_UPDATED_AT_KEY) || '',
+          validateImport
+        );
+        if (isLocalSaveOwnedByAnotherAccount(getLocalCloudOwner(), uid, localInfoForOwnerCheck.hasData)) {
+          cloudReady = false;
+          cloudLastError = 'конфликт сохранений: локальная копия принадлежит другому аккаунту';
           updateCloudStatusLine();
           return false;
         }
@@ -378,6 +408,7 @@
             localStorage.setItem(LOCAL_UPDATED_AT_KEY, savedAt);
           }
         } catch (e) {}
+        setLocalCloudOwner(uid);
         cloudReady = true;
         cloudLastError = '';
         updateCloudStatusLine();
@@ -417,6 +448,19 @@
       if (loaded) {
         toast('Загружено из облака', 'success');
         renderAll();
+        return;
+      }
+      if (cloudLastError.includes('локальная копия принадлежит другому аккаунту')) {
+        const transfer = confirm(
+          'Локальное сохранение ранее синхронизировалось с другим аккаунтом. В облаке текущего аккаунта пока нет сохранения. Перенести локальный прогресс в этот аккаунт?'
+        );
+        if (!transfer) {
+          toast('Локальное сохранение не перенесено. Данные на устройстве не изменены.', 'error');
+          return;
+        }
+        cloudReady = true;
+        cloudLastError = '';
+        await cloudSave(true);
         return;
       }
       const fallback = getCloudSyncFallback(cloudLastError);
