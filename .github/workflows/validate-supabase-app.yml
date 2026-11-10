@@ -66,7 +66,7 @@ jobs:
           if (!fs.existsSync('assets/js/state/cloud-response.js')) throw new Error('Missing cloud-response.js');
           if (!fs.existsSync('assets/js/state/backup-utils.js')) throw new Error('Missing backup-utils.js');
           if (!fs.existsSync('assets/js/state/tree-utils.js')) throw new Error('Missing tree-utils.js');
-          if ((html.match(/src="\\.\\/assets\\/js\\/state\\/tree-utils\\.js"/g) || []).length !== 1) {
+          if ((html.match(/src="\.\/assets\/js\/state\/tree-utils\.js"/g) || []).length !== 1) {
             throw new Error('tree-utils.js must be loaded exactly once');
           }
           if (!fs.existsSync('assets/css/app.css')) throw new Error('Missing app.css');
