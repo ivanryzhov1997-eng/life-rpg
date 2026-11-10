@@ -263,13 +263,16 @@ jobs:
           const boot = fs.readFileSync('assets/js/08-theme-init.js', 'utf8');
           const required = [
             ['queued saves capture requesting account', /const requestedUserId = authUser && authUser\.id/],
+            ['cloud writes require loaded account state', /if \\(!cloudReady\\)[\\s\\S]{0,180}облачная версия ещё не загружена/],
+            ['manual local conflict choice explicitly unlocks write', /cloudReady = true;[\\s\\S]{0,100}await cloudSave\\(true\\)/],
             ['queued saves reject account switches', /authUser\.id !== requestedUserId/],
             ['cloud POST checks expected user', /performCloudSave\(force, expectedUserId\)/],
             ['fetch validates session user', /data\.session\.user\?\.id !== userId/],
             ['cloud load checks account after response', /if \(!authUser \|\| authUser\.id !== uid\) return false/],
             ['manual sync is bound to initiating user', /const requestedUserId = authUser\.id/],
             ['delayed save captures account ID', /function scheduleCloudSave\(\)[\s\S]*const requestedUserId = authUser\.id/],
-            ['delayed save rejects account switch', /authUser\.id !== requestedUserId/]
+            ['delayed save rejects account switch', /authUser\.id !== requestedUserId/],
+            ['password sign-in resets cloud readiness on account switch', /previousUserId!==authUser\\?\\.id\\)\\{cloudReady=false/]
           ];
           for (const [label, pattern] of required) {
             if (!pattern.test(cloud)) throw new Error('Missing cloud safety guard: ' + label);
