@@ -1,4 +1,24 @@
 
+    // Preserve the current durable save before destructive replace/reset operations.
+    function backupCurrentSave(prefix) {
+      let raw;
+      try {
+        raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+        const key = prefix + new Date().toISOString().replace(/[:.]/g, '-');
+        localStorage.setItem(key, raw);
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const itemKey = localStorage.key(i);
+          if (itemKey && itemKey.startsWith(prefix)) keys.push(itemKey);
+        }
+        getBackupKeysToDelete(keys, prefix, 5).forEach(itemKey => localStorage.removeItem(itemKey));
+        return true;
+      } catch (error) {
+        throw new Error('Не удалось создать резервную копию перед разрушительной операцией');
+      }
+    }
+
     // ===================== SAVE / EXPORT / IMPORT =====================
     function exportSave() {
       const data = createPersistedState(state, SCHEMA_VERSION);
@@ -109,6 +129,7 @@
           const candidate = merge
             ? mergeImportedState(data, JSON.parse(JSON.stringify(previousState)))
             : migrateState(data);
+          if (!merge) backupCurrentSave('life_rpg_v5_preimport_');
           replaceState(candidate);
           if (!save()) {
             replaceState(previousState);
@@ -132,6 +153,12 @@
       if (!confirm('Сбросить ВЕСЬ прогресс? Это нельзя отменить.')) return;
       if (!confirm('Точно? Все квесты, навыки и лор будут удалены.')) return;
       const previousState = snapshotState();
+      try {
+        backupCurrentSave('life_rpg_v5_prereset_');
+      } catch (backupError) {
+        toast(backupError.message || 'Сброс остановлен: резервная копия не создана', 'error');
+        return;
+      }
       const keepModel = state.ai?.model;
       const keepDiff = state.ai?.preferredDifficulty;
       replaceState(migrateState({
