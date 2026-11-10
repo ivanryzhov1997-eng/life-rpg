@@ -8,15 +8,33 @@ function createPersistedState(currentState, schemaVersion) {
 }
 
 
-// Writes the primary snapshot first. Timestamp metadata is best-effort and must
-// not make a successful primary save look like a failure.
-function persistStateSnapshot(storage, storageKey, timestampKey, currentState, schemaVersion, savedAt) {
+// The local version marker is written first so any interrupted primary write
+// remains visibly dirty and cannot be mistaken for an already-synced cloud copy.
+function persistStateSnapshot(storage, storageKey, timestampKey, currentState, schemaVersion, localVersion) {
   const snapshot = createPersistedState(currentState, schemaVersion);
-  storage.setItem(storageKey, JSON.stringify(snapshot));
+  const serialized = JSON.stringify(snapshot);
+  let previousRaw;
+  let previousVersion;
   try {
-    storage.setItem(timestampKey, savedAt);
+    previousRaw = storage.getItem(storageKey);
+    previousVersion = storage.getItem(timestampKey);
   } catch (error) {
-    // The primary state record is already durable; metadata can be repaired later.
+    throw new Error('Не удалось прочитать предыдущее сохранение перед записью');
+  }
+  try {
+    storage.setItem(timestampKey, localVersion);
+    storage.setItem(storageKey, serialized);
+  } catch (error) {
+    try {
+      if (previousRaw === null) storage.removeItem(storageKey);
+      else storage.setItem(storageKey, previousRaw);
+      if (previousVersion === null) storage.removeItem(timestampKey);
+      else storage.setItem(timestampKey, previousVersion);
+    } catch (rollbackError) {
+      error.rollbackFailed = true;
+      error.rollbackError = rollbackError;
+    }
+    throw error;
   }
   return snapshot;
 }
