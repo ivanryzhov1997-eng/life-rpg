@@ -639,7 +639,7 @@ jobs:
           const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
           const queueStart = source.indexOf('let cloudSaveQueue = Promise.resolve()');
           const wrapperStart = source.indexOf('function cloudSave(force)', queueStart);
-          const workerStart = source.indexOf('async function performCloudSave(force)', wrapperStart);
+          const workerStart = source.indexOf('async function performCloudSave(force, expectedUserId)', wrapperStart);
           assert.ok(queueStart >= 0 && wrapperStart > queueStart && workerStart > wrapperStart,
             'cloud save must pass through a serialized queue');
           const wrapper = source.slice(wrapperStart, workerStart);
