@@ -787,8 +787,9 @@ jobs:
             'failed cloud GET must clear cloudReady');
           assert.ok(load.includes("cloudReady = false;\n        cloudLastError = (e && e.message) || 'load fail'"),
             'cloud load exceptions must clear cloudReady');
-          assert.ok(save.includes("cloudReady = false;\n          const t = await res.text()"),
-            'failed cloud POST must clear cloudReady');
+          assert.ok(save.includes('const responseText = await res.text()') &&
+            /if \(!res\.ok\) \{\s*cloudReady = false;/.test(save),
+            'failed conditional cloud write must clear cloudReady');
           assert.ok(save.includes("cloudReady = false;\n        cloudLastError = (e && e.message) || 'save fail'"),
             'cloud save exceptions must clear cloudReady');
           console.log('Cloud status failure guards: OK');
