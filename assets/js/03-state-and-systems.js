@@ -416,8 +416,53 @@
     // Last known durable state. Any failed save restores this baseline so
     // callers that mutate first cannot leave unsaved changes visible in memory.
     let lastPersistedStateSnapshot = snapshotState();
+    let localSaveWriteBlocked = false;
+    let corruptLocalSaveRaw = null;
+    let corruptSaveBlockNoticeShown = false;
+
+    function updateCorruptSaveNotice() {
+      const notice = document.getElementById('corruptSaveNotice');
+      if (notice) notice.style.display = localSaveWriteBlocked ? 'block' : 'none';
+    }
+
+    function markCorruptLocalSave(raw, reason) {
+      corruptLocalSaveRaw = raw;
+      localSaveWriteBlocked = true;
+      updateCorruptSaveNotice();
+      if (!corruptSaveBlockNoticeShown) {
+        toast('Локальное сохранение повреждено. Запись заблокирована, чтобы не затереть данные. Скачай исходный файл или импортируй резервную копию.', 'error');
+        corruptSaveBlockNoticeShown = true;
+      }
+      console.warn('Corrupt local save:', reason);
+    }
+
+    function resolveCorruptLocalSave(prefix) {
+      if (!localSaveWriteBlocked) return true;
+      try {
+        if (typeof corruptLocalSaveRaw !== 'string') throw new Error('Исходный повреждённый сейв недоступен');
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-') + '-' + uid();
+        backupRawSave(localStorage, corruptLocalSaveRaw, prefix, stamp, 5);
+        corruptLocalSaveRaw = null;
+        localSaveWriteBlocked = false;
+        corruptSaveBlockNoticeShown = false;
+        updateCorruptSaveNotice();
+        toast('Исходный повреждённый сейв сохранён в отдельной резервной копии.', 'success');
+        return true;
+      } catch (error) {
+        toast('Операция остановлена: не удалось сохранить исходный повреждённый сейв. Освободи место в хранилище и повтори.', 'error');
+        return false;
+      }
+    }
 
     function save() {
+      if (localSaveWriteBlocked) {
+        if (lastPersistedStateSnapshot) replaceState(JSON.parse(JSON.stringify(lastPersistedStateSnapshot)));
+        if (!corruptSaveBlockNoticeShown) {
+          toast('Сохранение заблокировано до импорта резервной копии или полного сброса.', 'error');
+          corruptSaveBlockNoticeShown = true;
+        }
+        return false;
+      }
       try {
         const toSave = persistStateSnapshot(
           localStorage,
@@ -473,15 +518,24 @@
     function load() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const data = JSON.parse(raw);
-          const err = validateImport(data);
-          if (!err) {
-            replaceState(migrateState(data));
-            lastPersistedStateSnapshot = snapshotState();
-          } else {
-            console.warn('Invalid save:', err);
-          }
+        if (!raw) return;
+        let data;
+        try {
+          data = JSON.parse(raw);
+        } catch (parseError) {
+          markCorruptLocalSave(raw, parseError.message || 'invalid JSON');
+          return;
+        }
+        const err = validateImport(data);
+        if (err) {
+          markCorruptLocalSave(raw, err);
+          return;
+        }
+        try {
+          replaceState(migrateState(data));
+          lastPersistedStateSnapshot = snapshotState();
+        } catch (migrationError) {
+          markCorruptLocalSave(raw, migrationError.message || 'migration failed');
         }
       } catch (e) {
         console.warn('Load failed', e);
