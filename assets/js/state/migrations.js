@@ -25,6 +25,7 @@ function normalizeStateData(data, schemaVersion, questXp) {
         }, data.ai || {}),
         ui: Object.assign({ lastEveningRitual: null, questSort: 'default', dailyCapacity: 60 }, data.ui || {})
       };
+      normalizeSkillTreeParents(s.directions);
       // API key migration is intentionally handled by the persistence wrapper.
       const deprecated = {
         'llama-3.3-70b-versatile': 'openai/gpt-oss-120b',
