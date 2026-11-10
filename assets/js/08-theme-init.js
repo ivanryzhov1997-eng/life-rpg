@@ -125,6 +125,8 @@
               authUser = session?.user || null;
               const newId = authUser && authUser.id;
               if (oldId !== newId) {
+                clearTimeout(cloudSaveTimer);
+                cloudSaveTimer = null;
                 cloudReady = false;
                 cloudLastError = '';
                 if (newId) setTimeout(() => afterAuthReady(), 0);
