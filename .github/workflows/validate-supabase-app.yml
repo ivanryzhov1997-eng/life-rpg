@@ -527,6 +527,18 @@ jobs:
           assert.equal(context.classifyCloudWriteRows([{ updated_at: '2026-11-10T10:00:00Z' }]).kind, 'saved');
           assert.equal(context.classifyCloudWriteRows([]).kind, 'conflict');
           assert.equal(context.classifyCloudWriteRows([{}]).kind, 'invalid');
+          assert.equal(context.needsCloudConflictChoice(
+            { hasData: true, isValid: true, updatedAt: 'v1' }, { updated_at: 'v1' }, 'user-a', 'user-a'
+          ), false, 'matching server version and owner is already synchronized');
+          assert.equal(context.needsCloudConflictChoice(
+            { hasData: true, isValid: true, updatedAt: 'v1' }, { updated_at: 'v2' }, 'user-a', 'user-a'
+          ), true, 'different server versions require an explicit conflict choice');
+          assert.equal(context.needsCloudConflictChoice(
+            { hasData: true, isValid: true, updatedAt: 'v1' }, { updated_at: 'v1' }, 'user-a', 'user-b'
+          ), true, 'a different account owner requires an explicit conflict choice');
+          assert.equal(context.needsCloudConflictChoice(
+            { hasData: true, isValid: false, updatedAt: 'v1' }, { updated_at: 'v2' }, 'user-a', 'user-b'
+          ), false, 'invalid local bytes are backed up before cloud recovery, not treated as a valid conflict');
           assert.equal(context.getCloudSyncFallback(''), 'upload');
           assert.equal(context.getCloudSyncFallback('конфликт сохранений: local/cloud'), 'conflict');
           assert.equal(context.getCloudSyncFallback('HTTP 500'), 'blocked');
@@ -566,8 +578,9 @@ jobs:
             cloudLoad.includes('resetCloudBase();') && cloudLoad.includes('await cloudSaveQueue;'),
             'cloudLoad must freeze writes and drain the in-tab queue before reading a new base version');
           assert.ok(cloudLoad.includes('cloudBaseUserId = uid;') &&
-            cloudLoad.includes('cloudBaseUpdatedAt = row.updated_at;'),
-            'cloudLoad must bind the observed server timestamp to the current account');
+            cloudLoad.includes('cloudBaseUpdatedAt = row.updated_at;') &&
+            cloudLoad.includes('needsCloudConflictChoice(localInfo, row, getLocalCloudOwner(), uid)'),
+            'cloudLoad must bind the server timestamp and detect local divergence without comparing device clocks');
           assert.ok(worker.includes('buildCloudWriteRequest(CLOUD_TABLE, uid, cloudBaseUpdatedAt, body)') &&
             worker.includes('classifyCloudWriteRows(rows)'),
             'cloud writes must use the conditional request builder and inspect affected rows');
