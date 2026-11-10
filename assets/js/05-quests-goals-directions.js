@@ -1571,6 +1571,7 @@ ${rules.prompt}
         renderQuests();
         renderHero();
         renderDirections();
+        if (currentTreeDirId) renderTree(currentTreeDirId);
         toast('Привычка отмечена. XP за сегодня уже начислен.', 'success');
         return;
       }
