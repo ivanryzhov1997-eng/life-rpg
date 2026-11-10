@@ -1514,12 +1514,7 @@ ${rules.prompt}
       q.done = false;
       // Older saves may have the reward event ID but no daily idempotency field.
       if (q.lastRewardEventId) q.lastHabitRewardDay = todayKey();
-      if (q.lastHabitDay === todayKey()) {
-        q.habitStreakBeforeUndo = Math.max(0, Number(q.habitStreak) || 1);
-        q.habitStreakUndoDay = todayKey();
-        q.habitStreak = Math.max(0, (q.habitStreak || 1) - 1);
-        q.lastHabitDay = null;
-      }
+      recordHabitStreakUndo(q, todayKey());
       delete q.completedAt;
       if (!save()) return;
       renderQuests();
@@ -1546,25 +1541,14 @@ ${rules.prompt}
       if (!isHabit) {
         state.stats.completed = (state.stats.completed || 0) + 1;
       } else {
-        const today = todayKey();
-        if (q.habitStreakUndoDay && q.habitStreakUndoDay !== today) {
-          delete q.habitStreakBeforeUndo;
-          delete q.habitStreakUndoDay;
-        }
-        if (rewardAlreadyGrantedToday && q.habitStreakUndoDay === today) {
-          q.habitStreak = Math.max(0, Number(q.habitStreakBeforeUndo) || 0);
-          delete q.habitStreakBeforeUndo;
-          delete q.habitStreakUndoDay;
-        } else {
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yKey = yesterday.toISOString().slice(0, 10);
-          const last = q.lastHabitDay || null;
-          if (last === yKey) q.habitStreak = (q.habitStreak || 0) + 1;
-          else if (last !== today) q.habitStreak = 1;
-        }
-        q.lastHabitDay = today;
-        q.habitBest = Math.max(q.habitBest || 0, q.habitStreak || 0);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        applyHabitStreakCompletion(
+          q,
+          todayKey(),
+          yesterday.toISOString().slice(0, 10),
+          rewardAlreadyGrantedToday
+        );
         if (!rewardAlreadyGrantedToday) {
           state.stats.habitChecks = (state.stats.habitChecks || 0) + 1;
         }
