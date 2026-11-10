@@ -377,8 +377,10 @@
         return;
       }
       if (!authUser) { toast('Сначала войди в аккаунт', 'error'); return; }
+      const requestedUserId = authUser.id;
       toast('Синхронизация…');
       const loaded = await cloudLoad();
+      if (!authUser || authUser.id !== requestedUserId) return;
       if (loaded) {
         toast('Загружено из облака', 'success');
         renderAll();
