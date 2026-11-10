@@ -255,14 +255,13 @@
           const localInfo = inspectLocalSave(localRaw, localUpdatedAt, validateImport);
           localExists = localInfo.isValid;
           const hasLocalData = localInfo.hasData;
-          const localMs = Date.parse(localInfo.updatedAt);
-          const cloudMs = Date.parse(row.updated_at || '');
-          const needsConflictChoice = localExists && (
-            !Number.isFinite(localMs) || !Number.isFinite(cloudMs) || localMs > cloudMs + 1000
-          );
+          const ownerMismatch = isLocalSaveOwnedByAnotherAccount(getLocalCloudOwner(), uid, hasLocalData);
+          const needsConflictChoice = needsCloudConflictChoice(localInfo, row, getLocalCloudOwner(), uid);
           if (needsConflictChoice && !forceCloudReplace) {
             cloudReady = false;
-            cloudLastError = 'конфликт сохранений: локальные данные не заменены';
+            cloudLastError = ownerMismatch
+              ? 'конфликт сохранений: локальная копия принадлежит другому аккаунту; в облаке уже есть другая версия'
+              : 'конфликт сохранений: локальные данные отличаются от облачной версии';
             updateCloudStatusLine();
             return false;
           }
@@ -361,7 +360,7 @@
         );
         if (isLocalSaveOwnedByAnotherAccount(getLocalCloudOwner(), uid, localInfoForOwnerCheck.hasData)) {
           cloudReady = false;
-          cloudLastError = 'конфликт сохранений: локальная копия принадлежит другому аккаунту';
+          cloudLastError = 'конфликт сохранений: локальная копия принадлежит другому аккаунту; облако пусто';
           updateCloudStatusLine();
           return false;
         }
@@ -509,7 +508,7 @@
         renderAll();
         return;
       }
-      if (cloudLastError.includes('локальная копия принадлежит другому аккаунту')) {
+      if (cloudLastError.includes('локальная копия принадлежит другому аккаунту; облако пусто')) {
         const transfer = confirm(
           'Локальное сохранение ранее синхронизировалось с другим аккаунтом. В облаке текущего аккаунта пока нет сохранения. Перенести локальный прогресс в этот аккаунт?'
         );
