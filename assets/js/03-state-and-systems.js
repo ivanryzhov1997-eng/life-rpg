@@ -367,8 +367,13 @@
 
     function scheduleCloudSave() {
       if (!cloudConfigured() || !authUser) return;
+      const requestedUserId = authUser.id;
       clearTimeout(cloudSaveTimer);
-      cloudSaveTimer = setTimeout(() => { cloudSave(false); }, 1200);
+      cloudSaveTimer = setTimeout(() => {
+        cloudSaveTimer = null;
+        if (!authUser || authUser.id !== requestedUserId) return;
+        cloudSave(false);
+      }, 1200);
     }
 
     async function syncCloudNow() {
