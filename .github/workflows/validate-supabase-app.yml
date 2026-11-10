@@ -511,6 +511,22 @@ jobs:
           assert.equal(context.isLocalSaveOwnedByAnotherAccount('user-a', 'user-a', true), false);
           assert.equal(context.isLocalSaveOwnedByAnotherAccount('', 'user-b', true), false);
           assert.equal(context.isLocalSaveOwnedByAnotherAccount('user-a', 'user-b', false), false);
+          const updateRequest = context.buildCloudWriteRequest(
+            'life_rpg_saves', 'user/123', '2026-11-10T10:00:00+00:00', { user_id: 'user/123', data: {} }
+          );
+          assert.equal(updateRequest.method, 'PATCH');
+          assert.equal(updateRequest.path,
+            '/rest/v1/life_rpg_saves?user_id=eq.user%2F123&updated_at=eq.2026-11-10T10%3A00%3A00%2B00%3A00');
+          assert.equal(updateRequest.prefer, 'return=representation');
+          const insertRequest = context.buildCloudWriteRequest(
+            'life_rpg_saves', 'user/123', null, { user_id: 'user/123', data: {} }
+          );
+          assert.equal(insertRequest.method, 'POST');
+          assert.equal(insertRequest.path, '/rest/v1/life_rpg_saves?on_conflict=user_id');
+          assert.equal(insertRequest.prefer, 'resolution=ignore-duplicates,return=representation');
+          assert.equal(context.classifyCloudWriteRows([{ updated_at: '2026-11-10T10:00:00Z' }]).kind, 'saved');
+          assert.equal(context.classifyCloudWriteRows([]).kind, 'conflict');
+          assert.equal(context.classifyCloudWriteRows([{}]).kind, 'invalid');
           assert.equal(context.getCloudSyncFallback(''), 'upload');
           assert.equal(context.getCloudSyncFallback('конфликт сохранений: local/cloud'), 'conflict');
           assert.equal(context.getCloudSyncFallback('HTTP 500'), 'blocked');
@@ -531,6 +547,36 @@ jobs:
             { hasData: true, isValid: false, updatedAt: '' }
           );
           console.log('Cloud response classification and sync fallback: OK');
+          NODE
+
+      - name: Guard compare-and-swap cloud persistence
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const loadStart = source.indexOf('async function cloudLoad(');
+          const queueStart = source.indexOf('function cloudSave(force)', loadStart);
+          const workerStart = source.indexOf('async function performCloudSave(', queueStart);
+          const syncStart = source.indexOf('async function syncCloudNow(', workerStart);
+          const cloudLoad = source.slice(loadStart, queueStart);
+          const worker = source.slice(workerStart, syncStart);
+          const sync = source.slice(syncStart, source.indexOf('function snapshotState(', syncStart));
+          assert.ok(cloudLoad.includes('cloudReady = false;') &&
+            cloudLoad.includes('resetCloudBase();') && cloudLoad.includes('await cloudSaveQueue;'),
+            'cloudLoad must freeze writes and drain the in-tab queue before reading a new base version');
+          assert.ok(cloudLoad.includes('cloudBaseUserId = uid;') &&
+            cloudLoad.includes('cloudBaseUpdatedAt = row.updated_at;'),
+            'cloudLoad must bind the observed server timestamp to the current account');
+          assert.ok(worker.includes('buildCloudWriteRequest(CLOUD_TABLE, uid, cloudBaseUpdatedAt, body)') &&
+            worker.includes('classifyCloudWriteRows(rows)'),
+            'cloud writes must use the conditional request builder and inspect affected rows');
+          assert.ok(worker.indexOf('cloudBaseUpdatedAt = writeResult.row.updated_at') >
+            worker.indexOf('classifyCloudWriteRows(rows)'),
+            'the next write base must come from the server representation');
+          assert.ok(sync.indexOf('const refreshed = await cloudLoad()') < sync.indexOf('const useCloud = confirm('),
+            'a conflict must refresh the server version before presenting overwrite choices');
+          console.log('Conditional cloud write guard: OK');
           NODE
 
       - name: Test backup utilities
