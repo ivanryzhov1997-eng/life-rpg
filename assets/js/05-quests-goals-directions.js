@@ -794,7 +794,7 @@ ${rules.prompt}
 
     // ===================== WEEKLY PULSE =====================
     function localDayKey(date) {
-      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+      return localDateKey(date);
     }
 
     function renderWeeklyPulseBlock() {
@@ -1475,7 +1475,7 @@ ${rules.prompt}
     }
 
     function todayKey() {
-      return new Date().toISOString().slice(0, 10);
+      return todayStr();
     }
 
     function isHabitQuest(q) {
@@ -1484,7 +1484,7 @@ ${rules.prompt}
 
     function habitDoneToday(q) {
       if (!q || !q.done || !q.completedAt) return false;
-      return new Date(q.completedAt).toISOString().slice(0, 10) === todayKey();
+      return localDateKey(new Date(q.completedAt)) === todayKey();
     }
 
     function resetHabitsForToday() {
@@ -1501,7 +1501,7 @@ ${rules.prompt}
           delete q.habitStreakUndoDay;
           changed = true;
         }
-        const doneDay = q.completedAt ? new Date(q.completedAt).toISOString().slice(0, 10) : null;
+        const doneDay = q.completedAt ? localDateKey(new Date(q.completedAt)) : null;
         if (q.done && doneDay && doneDay !== today) {
           q.done = false;
           changed = true;
@@ -1551,7 +1551,7 @@ ${rules.prompt}
         applyHabitStreakCompletion(
           q,
           todayKey(),
-          yesterday.toISOString().slice(0, 10),
+          localDateKey(yesterday),
           rewardAlreadyGrantedToday
         );
         if (!rewardAlreadyGrantedToday) {
