@@ -173,8 +173,8 @@ jobs:
           assert.equal(python.xp, 180, 'direction XP must not be lost');
           assert.equal(python.nodes.find(x => x.name === 'API').xp, 90, 'skill XP must not be lost');
           const auth = python.nodes.find(x => x.name === 'Auth');
-          assert.equal(merged.quests[0].targetId, auth.id, 'quest skill target must be remapped');
-          assert.equal(merged.quests[0].goalId, 'goal-local', 'quest goal must be remapped');
+          assert.equal(merged.quests.find(x => x.id === 'quest-import').targetId, auth.id, 'quest skill target must be remapped');
+          assert.equal(merged.quests.find(x => x.id === 'quest-import').goalId, 'goal-local', 'quest goal must be remapped');
           assert.equal(merged.quests.find(x => x.id === 'quest-existing').done, true, 'newer completion must update existing quest');
           assert.equal(merged.goals[0].metric.current, 7, 'goal progress must retain the greater value');
           assert.equal(merged.goals[0].directionId, 'dir-local', 'goal direction must be remapped');
