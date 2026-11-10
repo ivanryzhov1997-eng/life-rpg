@@ -131,6 +131,27 @@ jobs:
           console.log('State migrations and validation: OK');
           NODE
 
+      - name: Test cycle-safe skill subtree traversal
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/tree-utils.js', 'utf8'), context);
+          const nodes = [
+            { id: 'a', parentId: 'b' },
+            { id: 'b', parentId: 'a' },
+            { id: 'child', parentId: 'a' },
+            { id: 'grandchild', parentId: 'child' },
+            { id: 'unrelated', parentId: null }
+          ];
+          const removed = context.collectSkillSubtreeIds(nodes, 'a');
+          assert.deepEqual([...removed].sort(), ['a', 'b', 'child', 'grandchild']);
+          assert.equal(removed.has('unrelated'), false);
+          console.log('Cycle-safe skill subtree traversal: OK');
+          NODE
+
       - name: Test ID-mapped import merge
         run: |
           node <<'NODE'
