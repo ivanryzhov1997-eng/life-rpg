@@ -117,3 +117,25 @@ AI может предлагать изменения, но не должен н
 3. Подготовить функциональную матрицу legacy → target, включая AI mentor, AI quest generation и skill tree.
 4. Подготовить отдельное тестовое окружение backend + MySQL и воспроизводимые миграции.
 5. Добавить E2E-критерии до переноса production.
+
+
+## 10. Результат первичной проверки Kimi OAuth (2026-11-10)
+
+Проверены публичные материалы MoonshotAI:
+
+- [Kimi CLI OAuth implementation](https://github.com/MoonshotAI/kimi-cli/blob/main/src/kimi_cli/auth/oauth.py) реализует device-code flow через `auth.kimi.com`, используя client ID, встроенный в официальный Kimi CLI.
+- [Kimi Code server API](https://github.com/MoonshotAI/kimi-code/blob/main/docs/en/reference/server-api.md) описывает managed OAuth login для провайдера `managed:kimi-code`, включая login, polling, logout и userinfo.
+- [Kimi Code provider docs](https://www.kimi.com/code/docs/en/kimi-code-cli/configuration/providers.html) описывают OAuth как способ подключения Kimi Code managed service к моделям.
+
+Эти материалы подтверждают существование OAuth для официального Kimi Code managed service, но **не подтверждают наличие публичного OAuth/OIDC-провайдера для сторонних приложений**, который можно использовать как обычный способ входа в RPG-LIFE. Публично найденный flow ориентирован на авторизацию пользователя в Kimi Code и доступ к managed AI service, а не на выдачу RPG-LIFE универсального стабильного идентификатора пользователя.
+
+Следствие: не копировать встроенный client ID официального CLI и не строить production-auth на непубличных/непредназначенных для сторонних приложений endpoints. Это создаёт риск блокировки, нарушения условий использования и нестабильности авторизации.
+
+**Статус требования Kimi OAuth: BLOCKED / NEEDS OFFICIAL CONFIRMATION.** До получения официального подтверждения Moonshot о поддержке сторонних приложений не начинать реализацию. Сам факт наличия OAuth в Kimi Code не равен доступности Kimi как внешнего Identity Provider.
+
+Безопасная развилка:
+1. Запросить у Moonshot официальные инструкции/доступ для стороннего OAuth-клиента и подтверждение допустимости такого сценария.
+2. Если такого сценария нет, выбрать отдельный Identity Provider (например, Supabase Auth или другой поддерживаемый OAuth/OIDC provider), а Groq оставить независимым AI inference provider.
+3. Не использовать Kimi access token как токен сессии RPG-LIFE и не связывать авторизацию пользователя с доступом к AI-модели.
+
+До решения этой развилки target auth не считается утверждённым для реализации.
