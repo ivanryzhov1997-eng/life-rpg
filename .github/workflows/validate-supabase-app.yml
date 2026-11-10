@@ -197,6 +197,36 @@ jobs:
           assert.equal(repeated.reflections.length, 1, 'reimport must not duplicate reflections');
           assert.equal(repeated.lore.length, 1, 'reimport must not duplicate lore');
           assert.equal(target.directions[0].nodes.length, 1, 'merge must not mutate destination input');
+
+          // A partial backup may contain a child whose parent already exists
+          // locally but is not included in the imported subtree.
+          const partialTarget = {
+            hero: { name: 'Local', xp: 0 },
+            directions: [{ id: 'dir-local', name: 'Python', nodes: [
+              { id: 'parent-local', name: 'Existing parent', parentId: null, xp: 10 }
+            ] }],
+            goals: [], quests: [], lore: [], reflections: [], activityLog: [], rewardLedger: [],
+            stats: {}, streak: {}, unlockedTitles: ['newbie'], unlockedAchievements: []
+          };
+          const partialIncoming = {
+            hero: { name: 'Backup', xp: 0 },
+            directions: [{ id: 'dir-backup', name: 'Python', nodes: [
+              { id: 'child-backup', name: 'Imported child', parentId: 'parent-local', xp: 5 }
+            ] }],
+            goals: [], quests: [
+              { id: 'quest-child', title: 'Work on child', type: 'SIDE', done: false,
+                targetType: 'SKILL', targetId: 'child-backup' }
+            ],
+            lore: [], reflections: [], activityLog: [], rewardLedger: [],
+            stats: {}, streak: {}, unlockedTitles: ['newbie'], unlockedAchievements: []
+          };
+          const partial = context.mergeImportedStateData(partialIncoming, partialTarget, migrate, createId);
+          const importedChild = partial.directions[0].nodes.find(x => x.id !== 'parent-local');
+          assert.equal(importedChild.parentId, 'parent-local',
+            'existing destination parent links must survive partial subtree imports');
+          assert.equal(partial.quests.find(x => x.id === 'quest-child').targetId, importedChild.id,
+            'quest target must point to the imported child');
+
           console.log('ID-mapped import merge: OK');
           NODE
 
