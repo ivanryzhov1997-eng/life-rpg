@@ -234,6 +234,27 @@ jobs:
           console.log('Backup utilities: OK');
           NODE
 
+      - name: Guard cloud state replacement ordering
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const start = source.indexOf('async function cloudLoad(');
+          const end = source.indexOf('async function cloudSave(', start);
+          assert.ok(start >= 0 && end > start, 'cloudLoad function must exist');
+          const cloudLoad = source.slice(start, end);
+          const stage = cloudLoad.indexOf('const nextState = migrateState(row.data)');
+          const persist = cloudLoad.indexOf('localStorage.setItem(STORAGE_KEY, serialized)', stage);
+          const publish = cloudLoad.indexOf('replaceState(nextState)', persist);
+          const rollback = cloudLoad.indexOf('localStorage.setItem(STORAGE_KEY, previousRaw)', persist);
+          assert.ok(stage >= 0 && persist > stage && publish > persist,
+            'live state must be replaced only after the cloud snapshot is persisted locally');
+          assert.ok(rollback > persist && rollback < publish,
+            'failed local persistence must attempt rollback before publishing cloud state');
+          console.log('Cloud state replacement ordering: OK');
+          NODE
+
       - name: Check combined JavaScript syntax
         run: |
           cat assets/js/state/initial-state.js \
