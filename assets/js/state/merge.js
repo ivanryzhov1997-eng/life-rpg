@@ -105,8 +105,10 @@ function mergeImportedStateData(incoming, target, migrate, createId) {
   const quests = arr('quests'), questIds = new Set(quests.map(x => String(x.id || '')).filter(Boolean));
   const questMap = new Map();
   srcArr('quests').forEach(source => {
+    // Stable IDs identify the same quest. Legacy records without IDs are
+    // deduplicated only by exact content; equal titles alone are not sufficient.
     const dest = (source.id && quests.find(x => x.id === source.id))
-      || quests.find(x => norm(x.title) === norm(source.title) && x.type === source.type && !!x.done === !!source.done);
+      || (!source.id && quests.find(x => JSON.stringify(x) === JSON.stringify(source)));
     if (dest) {
       if (source.id != null) questMap.set(String(source.id), String(dest.id));
       // A newer backup may contain the completion of a quest that is still open locally.
