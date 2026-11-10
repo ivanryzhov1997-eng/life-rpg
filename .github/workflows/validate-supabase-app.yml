@@ -924,6 +924,29 @@ jobs:
           console.log('Trigger migration security guard: OK');
           NODE
 
+      - name: Test AI proxy request validation and quota helpers
+        run: node --test tests/ai-proxy-security.test.mjs
+
+      - name: Guard AI proxy server-side protections
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const proxy = fs.readFileSync('supabase/functions/Qroq-proxy/index.ts', 'utf8');
+          const migration = fs.readFileSync('supabase/migrations/20261110154500_add_ai_proxy_rate_limits.sql', 'utf8');
+          assert.ok(proxy.includes('MAX_BODY_BYTES'), 'proxy must cap request body size');
+          assert.ok(proxy.includes('cf-connecting-ip'), 'guest quotas must use the gateway client IP');
+          assert.ok(proxy.includes('HMAC'), 'quota identities must be hashed with a server secret');
+          assert.ok(proxy.includes('consume_ai_proxy_rate_limit'), 'proxy must use persistent server-side quotas');
+          assert.ok(proxy.includes('Fail closed'), 'proxy must fail closed when quota enforcement fails');
+          assert.ok(proxy.includes('AbortSignal.timeout(GROQ_TIMEOUT_MS)'), 'Groq calls must have a timeout');
+          assert.ok(migration.includes('ENABLE ROW LEVEL SECURITY'), 'quota table must enable RLS');
+          assert.ok(migration.includes('FROM PUBLIC, anon, authenticated'), 'quota table must be inaccessible to client roles');
+          assert.ok(migration.includes('TO service_role'), 'only service role may execute quota RPC');
+          assert.ok(migration.includes("SET search_path = ''"), 'SECURITY DEFINER quota RPC must pin search_path');
+          console.log('AI proxy server-side security guard: OK');
+          NODE
+
       - name: Check combined JavaScript syntax
         run: |
           cat assets/js/state/initial-state.js \
