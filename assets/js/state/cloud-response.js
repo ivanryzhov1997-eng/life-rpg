@@ -43,3 +43,42 @@ function inspectLocalSave(raw, updatedAt, validate) {
 function isLocalSaveOwnedByAnotherAccount(localOwner, userId, hasLocalData) {
   return !!(hasLocalData && localOwner && userId && localOwner !== userId);
 }
+ 
+// Build a compare-and-swap write. Existing rows are updated only when the
+// server timestamp still matches the version last observed by this client.
+// The first insert ignores a concurrent duplicate instead of overwriting it.
+function buildCloudWriteRequest(tableName, userId, baseUpdatedAt, payload) {
+  const table = encodeURIComponent(String(tableName));
+  const uid = encodeURIComponent(String(userId));
+  if (baseUpdatedAt) {
+    return {
+      method: 'PATCH',
+      path: `/rest/v1/${table}?user_id=eq.${uid}&updated_at=eq.${encodeURIComponent(String(baseUpdatedAt))}`,
+      prefer: 'return=representation',
+      body: payload
+    };
+  }
+  return {
+    method: 'POST',
+    path: `/rest/v1/${table}?on_conflict=user_id`,
+    prefer: 'resolution=ignore-duplicates,return=representation',
+    body: payload
+  };
+}
+
+// A successful conditional write must return exactly one row and its
+// server-generated updated_at. An empty representation means the CAS lost.
+function classifyCloudWriteRows(rows) {
+  if (!Array.isArray(rows)) {
+    return { kind: 'invalid', error: 'Некорректный ответ записи облачного сохранения' };
+  }
+  if (rows.length === 0) return { kind: 'conflict' };
+  if (rows.length !== 1) {
+    return { kind: 'invalid', error: 'Облачная запись вернула неожиданное число строк' };
+  }
+  const row = rows[0];
+  if (!row || typeof row.updated_at !== 'string' || !row.updated_at) {
+    return { kind: 'invalid', error: 'Облачная запись не вернула updated_at' };
+  }
+  return { kind: 'saved', row };
+}
