@@ -257,8 +257,7 @@ ${rules.prompt}
       const cap = parseInt(document.getElementById('dailyCap')?.value || '60', 10);
       if (!state.ui) state.ui = {};
       state.ui.dailyCapacity = cap;
-      save();
-
+      if (!save()) return;
       toast('Собираю квесты на день…');
       document.getElementById('modalContent').innerHTML = `
         <h2>Квесты на день</h2>
@@ -718,7 +717,7 @@ ${rules.prompt}
         toast('Дерево не изменено: не удалось сохранить данные', 'error');
         return;
       }
-      if (!added) save();
+      if (!added && !save()) return;
       closeModal();
       if (added) pushUndo(snap, `Дерево +${added}`);
       else toast('Уже было в дереве', 'success');
@@ -776,7 +775,7 @@ ${rules.prompt}
       }
 
       checkTitlesAndAchievements();
-      save();
+      if (!save()) return;
     }
 
     // ===================== RENDER HELPERS =====================
@@ -975,7 +974,7 @@ ${rules.prompt}
       const name = (document.getElementById('heroNameInput')?.value || '').trim();
       if (!name) { toast('Введи ник', 'error'); return; }
       state.hero.name = name.slice(0, 40);
-      save();
+      if (!save()) return;
       closeModal();
       renderHero();
       toast('Ник обновлён', 'success');
@@ -1195,7 +1194,7 @@ ${rules.prompt}
         createdAt: Date.now()
       });
       if (input) input.value = '';
-      save();
+      if (!save()) return;
       renderQuests();
       renderHero();
       toast('Квест добавлен', 'success');
@@ -1218,7 +1217,7 @@ ${rules.prompt}
         done: false,
         createdAt: Date.now()
       });
-      save();
+      if (!save()) return;
       renderQuests();
       toast('Квест скопирован', 'success');
     }
@@ -1435,7 +1434,7 @@ ${rules.prompt}
       ensureAi();
       if (!state.ai.preferredDifficulty) state.ai.preferredDifficulty = {};
       state.ai.preferredDifficulty[type] = difficulty;
-      save();
+      if (!save()) return;
       closeModal();
       renderQuests();
       renderHero();
@@ -1506,7 +1505,7 @@ ${rules.prompt}
           changed = true;
         }
       });
-      if (changed) save();
+      if (changed && !save()) return;
     }
 
     function uncompleteHabit(id) {
@@ -1518,7 +1517,7 @@ ${rules.prompt}
         q.lastHabitDay = null;
       }
       delete q.completedAt;
-      save();
+      if (!save()) return;
       renderQuests();
       renderHero();
       toast('Снято на сегодня');
@@ -1623,7 +1622,7 @@ ${rules.prompt}
       else addAutoLore(loreText, 'side');
 
       checkTitlesAndAchievements();
-      save();
+      if (!save()) return;
       renderQuests();
       renderHero();
       if (currentTreeDirId) renderTree(currentTreeDirId);
@@ -1649,7 +1648,7 @@ ${rules.prompt}
     function deleteQuest(id) {
       if (!confirm('Удалить квест?')) return;
       state.quests = state.quests.filter(x => x.id !== id);
-      save();
+      if (!save()) return;
       renderQuests();
       renderHero();
       toast('Квест удалён');
@@ -1878,7 +1877,7 @@ ${rules.prompt}
         });
         toast('Цель создана');
       }
-      save();
+      if (!save()) return;
       closeModal();
       renderGoals();
       renderHero();
@@ -1887,7 +1886,7 @@ ${rules.prompt}
     function nudgeGoal(id, delta) {
       const g = applyGoalProgress(id, delta);
       if (!g) return;
-      save();
+      if (!save()) return;
       renderGoals();
       renderHero();
       toast('+' + delta + ' · ' + g.metric.current + '/' + g.metric.target);
@@ -1900,7 +1899,7 @@ ${rules.prompt}
       g.status = 'done';
       g.completedAt = Date.now();
       addAutoLore('🎯 Цель достигнута: «' + g.title + '»', 'main');
-      save();
+      if (!save()) return;
       renderGoals();
       renderHero();
       toast('Цель закрыта', 'levelup');
@@ -1913,7 +1912,7 @@ ${rules.prompt}
       state.quests.forEach(q => {
         if (q.goalId === id) { q.goalId = null; q.goalUnits = 0; }
       });
-      save();
+      if (!save()) return;
       renderGoals();
       renderHero();
       toast('Цель удалена');
