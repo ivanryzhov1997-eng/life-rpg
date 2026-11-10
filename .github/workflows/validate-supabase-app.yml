@@ -618,8 +618,8 @@ jobs:
           const helper = source.slice(helperStart, importStart);
           const importer = source.slice(importStart, resetStart);
           const reset = source.slice(resetStart, modalStart);
-          assert.ok(helper.includes('localStorage.setItem(key, raw)') && helper.includes('getBackupKeysToDelete(keys, prefix, 5)'),
-            'backup helper must preserve raw save and retain five backups');
+          assert.ok(helper.includes('backupRawSave(localStorage, raw, prefix, stamp, 5)'),
+            'backup helper must delegate exact raw preservation and five-item retention to backupRawSave');
           assert.ok(importer.includes("if (!merge) backupCurrentSave('life_rpg_v5_preimport_')"),
             'replace import must back up current save before publishing imported state');
           assert.ok(reset.indexOf("backupCurrentSave('life_rpg_v5_prereset_')") < reset.indexOf('replaceState(migrateState('),
