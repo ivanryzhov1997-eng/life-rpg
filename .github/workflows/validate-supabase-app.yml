@@ -257,6 +257,9 @@ jobs:
           if (!/if \(rewardAlreadyGrantedToday\)[\s\S]*Привычка отмечена\. XP за сегодня уже начислен\./.test(quests)) {
             throw new Error('Repeated same-day habit completion must not issue another reward');
           }
+          if (!/habitStreakBeforeUndo =/.test(quests) || !/q\.habitStreak = Math\.max\(0, Number\(q\.habitStreakBeforeUndo\)/.test(quests)) {
+            throw new Error('Same-day habit recheck must restore the previous streak');
+          }
           console.log('Daily habit reward idempotency: OK');
           NODE
 
