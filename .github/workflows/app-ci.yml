@@ -1,0 +1,50 @@
+name: RPG-LIFE app CI
+
+on:
+  push:
+    branches:
+      - "hardening/**"
+    paths:
+      - "app/**"
+      - ".github/workflows/app-ci.yml"
+  pull_request:
+    branches:
+      - mobile-check
+    paths:
+      - "app/**"
+      - ".github/workflows/app-ci.yml"
+
+jobs:
+  validate:
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: TypeScript check
+        run: npm run check
+      - name: Lint changed TypeScript files
+        shell: bash
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha || github.event.before }}"
+          FILES=$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA" -- '*.ts' '*.tsx' | sed 's#^app/##' | tr '\n' ' ')
+          if [ -n "$FILES" ]; then
+            npx eslint $FILES
+          else
+            echo "No changed TypeScript files to lint."
+          fi
+      - name: Unit tests
+        run: npm test
+      - name: Production build
+        run: npm run build

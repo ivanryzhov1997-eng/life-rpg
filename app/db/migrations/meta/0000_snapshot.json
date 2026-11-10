@@ -163,6 +163,13 @@
           "notNull": true,
           "autoincrement": false,
           "default": "(now())"
+        },
+        "recoveryCodeHash": {
+          "name": "recoveryCodeHash",
+          "type": "varchar(64)",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         }
       },
       "indexes": {},
