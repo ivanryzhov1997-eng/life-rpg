@@ -103,16 +103,29 @@
       }
     }
     let authSyncPromise = null;
+    let authSyncUserId = null;
     async function afterAuthReady() {
-      if (authSyncPromise) return authSyncPromise;
-      authSyncPromise = (async () => {
+      const requestedUserId = authUser && authUser.id;
+      if (!requestedUserId) return false;
+      if (authSyncPromise && authSyncUserId === requestedUserId) return authSyncPromise;
+      const currentPromise = (async () => {
         updateAuthUI();
         // cloudLoad uploads local data only when the remote row is confirmed absent.
         // Never upload after a failed GET or an authentication/network error.
         await cloudLoad();
-        updateCloudStatusLine();
+        if (authUser && authUser.id === requestedUserId) updateCloudStatusLine();
       })();
-      try { await authSyncPromise; } finally { authSyncPromise = null; }
+      authSyncPromise = currentPromise;
+      authSyncUserId = requestedUserId;
+      try {
+        await currentPromise;
+        return true;
+      } finally {
+        if (authSyncPromise === currentPromise) {
+          authSyncPromise = null;
+          authSyncUserId = null;
+        }
+      }
     }
     function updateCloudStatusLine() {
       const el=document.getElementById('cloudStatus');if(!el)return;
@@ -123,11 +136,22 @@
     }
     function saveCloudSettings(){setCloudEnabled(true);if(authUser)syncCloudNow();else toast('Сначала войди в аккаунт','error');}
     function populateCloudSettings(){updateAuthUI();updateCloudStatusLine();}
-    async function cloudFetch(path,options) {
-      if(!supabaseClient||!authUser)throw new Error('Требуется вход в аккаунт');
-      const {data,error}=await supabaseClient.auth.getSession();if(error||!data.session)throw new Error('Сессия истекла. Войди снова.');
-      const opts=options||{},headers=Object.assign({'apikey':AUTH_SUPABASE_KEY,'Authorization':'Bearer '+data.session.access_token,'Content-Type':'application/json'},opts.headers||{});
-      return fetch(AUTH_SUPABASE_URL+path,Object.assign({},opts,{headers}));
+    async function cloudFetch(path, options, expectedUserId) {
+      const userId = expectedUserId || (authUser && authUser.id);
+      if (!supabaseClient || !userId || !authUser || authUser.id !== userId) {
+        throw new Error('Сессия аккаунта изменилась; облачная операция остановлена');
+      }
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error || !data.session || data.session.user?.id !== userId || !authUser || authUser.id !== userId) {
+        throw new Error('Сессия истекла или аккаунт изменился. Войди снова.');
+      }
+      const opts = options || {};
+      const headers = Object.assign({
+        'apikey': AUTH_SUPABASE_KEY,
+        'Authorization': 'Bearer ' + data.session.access_token,
+        'Content-Type': 'application/json'
+      }, opts.headers || {});
+      return fetch(AUTH_SUPABASE_URL + path, Object.assign({}, opts, { headers }));
     }
 
     function backupLocalBeforeCloudReplace() {
@@ -157,11 +181,14 @@
       try {
         const res = await cloudFetch(
           '/rest/v1/' + CLOUD_TABLE + '?user_id=eq.' + encodeURIComponent(uid) + '&select=data,updated_at',
-          { method: 'GET' }
+          { method: 'GET' },
+          uid
         );
+        if (!authUser || authUser.id !== uid) return false;
         if (!res.ok) {
           cloudReady = false;
           const t = await res.text().catch(() => '');
+          if (!authUser || authUser.id !== uid) return false;
           cloudLastError = 'load HTTP ' + res.status;
           if (res.status === 404 || /relation|does not exist/i.test(t)) {
             cloudLastError = 'нет таблицы life_rpg_saves';
@@ -169,7 +196,9 @@
           updateCloudStatusLine();
           return false;
         }
-        const cloudResult = classifyCloudRows(await res.json(), validateImport);
+        const rows = await res.json();
+        if (!authUser || authUser.id !== uid) return false;
+        const cloudResult = classifyCloudRows(rows, validateImport);
         if (cloudResult.kind === 'invalid') {
           cloudReady = false;
           cloudLastError = 'повреждённое облачное сохранение: ' + cloudResult.error;
@@ -235,6 +264,17 @@
             }
             throw new Error('Не удалось сохранить облачную версию на устройстве; локальный прогресс оставлен без изменений');
           }
+          if (!authUser || authUser.id !== uid) {
+            try {
+              if (previousRaw === null) localStorage.removeItem(STORAGE_KEY);
+              else localStorage.setItem(STORAGE_KEY, previousRaw);
+              if (previousTimestamp === null) localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
+              else localStorage.setItem(LOCAL_UPDATED_AT_KEY, previousTimestamp);
+            } catch (rollbackError) {
+              console.error('Cloud account-switch rollback failed', rollbackError);
+            }
+            return false;
+          }
           replaceState(nextState);
           lastPersistedStateSnapshot = snapshotState();
           cloudReady = true;
@@ -249,6 +289,7 @@
         updateCloudStatusLine();
         return false;
       } catch (e) {
+        if (!authUser || authUser.id !== uid) return false;
         cloudReady = false;
         cloudLastError = (e && e.message) || 'load fail';
         updateCloudStatusLine();
@@ -260,17 +301,21 @@
     // and let an older snapshot overwrite a newer one on the server.
     let cloudSaveQueue = Promise.resolve();
     function cloudSave(force) {
-      const queuedSave = cloudSaveQueue.then(
-        () => performCloudSave(force),
-        () => performCloudSave(force)
-      );
+      // Bind each queued write to the account that requested it. A pending write
+      // must never execute later under a different user's session.
+      const requestedUserId = authUser && authUser.id;
+      const run = () => {
+        if (!requestedUserId || !authUser || authUser.id !== requestedUserId) return false;
+        return performCloudSave(force, requestedUserId);
+      };
+      const queuedSave = cloudSaveQueue.then(run, run);
       cloudSaveQueue = queuedSave.then(() => undefined, () => undefined);
       return queuedSave;
     }
 
-    async function performCloudSave(force) {
+    async function performCloudSave(force, expectedUserId) {
       const uid = authUser && authUser.id;
-      if (!cloudConfigured() || !uid) return false;
+      if (!cloudConfigured() || !uid || uid !== expectedUserId) return false;
       try {
         const payload = createPersistedState(state, SCHEMA_VERSION);
         const savedAt = new Date().toISOString();
@@ -285,10 +330,12 @@
             'Prefer': 'resolution=merge-duplicates,return=minimal'
           },
           body: JSON.stringify(body)
-        });
+        }, uid);
+        if (!authUser || authUser.id !== uid) return false;
         if (!res.ok) {
           cloudReady = false;
           const t = await res.text().catch(() => '');
+          if (!authUser || authUser.id !== uid) return false;
           cloudLastError = 'save HTTP ' + res.status;
           if (/relation|does not exist/i.test(t)) cloudLastError = 'нет таблицы life_rpg_saves';
           updateCloudStatusLine();
@@ -309,6 +356,7 @@
         if (force) toast('Сейв в облаке', 'success');
         return true;
       } catch (e) {
+        if (!authUser || authUser.id !== uid) return false;
         cloudReady = false;
         cloudLastError = (e && e.message) || 'save fail';
         updateCloudStatusLine();
