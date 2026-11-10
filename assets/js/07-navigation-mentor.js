@@ -241,7 +241,7 @@
     function skipEveningRitual() {
       if (!state.ui) state.ui = {};
       state.ui.lastEveningRitual = todayStr();
-      save();
+      if (!save()) return;
       closeModal();
     }
 
@@ -259,7 +259,7 @@
         addAutoLore(text.trim());
         state.reflections.push({ id: uid(), type: 'evening', did, felt, next, at: Date.now() });
       }
-      save();
+      if (!save()) return;
       closeModal();
       renderLore();
       toast('Ритуал сохранён', 'success');
