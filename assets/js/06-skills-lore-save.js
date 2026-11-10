@@ -111,7 +111,7 @@
         toast('Направление создано');
         checkTitlesAndAchievements();
       }
-      save();
+      if (!save()) return;
       closeModal();
       renderDirections();
       renderHero();
@@ -136,7 +136,7 @@
       });
 
       state.directions = state.directions.filter(d => d.id !== id);
-      save();
+      if (!save()) return;
       if (currentTreeDirId === id) closeTreeView();
       renderDirections();
       renderHero();
@@ -644,7 +644,7 @@
         checkTitlesAndAchievements();
       }
 
-      save();
+      if (!save()) return;
       closeModal();
       renderTree(currentTreeDirId);
       renderHero();
@@ -670,7 +670,7 @@
       });
 
       dir.nodes = (dir.nodes || []).filter(n => !toDelete.has(n.id));
-      save();
+      if (!save()) return;
       renderTree(currentTreeDirId);
       renderHero();
       toast('Удалено');
@@ -763,7 +763,7 @@
         state.lore.push({ id: uid(), date, text, createdAt: Date.now() });
         toast('Запись добавлена');
       }
-      save();
+      if (!save()) return;
       closeModal();
       renderLore();
     }
@@ -771,7 +771,7 @@
     function deleteLore(id) {
       if (!confirm('Удалить запись?')) return;
       state.lore = state.lore.filter(x => x.id !== id);
-      save();
+      if (!save()) return;
       renderLore();
       toast('Запись удалена');
     }
