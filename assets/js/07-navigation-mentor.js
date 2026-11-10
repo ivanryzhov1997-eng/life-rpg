@@ -57,6 +57,10 @@
     }
 
     function exportMarkdown() {
+      if (localSaveWriteBlocked) {
+        toast('Экспорт остановлен: сначала скачай исходный файл или импортируй резервную копию.', 'error');
+        return;
+      }
       const lines = [];
       lines.push('# LIFE RPG — экспорт');
       lines.push('');
