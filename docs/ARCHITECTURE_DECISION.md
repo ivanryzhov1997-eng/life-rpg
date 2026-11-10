@@ -22,20 +22,22 @@
 | Frontend | React + TypeScript + Vite, mobile-first PWA |
 | API / backend | Hono + tRPC, серверная валидация Zod |
 | Database | MySQL через Drizzle ORM и версионируемые миграции |
-| Authentication | Kimi OAuth как требование продукта; интеграцию подтвердить отдельным техническим spike до реализации |
+| Authentication | Supabase Auth; серверная проверка JWT и стабильный `auth.users.id` как account ID |
 | AI | Серверный AI Gateway / AI SDK; Groq остаётся поставщиком inference-модели |
 | AI credentials | Только серверные secrets; никакого API key в браузере или `VITE_*` |
 | Hosting | Node.js hosting для полного стека (целевой вариант — Railway); frontend и API по возможности на одном origin |
 | Local-first | IndexedDB для офлайн-состояния; облачная синхронизация по account ID и revision |
 | Data safety | Версионированный save, compare-and-swap, backup/restore, миграции и ID-aware import |
 
-Kimi OAuth относится только к идентификации пользователя. Kimi/Nano не используется как AI-модель. Генерация и ответы AI продолжают маршрутизироваться через Groq.
+Supabase Auth используется только для идентификации пользователя. Генерация и ответы AI продолжают маршрутизироваться через Groq; AI provider credentials остаются только на сервере.
 
-### Обязательная проверка Kimi OAuth
+### Правила интеграции Supabase Auth
 
-До проектирования production auth необходимо подтвердить, что выбранный Kimi OAuth flow действительно подходит для стороннего приложения: наличие официального authorization endpoint, token exchange, user identity endpoint, redirect URI rules, scopes, PKCE/state и допустимые условия использования.
-
-Не заменять это незаметно анонимной cookie-сессией. Если Kimi OAuth недоступен или не подходит, подготовить отдельное сравнение провайдеров и получить решение владельца до смены требования.
+- Использовать официальный Supabase Auth SDK только на клиенте для входа/выхода и получения access token.
+- Hono middleware обязан проверять JWT серверно через официальный механизм Supabase (JWKS/поддерживаемый SDK), проверять issuer, audience, expiry и подпись.
+- Account ID брать только из проверенного `sub`/user ID; никогда не доверять `userId`, присланному клиентом в payload.
+- Зафиксировать разрешённые способы входа, redirect URLs, logout, refresh и recovery в конфигурации проекта.
+- Не переносить игровые данные в Supabase Database: MySQL остаётся единственным источником истины для игрового состояния.
 
 ## 3. Граница миграции
 
@@ -75,8 +77,8 @@ AI может предлагать изменения, но не должен н
 
 ## 6. План перехода
 
-### ADR-1 — подтверждение авторизации
-Провести Kimi OAuth spike: документировать официальный flow, необходимые secrets, callback, PKCE/state, user ID mapping, logout и refresh/revocation. Результат — работающий proof-of-concept в непроизводственной среде либо обоснованное заключение о невозможности.
+### ADR-1 — интеграция Supabase Auth
+Подключить Supabase Auth в отдельном тестовом окружении: зафиксировать providers и redirect URLs, реализовать login/logout/refresh, серверную проверку JWT в Hono и mapping `auth.users.id` → account ID. Добавить тесты на истёкший, поддельный и чужой токен.
 
 ### ADR-2 — backend и база
 Поднять тестовый Hono/tRPC API и MySQL на отдельном окружении; описать schema/migrations, auth middleware, account isolation, rate limits и save CAS. Проверить миграцию на пустой БД.
@@ -92,7 +94,7 @@ AI может предлагать изменения, но не должен н
 
 ## 7. Критерии готовности к переключению production
 
-- Kimi OAuth подтверждён и работает в тестовой среде либо владелец отдельно утвердил альтернативу.
+- Supabase Auth работает в тестовой среде; Hono проверяет подпись и claims JWT, а account ID нельзя подменить клиентским параметром.
 - Все пункты функционального контракта имеют рабочую реализацию или явно утверждённое изменение.
 - CI включает typecheck, unit/integration tests, production build и браузерные E2E.
 - Проверены изоляция двух аккаунтов, восстановление на новом устройстве и конкурентное обновление сейва.
@@ -106,36 +108,21 @@ AI может предлагать изменения, но не должен н
 - Не сливать PR #1.
 - Не переписывать текущий production `main` напрямую.
 - Не запускать `drizzle-kit push` на production вместо проверенных миграций.
-- Не переносить авторизацию на анонимные cookie-сессии вопреки требованию Kimi OAuth.
+- Не возвращаться к самодельной анонимной cookie-авторизации вместо Supabase Auth.
 - Не менять Groq на Kimi/Nano как модель.
 - Не добавлять социальные функции и монетизацию до устойчивого core loop.
 
 ## 9. Следующие конкретные задачи
 
-1. Проверить официальный Kimi OAuth flow и сделать минимальный proof-of-concept.
+1. Реализовать и протестировать Supabase Auth в отдельном окружении.
 2. Сверить текущую React/Hono/MySQL реализацию с этим ADR и отметить расхождения.
 3. Подготовить функциональную матрицу legacy → target, включая AI mentor, AI quest generation и skill tree.
 4. Подготовить отдельное тестовое окружение backend + MySQL и воспроизводимые миграции.
 5. Добавить E2E-критерии до переноса production.
 
 
-## 10. Результат первичной проверки Kimi OAuth (2026-11-10)
+## 10. Решение по Identity Provider (2026-11-10)
 
-Проверены публичные материалы MoonshotAI:
+Требование использовать Kimi удалено из проекта. Identity Provider — **Supabase Auth**. Kimi не используется ни для авторизации, ни как AI-модель, ни как обязательная интеграция.
 
-- [Kimi CLI OAuth implementation](https://github.com/MoonshotAI/kimi-cli/blob/main/src/kimi_cli/auth/oauth.py) реализует device-code flow через `auth.kimi.com`, используя client ID, встроенный в официальный Kimi CLI.
-- [Kimi Code server API](https://github.com/MoonshotAI/kimi-code/blob/main/docs/en/reference/server-api.md) описывает managed OAuth login для провайдера `managed:kimi-code`, включая login, polling, logout и userinfo.
-- [Kimi Code provider docs](https://www.kimi.com/code/docs/en/kimi-code-cli/configuration/providers.html) описывают OAuth как способ подключения Kimi Code managed service к моделям.
-
-Эти материалы подтверждают существование OAuth для официального Kimi Code managed service, но **не подтверждают наличие публичного OAuth/OIDC-провайдера для сторонних приложений**, который можно использовать как обычный способ входа в RPG-LIFE. Публично найденный flow ориентирован на авторизацию пользователя в Kimi Code и доступ к managed AI service, а не на выдачу RPG-LIFE универсального стабильного идентификатора пользователя.
-
-Следствие: не копировать встроенный client ID официального CLI и не строить production-auth на непубличных/непредназначенных для сторонних приложений endpoints. Это создаёт риск блокировки, нарушения условий использования и нестабильности авторизации.
-
-**Статус требования Kimi OAuth: BLOCKED / NEEDS OFFICIAL CONFIRMATION.** До получения официального подтверждения Moonshot о поддержке сторонних приложений не начинать реализацию. Сам факт наличия OAuth в Kimi Code не равен доступности Kimi как внешнего Identity Provider.
-
-Безопасная развилка:
-1. Запросить у Moonshot официальные инструкции/доступ для стороннего OAuth-клиента и подтверждение допустимости такого сценария.
-2. Если такого сценария нет, выбрать отдельный Identity Provider (например, Supabase Auth или другой поддерживаемый OAuth/OIDC provider), а Groq оставить независимым AI inference provider.
-3. Не использовать Kimi access token как токен сессии RPG-LIFE и не связывать авторизацию пользователя с доступом к AI-модели.
-
-До решения этой развилки target auth не считается утверждённым для реализации.
+Supabase Auth отвечает только за аутентификацию и выдачу проверяемой идентичности. Игровые данные, доменная логика и API остаются в целевой архитектуре Hono + tRPC + MySQL. AI-запросы маршрутизируются через Groq. Перед production необходимо проверить JWT validation в Hono, account isolation, refresh/logout и восстановление доступа в тестовом окружении.
