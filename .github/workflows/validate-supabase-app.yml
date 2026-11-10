@@ -329,6 +329,10 @@ jobs:
           const assert = require('node:assert/strict');
           // The app's day boundary follows the device's local calendar, not UTC.
           process.env.TZ = 'Europe/Amsterdam';
+          const dateContext = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/02-cloud-auth.js', 'utf8'), dateContext);
+          assert.equal(dateContext.localDateKey(new Date(Date.UTC(2026, 10, 9, 23, 30))), '2026-11-10',
+            'local date helper must respect the device timezone');
           const context = {};
           vm.runInNewContext(fs.readFileSync('assets/js/state/reward-utils.js', 'utf8'), context);
           const quest = { id: 'habit-1' };
