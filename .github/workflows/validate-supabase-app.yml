@@ -42,6 +42,7 @@ jobs:
             './assets/js/state/backup-utils.js',
             './assets/js/state/merge.js',
             './assets/js/state/reward-utils.js',
+            './assets/js/state/tree-utils.js',
             './assets/js/03-state-and-systems.js',
             './assets/js/04-ai.js',
             './assets/js/05-quests-goals-directions.js',
@@ -64,6 +65,7 @@ jobs:
           if (!fs.existsSync('assets/js/state/migrations.js')) throw new Error('Missing migrations.js');
           if (!fs.existsSync('assets/js/state/cloud-response.js')) throw new Error('Missing cloud-response.js');
           if (!fs.existsSync('assets/js/state/backup-utils.js')) throw new Error('Missing backup-utils.js');
+          if (!fs.existsSync('assets/js/state/tree-utils.js')) throw new Error('Missing tree-utils.js');
           if (!fs.existsSync('assets/css/app.css')) throw new Error('Missing app.css');
           console.log('HTML references, files and script order: OK');
           NODE
