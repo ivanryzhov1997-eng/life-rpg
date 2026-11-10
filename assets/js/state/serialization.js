@@ -8,33 +8,12 @@ function createPersistedState(currentState, schemaVersion) {
 }
 
 
-// The local version marker is written first so any interrupted primary write
-// remains visibly dirty and cannot be mistaken for an already-synced cloud copy.
+// The local version marker is written first. If the primary write then fails,
+// the old save remains intact but is visibly dirty, so cloudLoad cannot mistake
+// it for a synchronized copy and silently replace it.
 function persistStateSnapshot(storage, storageKey, timestampKey, currentState, schemaVersion, localVersion) {
   const snapshot = createPersistedState(currentState, schemaVersion);
-  const serialized = JSON.stringify(snapshot);
-  let previousRaw;
-  let previousVersion;
-  try {
-    previousRaw = storage.getItem(storageKey);
-    previousVersion = storage.getItem(timestampKey);
-  } catch (error) {
-    throw new Error('Не удалось прочитать предыдущее сохранение перед записью');
-  }
-  try {
-    storage.setItem(timestampKey, localVersion);
-    storage.setItem(storageKey, serialized);
-  } catch (error) {
-    try {
-      if (previousRaw === null) storage.removeItem(storageKey);
-      else storage.setItem(storageKey, previousRaw);
-      if (previousVersion === null) storage.removeItem(timestampKey);
-      else storage.setItem(timestampKey, previousVersion);
-    } catch (rollbackError) {
-      error.rollbackFailed = true;
-      error.rollbackError = rollbackError;
-    }
-    throw error;
-  }
+  storage.setItem(timestampKey, localVersion);
+  storage.setItem(storageKey, JSON.stringify(snapshot));
   return snapshot;
 }
