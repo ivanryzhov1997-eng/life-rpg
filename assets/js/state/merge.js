@@ -30,6 +30,9 @@ function mergeImportedStateData(incoming, target, migrate, createId) {
       directions.push(dest);
     }
     if (!Array.isArray(dest.nodes)) dest.nodes = [];
+    dest.xp = Math.max(Number(dest.xp) || 0, Number(source.xp) || 0);
+    dest.lastActiveAt = Math.max(Number(dest.lastActiveAt) || 0, Number(source.lastActiveAt) || 0);
+    if (!dest.description && source.description) dest.description = source.description;
     if (source.id != null) directionMap.set(String(source.id), String(dest.id));
 
     let pending = (source.nodes || []).map(clone);
@@ -50,6 +53,10 @@ function mergeImportedStateData(incoming, target, migrate, createId) {
           actual.parentId = parentId;
           dest.nodes.push(actual);
         }
+        actual.xp = Math.max(Number(actual.xp) || 0, Number(node.xp) || 0);
+        actual.lastActiveAt = Math.max(Number(actual.lastActiveAt) || 0, Number(node.lastActiveAt) || 0);
+        if (!actual.description && node.description) actual.description = node.description;
+        if (node.isKey) actual.isKey = true;
         if (node.id != null) nodeMap.set(String(node.id), String(actual.id));
       });
       pending = next;
@@ -97,16 +104,31 @@ function mergeImportedStateData(incoming, target, migrate, createId) {
   srcArr('quests').forEach(source => {
     const dest = (source.id && quests.find(x => x.id === source.id))
       || quests.find(x => norm(x.title) === norm(source.title) && x.type === source.type && !!x.done === !!source.done);
-    if (dest) { if (source.id != null) questMap.set(String(source.id), String(dest.id)); return; }
+    if (dest) {
+      if (source.id != null) questMap.set(String(source.id), String(dest.id));
+      // A newer backup may contain the completion of a quest that is still open locally.
+      if (source.done && !dest.done) {
+        ['done', 'completedAt', 'result', 'goalResultUnits', 'earnedXp', 'lastRewardEventId',
+          'habitStreak', 'habitBest', 'lastHabitDay'].forEach(key => {
+          if (source[key] !== undefined) dest[key] = clone(source[key]);
+        });
+      }
+      return;
+    }
     const quest = clone(source);
     quest.id = reserve(source.id, questIds);
     if (quest.targetType === 'DIRECTION') {
-      quest.targetId = directionMap.get(String(quest.targetId)) || null;
+      const oldId = String(quest.targetId);
+      quest.targetId = directionMap.get(oldId) || (directions.some(x => String(x.id) === oldId) ? oldId : null);
     } else if (quest.targetType === 'SKILL') {
-      quest.targetId = nodeMap.get(String(quest.targetId)) || null;
+      const oldId = String(quest.targetId);
+      quest.targetId = nodeMap.get(oldId) || (directions.some(d => (d.nodes || []).some(n => String(n.id) === oldId)) ? oldId : null);
     } else quest.targetId = null;
     if (!quest.targetId) quest.targetType = 'GENERAL';
-    quest.goalId = quest.goalId == null ? null : (goalMap.get(String(quest.goalId)) || null);
+    if (quest.goalId != null) {
+      const oldGoalId = String(quest.goalId);
+      quest.goalId = goalMap.get(oldGoalId) || (goals.some(g => String(g.id) === oldGoalId) ? oldGoalId : null);
+    } else quest.goalId = null;
     if (!quest.goalId) quest.goalUnits = 0;
     quests.push(quest);
     if (source.id != null) questMap.set(String(source.id), String(quest.id));
@@ -130,7 +152,10 @@ function mergeImportedStateData(incoming, target, migrate, createId) {
     const event = clone(item), id = eventMap.get(String(item.eventId)) || String(item.eventId);
     if (ledger.some(x => String(x.eventId) === id)) return;
     event.eventId = id;
-    event.questId = event.questId == null ? null : (questMap.get(String(event.questId)) || null);
+    if (event.questId != null) {
+      const oldQuestId = String(event.questId);
+      event.questId = questMap.get(oldQuestId) || (quests.some(q => String(q.id) === oldQuestId) ? oldQuestId : null);
+    }
     ledger.push(event);
   });
   srcArr('activityLog').forEach(item => {
@@ -138,8 +163,14 @@ function mergeImportedStateData(incoming, target, migrate, createId) {
     const event = clone(item), id = eventMap.get(String(item.id)) || String(item.id);
     if (activity.some(x => String(x.id) === id)) return;
     event.id = id;
-    event.questId = event.questId == null ? null : (questMap.get(String(event.questId)) || null);
-    event.goalId = event.goalId == null ? null : (goalMap.get(String(event.goalId)) || null);
+    if (event.questId != null) {
+      const oldQuestId = String(event.questId);
+      event.questId = questMap.get(oldQuestId) || (quests.some(q => String(q.id) === oldQuestId) ? oldQuestId : null);
+    }
+    if (event.goalId != null) {
+      const oldGoalId = String(event.goalId);
+      event.goalId = goalMap.get(oldGoalId) || (goals.some(g => String(g.id) === oldGoalId) ? oldGoalId : null);
+    }
     activity.push(event);
   });
   quests.forEach(q => {
@@ -149,7 +180,10 @@ function mergeImportedStateData(incoming, target, migrate, createId) {
   const reflections = arr('reflections');
   srcArr('reflections').forEach(item => {
     const reflection = clone(item);
-    if (reflection.questId != null) reflection.questId = questMap.get(String(reflection.questId)) || null;
+    if (reflection.questId != null) {
+      const oldQuestId = String(reflection.questId);
+      reflection.questId = questMap.get(oldQuestId) || (quests.some(q => String(q.id) === oldQuestId) ? oldQuestId : null);
+    }
     if (!reflections.some(x => reflection.id && x.id ? x.id === reflection.id : JSON.stringify(x) === JSON.stringify(reflection))) reflections.push(reflection);
   });
   const lore = arr('lore');
