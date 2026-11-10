@@ -9,3 +9,34 @@ function hasHabitRewardForDay(quest, rewardLedger, dayKey) {
     return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === dayKey;
   });
 }
+
+function recordHabitStreakUndo(quest, dayKey) {
+  if (!quest || !dayKey) return quest;
+  if (quest.lastHabitDay === dayKey) {
+    quest.habitStreakBeforeUndo = Math.max(0, Number(quest.habitStreak) || 1);
+    quest.habitStreakUndoDay = dayKey;
+    quest.habitStreak = Math.max(0, (Number(quest.habitStreak) || 1) - 1);
+    quest.lastHabitDay = null;
+  }
+  return quest;
+}
+
+function applyHabitStreakCompletion(quest, dayKey, yesterdayKey, rewardAlreadyGrantedToday) {
+  if (!quest || !dayKey) return quest;
+  if (quest.habitStreakUndoDay && quest.habitStreakUndoDay !== dayKey) {
+    delete quest.habitStreakBeforeUndo;
+    delete quest.habitStreakUndoDay;
+  }
+  if (rewardAlreadyGrantedToday && quest.habitStreakUndoDay === dayKey) {
+    quest.habitStreak = Math.max(0, Number(quest.habitStreakBeforeUndo) || 0);
+    delete quest.habitStreakBeforeUndo;
+    delete quest.habitStreakUndoDay;
+  } else {
+    const last = quest.lastHabitDay || null;
+    if (last === yesterdayKey) quest.habitStreak = (quest.habitStreak || 0) + 1;
+    else if (last !== dayKey) quest.habitStreak = 1;
+  }
+  quest.lastHabitDay = dayKey;
+  quest.habitBest = Math.max(quest.habitBest || 0, quest.habitStreak || 0);
+  return quest;
+}
