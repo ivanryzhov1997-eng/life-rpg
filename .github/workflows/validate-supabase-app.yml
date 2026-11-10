@@ -143,17 +143,21 @@ jobs:
           const createId = () => 'generated-' + (++nextId);
           const target = {
             hero: { name: 'Local', xp: 80 },
-            directions: [{ id: 'dir-local', name: 'Python', nodes: [{ id: 'skill-local', name: 'API', parentId: null }] }],
+            directions: [{ id: 'dir-local', name: 'Python', xp: 100, nodes: [{ id: 'skill-local', name: 'API', parentId: null, xp: 50 }] }],
             goals: [{ id: 'goal-local', title: 'Build API', horizon: 'medium', directionId: 'dir-local', metric: { target: 10, current: 2, unitLabel: 'tasks' }, status: 'active' }],
-            quests: [], lore: [], reflections: [], activityLog: [], rewardLedger: [],
+            quests: [{ id: 'quest-existing', title: 'Old task', type: 'SIDE', done: false }],
+            lore: [], reflections: [], activityLog: [], rewardLedger: [],
             stats: { completed: 2 }, streak: { current: 1, longest: 2, lastDate: '2026-11-08' },
             unlockedTitles: ['newbie'], unlockedAchievements: []
           };
           const incoming = {
             hero: { name: 'Imported', xp: 120 },
-            directions: [{ id: 'dir-import', name: 'Python', nodes: [{ id: 'skill-import', name: 'API', parentId: null }, { id: 'child-import', name: 'Auth', parentId: 'skill-import' }] }],
+            directions: [{ id: 'dir-import', name: 'Python', xp: 180, nodes: [{ id: 'skill-import', name: 'API', parentId: null, xp: 90 }, { id: 'child-import', name: 'Auth', parentId: 'skill-import' }] }],
             goals: [{ id: 'goal-import', title: 'Build API', horizon: 'medium', directionId: 'dir-import', metric: { target: 10, current: 7, unitLabel: 'tasks' }, status: 'active' }],
-            quests: [{ id: 'quest-import', title: 'Implement auth', type: 'SIDE', done: true, targetType: 'SKILL', targetId: 'child-import', goalId: 'goal-import', goalUnits: 2 }],
+            quests: [
+              { id: 'quest-import', title: 'Implement auth', type: 'SIDE', done: true, targetType: 'SKILL', targetId: 'child-import', goalId: 'goal-import', goalUnits: 2 },
+              { id: 'quest-existing', title: 'Old task', type: 'SIDE', done: true, completedAt: 200, result: 'completed in imported save' }
+            ],
             rewardLedger: [{ eventId: 'event-import', questId: 'quest-import', xp: 40, at: 100 }],
             activityLog: [{ id: 'event-import', questId: 'quest-import', goalId: 'goal-import', title: 'Implement auth', xp: 40, at: 100 }],
             reflections: [{ id: 'reflection-import', questId: 'quest-import', text: 'Done' }],
@@ -165,9 +169,12 @@ jobs:
           const python = merged.directions.find(x => x.id === 'dir-local');
           assert.equal(merged.directions.length, 1, 'same direction by name must merge');
           assert.equal(python.nodes.length, 2, 'skill nodes must merge by mapped parent');
+          assert.equal(python.xp, 180, 'direction XP must not be lost');
+          assert.equal(python.nodes.find(x => x.name === 'API').xp, 90, 'skill XP must not be lost');
           const auth = python.nodes.find(x => x.name === 'Auth');
           assert.equal(merged.quests[0].targetId, auth.id, 'quest skill target must be remapped');
           assert.equal(merged.quests[0].goalId, 'goal-local', 'quest goal must be remapped');
+          assert.equal(merged.quests.find(x => x.id === 'quest-existing').done, true, 'newer completion must update existing quest');
           assert.equal(merged.goals[0].metric.current, 7, 'goal progress must retain the greater value');
           assert.equal(merged.goals[0].directionId, 'dir-local', 'goal direction must be remapped');
           assert.equal(merged.rewardLedger[0].questId, 'quest-import');
@@ -178,7 +185,7 @@ jobs:
           assert.equal(merged.stats.completed, 5);
           const repeated = context.mergeImportedStateData(incoming, merged, migrate, createId);
           assert.equal(repeated.directions.length, 1, 'reimport must not duplicate directions');
-          assert.equal(repeated.quests.length, 1, 'reimport must not duplicate quests');
+          assert.equal(repeated.quests.length, 2, 'reimport must not duplicate quests');
           assert.equal(repeated.goals.length, 1, 'reimport must not duplicate goals');
           assert.equal(repeated.rewardLedger.length, 1, 'reimport must not duplicate rewards');
           assert.equal(repeated.activityLog.length, 1, 'reimport must not duplicate activity events');
