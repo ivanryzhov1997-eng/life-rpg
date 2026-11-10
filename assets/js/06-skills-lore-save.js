@@ -658,12 +658,9 @@
       if (!dir) return;
       if (!confirm('Удалить навык и все дочерние ветки?\\nКвесты станут «Общий XP».')) return;
 
-      const toDelete = new Set();
-      function collect(nid) {
-        toDelete.add(nid);
-        (dir.nodes || []).filter(n => n.parentId === nid).forEach(c => collect(c.id));
-      }
-      collect(id);
+      // Imported/legacy saves can contain cyclic parent links. Use an iterative
+      // visited-set traversal so deleting a malformed tree cannot recurse forever.
+      const toDelete = collectSkillSubtreeIds(dir.nodes || [], id);
 
       state.quests.forEach(q => {
         if (q.targetType === 'SKILL' && toDelete.has(q.targetId)) {
