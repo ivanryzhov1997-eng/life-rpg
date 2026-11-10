@@ -838,7 +838,7 @@ ${rules.prompt}
       const nearMiss = prog.percent >= 85 && prog.level < MAX_LEVEL;
       const streak = state.streak || { current: 0, longest: 0 };
       const today = todayStr();
-      const doneToday = state.quests.filter(q => q.done && q.completedAt && new Date(q.completedAt).toISOString().slice(0,10) === today).length;
+      const doneToday = state.quests.filter(q => q.done && q.completedAt && localDateKey(new Date(q.completedAt)) === today).length;
       const active = state.quests.filter(q => !q.done);
       const todayPicks = active.slice().sort((a, b) => {
         const prio = { BOSS: 0, MAIN: 1, SIDE: 2 };
