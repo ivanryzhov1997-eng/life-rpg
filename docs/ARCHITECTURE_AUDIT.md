@@ -501,3 +501,23 @@ function replaceState(nextState) {
 Риск: публичный endpoint может использоваться третьими лицами для расходования серверного Groq API key. Публичный Supabase publishable key не является секретом и сам по себе не доказывает личность пользователя.
 
 Не менял production Edge Function и её verify_jwt: простое включение проверки JWT несовместимо с текущим клиентом, который формирует Authorization из publishable key, а не из пользовательской access token. Безопасное исправление требует согласованного изменения клиента и функции: получения актуальной Supabase session access token, проверки токена на сервере (предпочтительно через Supabase Auth), строгой валидации тела/модели и ограничений нагрузки. Нужно отдельно определить, должен ли AI работать без входа в аккаунт. До этого production deployment намеренно не выполнялся.
+
+
+## 22. Supabase Database Advisors (read-only audit, 2026-11-10)
+
+Выполнены security, performance и health advisors для production project sghoucsrxbywiafpxxyw. Схему, policies и настройки Auth не менял.
+
+Security findings:
+
+- 14 таблиц public имеют RLS enabled, но не имеют policies: achievements, directions, heroes, lore_entries, quests, reflections, skill_nodes, titles, user_achievements, user_settings, user_streaks, user_titles, users, xp_events. Это INFO, а не доказательство доступности данных: отсутствие policies при включённом RLS обычно закрывает доступ, но надо сверить фактическое назначение таблиц и пути доступа прежде чем создавать policies.
+- public.set_updated_at имеет mutable search_path (WARN). Перед исправлением нужно проверить тело функции, владельца и вызывающие триггеры; безопасная миграция должна зафиксировать search_path и не менять бизнес-логику.
+- Leaked Password Protection выключена (WARN). Это настройка Auth, её включение может влиять на регистрацию и требования пароля; пока только зафиксировано.
+
+Performance findings:
+
+- 4 foreign keys без покрывающих индексов: reflections.quest_id; xp_events.direction_id, quest_id, skill_node_id.
+- 12 индексов отмечены как unused. Это не основание удалять их автоматически: usage counters зависят от нагрузки и периода наблюдения.
+
+Health advisors не вернули findings.
+
+Решение: не добавлять policies «на всякий случай», не удалять индексы и не менять Auth settings без проверки фактических таблиц, запросов и требований доступа. Это предотвращает случайное раскрытие данных и регрессии.
