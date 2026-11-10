@@ -690,17 +690,13 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
           const assert = require('node:assert/strict');
-          const source = fs.readFileSync('assets/js/07-navigation-mentor.js', 'utf8');
-          const start = source.indexOf('function mergeImportedState(');
-          const end = source.indexOf('function importSave(', start);
-          assert.ok(start >= 0 && end > start, 'mergeImportedState must exist');
-          const merge = source.slice(start, end);
-          assert.ok(merge.includes('if (item.id && existing.id) return item.id === existing.id;'),
-            'merge must deduplicate reflections by stable id');
-          assert.ok(merge.includes('JSON.stringify(item) === JSON.stringify(existing)'),
+          const merge = fs.readFileSync('assets/js/state/merge.js', 'utf8');
+          assert.ok(/if \(!reflections\.some\(/.test(merge),
+            'merge must append a reflection only when no duplicate exists');
+          assert.ok(/reflection\.id && x\.id \? x\.id === reflection\.id/.test(merge),
+            'reflections with stable ids must be deduplicated by id');
+          assert.ok(/JSON\.stringify\(x\) === JSON\.stringify\(reflection\)/.test(merge),
             'legacy reflections without ids must use exact equality fallback');
-          assert.ok(merge.includes('if (!duplicate) draft.reflections.push(item);'),
-            'reflection merge must not append duplicates unconditionally');
           console.log('Reflection import deduplication guard: OK');
           NODE
 
