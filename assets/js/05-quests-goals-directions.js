@@ -40,7 +40,7 @@
       try {
         res = await fetch(url, {
           method: 'POST',
-          headers: aiAuthHeaders(),
+          headers: await aiAuthHeaders(),
           body: JSON.stringify({
             model: state.ai.model || 'openai/gpt-oss-20b',
             messages: [
