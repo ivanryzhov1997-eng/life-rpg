@@ -382,6 +382,21 @@ jobs:
           assert.deepEqual(Array.from(context.getBackupKeysToDelete(['a','b'], 'x_', 7)), []);
           assert.throws(() => context.createDailyBackupKey('09-11-2026'));
           assert.throws(() => context.getBackupKeysToDelete([], 'x_', -1));
+          const values = new Map([
+            ['corrupt_20261101', 'old-1'],
+            ['corrupt_20261102', 'old-2'],
+            ['corrupt_20261103', 'old-3']
+          ]);
+          const storage = {
+            get length() { return values.size; },
+            key(index) { return Array.from(values.keys())[index] || null; },
+            setItem(key, value) { values.set(String(key), String(value)); },
+            removeItem(key) { values.delete(key); }
+          };
+          assert.equal(context.backupRawSave(storage, 'exact damaged bytes', 'corrupt_', '20261104', 2), 'corrupt_20261104');
+          assert.equal(values.get('corrupt_20261104'), 'exact damaged bytes');
+          assert.equal(values.has('corrupt_20261101'), false, 'old backups must be pruned');
+          assert.equal(values.has('corrupt_20261103'), true);
           console.log('Backup utilities: OK');
           NODE
 
