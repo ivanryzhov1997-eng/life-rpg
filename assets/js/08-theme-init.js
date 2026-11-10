@@ -125,6 +125,7 @@
               authUser = session?.user || null;
               const newId = authUser && authUser.id;
               if (oldId !== newId) {
+                // Freeze writes while the newly selected account is being loaded.
                 clearTimeout(cloudSaveTimer);
                 cloudSaveTimer = null;
                 cloudReady = false;
