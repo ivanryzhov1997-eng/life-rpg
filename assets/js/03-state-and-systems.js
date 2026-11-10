@@ -256,7 +256,19 @@
       }
     }
 
-    async function cloudSave(force) {
+    // Serialize cloud writes. Concurrent POSTs can otherwise complete out of order
+    // and let an older snapshot overwrite a newer one on the server.
+    let cloudSaveQueue = Promise.resolve();
+    function cloudSave(force) {
+      const queuedSave = cloudSaveQueue.then(
+        () => performCloudSave(force),
+        () => performCloudSave(force)
+      );
+      cloudSaveQueue = queuedSave.then(() => undefined, () => undefined);
+      return queuedSave;
+    }
+
+    async function performCloudSave(force) {
       const uid = authUser && authUser.id;
       if (!cloudConfigured() || !uid) return false;
       try {
