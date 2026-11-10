@@ -79,9 +79,28 @@
       catch(e){toast(e.message||'Ошибка входа','error');}
     }
     async function authSignOut() {
-      if(!supabaseClient)return;
-      try {await cloudSave(true);const {error}=await supabaseClient.auth.signOut();if(error)throw error;authUser=null;cloudReady=false;setCloudEnabled(false);updateAuthUI();toast('Вы вышли. Локальный прогресс сохранён.','success');}
-      catch(e){toast(e.message||'Не удалось выйти','error');}
+      if (!supabaseClient) return;
+      try {
+        const syncRequired = cloudConfigured();
+        const synced = syncRequired ? await cloudSave(true) : false;
+        if (syncRequired && !synced) {
+          const proceed = confirm(
+            'Не удалось обновить облачное сохранение. Локальная копия остаётся на этом устройстве. Выйти из аккаунта всё равно?'
+          );
+          if (!proceed) return;
+        }
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) throw error;
+        authUser = null;
+        cloudReady = false;
+        setCloudEnabled(false);
+        updateAuthUI();
+        toast(syncRequired && !synced
+          ? 'Вы вышли. Облако не обновлено; локальная копия сохранена.'
+          : 'Вы вышли. Локальный прогресс сохранён.', 'success');
+      } catch (e) {
+        toast(e.message || 'Не удалось выйти', 'error');
+      }
     }
     let authSyncPromise = null;
     async function afterAuthReady() {
@@ -239,7 +258,7 @@
 
     async function cloudSave(force) {
       const uid = authUser && authUser.id;
-      if (!cloudConfigured() || !uid) return;
+      if (!cloudConfigured() || !uid) return false;
       try {
         const payload = createPersistedState(state, SCHEMA_VERSION);
         const savedAt = new Date().toISOString();
@@ -262,7 +281,7 @@
           if (/relation|does not exist/i.test(t)) cloudLastError = 'нет таблицы life_rpg_saves';
           updateCloudStatusLine();
           if (force) toast('Облако: ' + cloudLastError, 'error');
-          return;
+          return false;
         }
         try {
           const currentLocalMs = Date.parse(localStorage.getItem(LOCAL_UPDATED_AT_KEY) || '');
@@ -276,11 +295,13 @@
         cloudLastError = '';
         updateCloudStatusLine();
         if (force) toast('Сейв в облаке', 'success');
+        return true;
       } catch (e) {
         cloudReady = false;
         cloudLastError = (e && e.message) || 'save fail';
         updateCloudStatusLine();
         if (force) toast('Облако: ' + cloudLastError, 'error');
+        return false;
       }
     }
 
