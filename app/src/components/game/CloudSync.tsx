@@ -26,12 +26,19 @@ export function CloudSync({ authenticated }: { authenticated: boolean }) {
   const syncMutation = trpc.save.sync.useMutation({
     onSuccess: (result) => {
       if (result.status === "conflict") {
-        if (result.state && result.state.updatedAt > useGameStore.getState().updatedAt) {
-          skipNext.current = true;
-          importState(result.state);
+        if (result.state) {
+          revisionRef.current = result.revision;
+          setRevision(result.revision);
+          if (result.state.updatedAt > useGameStore.getState().updatedAt) {
+            skipNext.current = true;
+            importState(result.state);
+          }
+        } else {
+          // No server row remains; the next explicit sync may create revision 1.
+          revisionRef.current = null;
+          setRevision(null);
         }
-        // A conflict is not a successful sync. In particular, a null state
-        // means the server save disappeared after this device cached a revision.
+        // A conflict is not a successful sync; require an explicit retry.
         setStatus("error");
         return;
       }
