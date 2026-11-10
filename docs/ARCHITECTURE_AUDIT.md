@@ -799,14 +799,14 @@ Edge Function `Qroq-proxy` активна с `verify_jwt=false`. В исходн
 
 Ранее безопасная конфигурация `public.set_updated_at()` была применена непосредственно в production: `SECURITY INVOKER`, `search_path = pg_catalog`, прежняя логика `NEW.updated_at = now()` сохранена. Теперь то же определение добавлено в репозиторий как `supabase/migrations/20261110131242_pin_set_updated_at_search_path.sql` и применено через migration API.
 
-Миграция не запускалась повторно на production, поскольку функция уже имеет требуемую конфигурацию. Добавлена CI-проверка, которая требует наличия миграции и фиксирует три свойства: функция остаётся SECURITY INVOKER, search_path закреплён на pg_catalog, обновление updated_at не меняет поведение.
+Миграция повторно применена идемпотентно через Supabase migration API, чтобы зафиксировать её в remote history. Remote version: `20261110131242`. Добавлена CI-проверка, которая требует наличия миграции и фиксирует три свойства: функция остаётся SECURITY INVOKER, search_path закреплён на pg_catalog, обновление updated_at не меняет поведение.
 
 При восстановлении нового окружения миграция должна применяться штатным Supabase migration workflow. Перед применением нужно сверить локальную историю миграций с remote migration history, чтобы не переиграть миграции в неверном порядке.
 
 
-## 37. Подготовлена защищённая версия AI proxy с сохранением гостевого режима (2026-11-10)
+## 37. Защищённая версия AI proxy развёрнута в production (2026-11-10)
 
-В репозитории подготовлена новая версия `Qroq-proxy`, но она **не развёрнута в production**. Текущая активная функция Supabase продолжает работать по старому коду до отдельного применения миграции и deploy.
+Новая версия `Qroq-proxy` развёрнута в production как версия 2, `verify_jwt=false`. Текущая функция вручную проверяет пользовательские access tokens, ограничивает payload и Groq-параметры, а гостевые запросы ограничивает по IP.
 
 ### Контракт клиента
 
@@ -843,4 +843,8 @@ Edge Function `Qroq-proxy` активна с `verify_jwt=false`. В исходн
 
 Добавлены unit tests для payload validation, model allowlist, token classification и окон квот. GitHub Actions проверяет миграцию, ограничения proxy, разделение publishable key/access token, deployment config и запускает `deno check`. В `supabase/config.toml` явно закреплено `verify_jwt = false` для `Qroq-proxy`; функция сама проверяет access token, а гости проходят по IP-квоте. Запуск #190 на code commit `35a21bf63210eb29967600f92d93ade9d6de076a` завершился успешно; последующие изменения были только документацией.
 
-**Не выполнено намеренно:** миграция quota table не применена к production, Edge Function не развёрнута, секреты не менялись. Для включения нужно сначала сверить remote migration history, применить миграцию, убедиться в наличии Supabase secret/publishable key env vars и только затем развернуть функцию с `verify_jwt=false`. До этих действий production proxy остаётся прежним и по-прежнему имеет риск неограниченного расхода Groq quota.
+Production deployment завершён: quota migration `20261110131247` применена; функция `Qroq-proxy` активна на версии 2. Проверка БД подтвердила RLS на quota table, отсутствие EXECUTE для anon и наличие EXECUTE для service_role. Транзакционный тест подтвердил: первый запрос при лимите 1 разрешён, второй отклонён; тестовые данные откатились.
+
+GitHub Actions run #191 завершился успешно после синхронизации имён миграций с remote history. Security Advisor теперь показывает 15 INFO-предупреждений `RLS enabled no policy` (добавилась закрытая quota table) и прежнее предупреждение о выключенной Leaked Password Protection. Эти предупреждения не означают публичный доступ к quota table: RLS включён, клиентские grants отозваны.
+
+**Остался обязательный ручной этап:** реальная проверка интерфейса и AI в Safari на iPhone. Автоматические тесты не подтверждают работу мобильного браузера. PR остаётся draft и `main` не изменён до завершения этого smoke-теста.
