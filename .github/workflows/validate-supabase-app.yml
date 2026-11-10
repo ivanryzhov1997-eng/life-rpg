@@ -329,6 +329,35 @@ jobs:
           console.log('Daily habit reward idempotency: OK');
           NODE
 
+      - name: Validate inline event handlers
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const files = [
+            'assets/js/01-core.js',
+            'assets/js/02-cloud-auth.js',
+            'assets/js/03-state-and-systems.js',
+            'assets/js/04-ai.js',
+            'assets/js/05-quests-goals-directions.js',
+            'assets/js/06-skills-lore-save.js',
+            'assets/js/07-navigation-mentor.js',
+            'assets/js/08-theme-init.js'
+          ];
+          const html = fs.readFileSync('index.html', 'utf8');
+          const source = files.map(file => fs.readFileSync(file, 'utf8')).join('\n');
+          const declared = new Set([...source.matchAll(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\(/g)].map(match => match[1]));
+          const combined = html + '\n' + source;
+          const calls = new Set();
+          for (const match of combined.matchAll(/on(?:click|change|input|submit)\s*=\s*["']([^"']+)["']/g)) {
+            for (const call of match[1].matchAll(/(?:^|[;{}]\s*)([A-Za-z_$][\w$]*)\s*\(/g)) {
+              if (!['if','for','while','switch','confirm','alert','setTimeout','setInterval'].includes(call[1])) calls.add(call[1]);
+            }
+          }
+          const missing = [...calls].filter(name => !declared.has(name));
+          if (missing.length) throw new Error('Inline handlers reference missing functions: ' + missing.join(', '));
+          console.log('Inline event handlers: OK (' + calls.size + ' unique functions)');
+          NODE
+
       - name: Enforce state replacement boundary
         run: |
           node <<'NODE'
