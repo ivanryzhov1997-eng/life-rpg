@@ -841,6 +841,6 @@ Edge Function `Qroq-proxy` активна с `verify_jwt=false`. В исходн
 
 ### Проверки и статус
 
-Добавлены unit tests для payload validation, model allowlist, token classification и окон квот. GitHub Actions проверяет миграцию, ограничения proxy, разделение publishable key/access token, deployment config и запускает `deno check`. В `supabase/config.toml` явно закреплено `verify_jwt = false` для `Qroq-proxy`; функция сама проверяет access token, а гости проходят по IP-квоте. Запуск #189 на текущем code head завершился успешно.
+Добавлены unit tests для payload validation, model allowlist, token classification и окон квот. GitHub Actions проверяет миграцию, ограничения proxy, разделение publishable key/access token, deployment config и запускает `deno check`. В `supabase/config.toml` явно закреплено `verify_jwt = false` для `Qroq-proxy`; функция сама проверяет access token, а гости проходят по IP-квоте. Запуск #190 на code commit `35a21bf63210eb29967600f92d93ade9d6de076a` завершился успешно; последующие изменения были только документацией.
 
 **Не выполнено намеренно:** миграция quota table не применена к production, Edge Function не развёрнута, секреты не менялись. Для включения нужно сначала сверить remote migration history, применить миграцию, убедиться в наличии Supabase secret/publishable key env vars и только затем развернуть функцию с `verify_jwt=false`. До этих действий production proxy остаётся прежним и по-прежнему имеет риск неограниченного расхода Groq quota.
