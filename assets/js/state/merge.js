@@ -41,9 +41,12 @@ function mergeImportedStateData(incoming, target, migrate, createId) {
       pending.forEach(node => {
         const oldParent = node.parentId == null ? null : String(node.parentId);
         const mappedParent = oldParent == null ? null : nodeMap.get(oldParent);
-        const parentPresent = oldParent == null || mappedParent || dest.nodes.some(n => String(n.id) === oldParent);
+        const existingParent = oldParent != null && dest.nodes.some(n => String(n.id) === oldParent);
+        const parentPresent = oldParent == null || mappedParent || existingParent;
         if (!parentPresent && pass < pending.length) { next.push(node); return; }
-        const parentId = oldParent == null ? null : (mappedParent || null);
+        // Keep a parent reference that already exists in the destination even
+        // when that parent was not part of the imported subtree.
+        const parentId = oldParent == null ? null : (mappedParent || (existingParent ? oldParent : null));
         const match = (node.id && dest.nodes.find(n => String(n.id) === String(node.id)))
           || dest.nodes.find(n => norm(n.name) === norm(node.name) && (n.parentId || null) === parentId);
         let actual = match;
