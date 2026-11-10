@@ -67,7 +67,7 @@
       try {
         const {data,error}=await supabaseClient.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
         if(error) throw error;
-        if(data.session){authUser=data.user||data.session.user;setCloudEnabled(true);await afterAuthReady();toast('Аккаунт создан','success');}
+        if(data.session){const previousUserId=authUser&&authUser.id;authUser=data.user||data.session.user;if(previousUserId!==authUser?.id){cloudReady=false;cloudLastError='';clearTimeout(cloudSaveTimer);cloudSaveTimer=null;}setCloudEnabled(true);await afterAuthReady();toast('Аккаунт создан','success');}
         else {const el=document.getElementById('authStatus');if(el)el.textContent='Письмо отправлено на '+email+'. Подтверди email, затем войди.';toast('Проверь почту и подтверди регистрацию','success');}
       } catch(e){toast(e.message||'Ошибка регистрации','error');}
     }
@@ -75,7 +75,7 @@
       if(!supabaseClient){toast('Supabase Auth недоступен','error');return;}
       const email=(document.getElementById('authEmail')?.value||'').trim(), password=document.getElementById('authPassword')?.value||'';
       if(!email||!password){toast('Укажи email и пароль','error');return;}
-      try {const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;authUser=data.user||data.session?.user||null;setCloudEnabled(true);await afterAuthReady();toast('Вход выполнен','success');}
+      try {const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;const previousUserId=authUser&&authUser.id;authUser=data.user||data.session?.user||null;if(previousUserId!==authUser?.id){cloudReady=false;cloudLastError='';clearTimeout(cloudSaveTimer);cloudSaveTimer=null;}setCloudEnabled(true);await afterAuthReady();toast('Вход выполнен','success');}
       catch(e){toast(e.message||'Ошибка входа','error');}
     }
     async function authSignOut() {
@@ -331,6 +331,13 @@
     async function performCloudSave(force, expectedUserId) {
       const uid = authUser && authUser.id;
       if (!cloudConfigured() || !uid || uid !== expectedUserId) return false;
+      // Do not upload in-memory data until this account's cloud state has been
+      // loaded or the server has confirmed that no cloud row exists.
+      if (!cloudReady) {
+        cloudLastError = cloudLastError || 'облачная версия ещё не загружена; запись заблокирована';
+        updateCloudStatusLine();
+        return false;
+      }
       if (localSaveWriteBlocked) {
         cloudReady = false;
         cloudLastError = 'повреждённое локальное сохранение: облачная запись заблокирована';
@@ -422,6 +429,9 @@
           const forced = await cloudLoad(true);
           if (forced) { renderAll(); toast('Загружено из облака', 'success'); }
         } else {
+          // The user explicitly chose the local copy after reviewing the conflict.
+          cloudReady = true;
+          cloudLastError = '';
           await cloudSave(true);
         }
         return;
