@@ -170,6 +170,14 @@ function mergeImportedStateData(incoming, target, migrate, createId) {
   }
   out.unlockedTitles = [...new Set([...(out.unlockedTitles || []), ...(src.unlockedTitles || [])])];
   out.unlockedAchievements = [...new Set([...(out.unlockedAchievements || []), ...(src.unlockedAchievements || [])])];
+  const eventTime = value => {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric > 0) return numeric;
+    const parsed = Date.parse(value || '');
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  ledger.sort((a, b) => eventTime(a.at) - eventTime(b.at));
+  activity.sort((a, b) => eventTime(b.at) - eventTime(a.at));
   if (ledger.length > 500) out.rewardLedger = ledger.slice(-500);
   if (activity.length > 300) out.activityLog = activity.slice(0, 300);
   return out;
