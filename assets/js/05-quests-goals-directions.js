@@ -450,7 +450,12 @@ ${rules.prompt}
         });
         added++;
       });
-      save();
+      if (!save()) {
+        replaceState(snap);
+        renderAll();
+        toast('AI-квесты не добавлены: не удалось сохранить данные', 'error');
+        return;
+      }
       closeModal();
       pushUndo(snap, `+${added} квестов на день`);
       renderQuests();
@@ -505,7 +510,12 @@ ${rules.prompt}
         state.ai.preferredDifficulty[q.type] = q.difficulty;
         added++;
       });
-      save();
+      if (!save()) {
+        replaceState(snap);
+        renderAll();
+        toast('AI-квесты не добавлены: не удалось сохранить данные', 'error');
+        return;
+      }
       closeModal();
       pushUndo(snap, `+${added} квестов`);
       renderQuests();
@@ -656,7 +666,7 @@ ${rules.prompt}
       const dir = state.directions.find(d => d.id === dirId);
       if (!dir) return;
       if (!dir.nodes) dir.nodes = [];
-      window._aiTreeSnap = snapshotState();
+      const snap = snapshotState();
       const drafts = window._aiTreeDrafts || [];
       const selected = [];
       document.querySelectorAll('.ai-tree-check:checked').forEach(ch => {
@@ -702,9 +712,15 @@ ${rules.prompt}
       if (added) {
         // undo was not snapshotted before loop — fix by snapshot at start
       }
-      save();
+      if (added && !save()) {
+        replaceState(snap);
+        renderAll();
+        toast('Дерево не изменено: не удалось сохранить данные', 'error');
+        return;
+      }
+      if (!added) save();
       closeModal();
-      if (added) pushUndo(window._aiTreeSnap || snapshotState(), `Дерево +${added}`);
+      if (added) pushUndo(snap, `Дерево +${added}`);
       else toast('Уже было в дереве', 'success');
       renderDirections();
       if (currentTreeDirId === dirId) renderTree(dirId);
