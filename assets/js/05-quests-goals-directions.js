@@ -1527,6 +1527,8 @@ ${rules.prompt}
       const q = state.quests.find(x => x.id === id);
       if (!q || q.done) return;
       const isHabit = isHabitQuest(q);
+      const rewardAlreadyGrantedToday = isHabit
+        && hasHabitRewardForDay(q, state.rewardLedger, todayKey());
       q.done = true;
       q.completedAt = Date.now();
       if (!isHabit && result) q.result = result;
@@ -1548,12 +1550,27 @@ ${rules.prompt}
         else if (last !== todayKey()) q.habitStreak = 1;
         q.lastHabitDay = todayKey();
         q.habitBest = Math.max(q.habitBest || 0, q.habitStreak || 0);
-        state.stats.habitChecks = (state.stats.habitChecks || 0) + 1;
+        if (!rewardAlreadyGrantedToday) {
+          state.stats.habitChecks = (state.stats.habitChecks || 0) + 1;
+        }
       }
       haptic();
 
       // Streak
       updateStreak();
+
+      // A habit may be unchecked and checked again on the same day. Its reward
+      // is still earned only once per day; toggling completion must not mint XP.
+      if (rewardAlreadyGrantedToday) {
+        q.lastHabitRewardDay = todayKey();
+        if (!save()) return;
+        renderQuests();
+        renderHero();
+        renderDirections();
+        toast('Привычка отмечена. XP за сегодня уже начислен.', 'success');
+        return;
+      }
+      if (isHabit) q.lastHabitRewardDay = todayKey();
 
       // Variable reward (luck)
       const luck = tryLuckBonus(q.xp);
