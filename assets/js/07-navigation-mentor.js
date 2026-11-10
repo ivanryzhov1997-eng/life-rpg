@@ -1,9 +1,24 @@
 
+    // Preserve the current durable save before destructive replace/reset operations.
+    function backupCurrentSave(prefix) {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return false;
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-') + '-' + uid();
+        backupRawSave(localStorage, raw, prefix, stamp, 5);
+        return true;
+      } catch (error) {
+        throw new Error('Не удалось создать резервную копию перед разрушительной операцией');
+      }
+    }
+
     // ===================== SAVE / EXPORT / IMPORT =====================
     function exportSave() {
-      const data = JSON.parse(JSON.stringify(state));
-      if (data.ai) delete data.ai.apiKey;
-      data.schemaVersion = SCHEMA_VERSION;
+      if (localSaveWriteBlocked) {
+        toast('Экспорт остановлен: сначала скачай исходный файл или импортируй резервную копию.', 'error');
+        return;
+      }
+      const data = createPersistedState(state, SCHEMA_VERSION);
       data.backupMeta = { app: 'LIFE RPG', format: 'json-backup', exportedAt: new Date().toISOString(), includesActivityLog: true };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -18,7 +33,34 @@
       toast('Резервная копия экспортирована (без API-ключа)');
     }
 
+    function exportCorruptSave() {
+      if (!localSaveWriteBlocked) {
+        toast('Повреждённый сейв не обнаружен', 'error');
+        return;
+      }
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw == null) throw new Error('Исходный файл не найден');
+        const blob = new Blob([raw], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'life-rpg-corrupt-save-' + new Date().toISOString().replace(/[:.]/g, '-') + '.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        toast('Исходный файл сохранения скачан', 'success');
+      } catch (error) {
+        toast(error.message || 'Не удалось скачать повреждённый сейв', 'error');
+      }
+    }
+
     function exportMarkdown() {
+      if (localSaveWriteBlocked) {
+        toast('Экспорт остановлен: сначала скачай исходный файл или импортируй резервную копию.', 'error');
+        return;
+      }
       const lines = [];
       lines.push('# LIFE RPG — экспорт');
       lines.push('');
@@ -57,71 +99,67 @@
       toast('Markdown экспортирован');
     }
 
-    function mergeImportedState(incoming) {
-      const src = migrateState(incoming);
-      // merge directions by name
-      src.directions.forEach(d => {
-        const existing = state.directions.find(x => x.name === d.name);
-        if (!existing) {
-          state.directions.push(d);
-        } else {
-          (d.nodes || []).forEach(n => {
-            if (!(existing.nodes || []).some(en => en.name === n.name && en.parentId === n.parentId)) {
-              if (!existing.nodes) existing.nodes = [];
-              existing.nodes.push(n);
-            }
-          });
-        }
-      });
-      // merge quests by title+done uniqueness soft
-      src.quests.forEach(q => {
-        const exists = state.quests.some(x => x.title === q.title && x.done === q.done && x.type === q.type);
-        if (!exists) state.quests.push(q);
-      });
-      src.lore.forEach(l => {
-        const exists = state.lore.some(x => x.text === l.text && x.date === l.date);
-        if (!exists) state.lore.push(l);
-      });
-      (src.reflections || []).forEach(r => state.reflections.push(r));
-      // keep higher XP hero
-      if ((src.hero.xp || 0) > (state.hero.xp || 0)) {
-        state.hero.xp = src.hero.xp;
-        if (src.hero.name) state.hero.name = src.hero.name;
-      }
+    function mergeImportedState(incoming, target) {
+      return mergeImportedStateData(incoming, target || state, migrateState, uid);
     }
-
     function importSave(e, merge) {
       const file = e.target.files?.[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = (ev) => {
+        const previousState = snapshotState();
         try {
           const data = JSON.parse(ev.target.result);
           const err = validateImport(data);
           if (err) throw new Error(err);
-          if (merge) {
-            mergeImportedState(data);
-            toast('Данные добавлены к текущим', 'success');
-          } else {
-            state = migrateState(data);
-            toast('Сохранение загружено', 'success');
+          if (localSaveWriteBlocked && merge) {
+            toast('Слияние невозможно: локальное сохранение повреждено. Используй «Импорт (заменить)» или полный сброс.', 'error');
+            return;
           }
-          save();
+          const candidate = merge
+            ? mergeImportedState(data, JSON.parse(JSON.stringify(previousState)))
+            : migrateState(data);
+          if (localSaveWriteBlocked) {
+            if (!resolveCorruptLocalSave('life_rpg_v5_preimport_')) return;
+          } else if (!merge) {
+            backupCurrentSave('life_rpg_v5_preimport_');
+          }
+          replaceState(candidate);
+          if (!save()) {
+            replaceState(previousState);
+            renderAll();
+            toast('Импорт отменён: не удалось сохранить данные на устройстве', 'error');
+            return;
+          }
           renderAll();
+          toast(merge ? 'Данные добавлены к текущим' : 'Сохранение загружено', 'success');
         } catch (err) {
+          replaceState(previousState);
+          renderAll();
           toast('Импорт: ' + (err.message || 'некорректный JSON'), 'error');
         }
       };
+      reader.onerror = () => toast('Не удалось прочитать файл импорта', 'error');
       reader.readAsText(file);
       e.target.value = '';
     }
-
     function resetAll() {
       if (!confirm('Сбросить ВЕСЬ прогресс? Это нельзя отменить.')) return;
       if (!confirm('Точно? Все квесты, навыки и лор будут удалены.')) return;
+      const previousState = snapshotState();
+      try {
+        if (localSaveWriteBlocked) {
+          if (!resolveCorruptLocalSave('life_rpg_v5_prereset_')) return;
+        } else {
+          backupCurrentSave('life_rpg_v5_prereset_');
+        }
+      } catch (backupError) {
+        toast(backupError.message || 'Сброс остановлен: резервная копия не создана', 'error');
+        return;
+      }
       const keepModel = state.ai?.model;
       const keepDiff = state.ai?.preferredDifficulty;
-      state = migrateState({
+      replaceState(migrateState({
         hero: { name: 'Безымянный герой', xp: 0, titleId: 'newbie' },
         directions: [],
         quests: [],
@@ -133,8 +171,13 @@
         unlockedAchievements: [],
         reflections: [],
         ai: { model: keepModel || 'openai/gpt-oss-20b', preferredDifficulty: keepDiff }
-      });
-      save();
+      }));
+      if (!save()) {
+        replaceState(previousState);
+        renderAll();
+        toast('Сброс отменён: не удалось сохранить изменения', 'error');
+        return;
+      }
       closeTreeView();
       renderAll();
       toast('Прогресс сброшен');
@@ -232,7 +275,7 @@
     function skipEveningRitual() {
       if (!state.ui) state.ui = {};
       state.ui.lastEveningRitual = todayStr();
-      save();
+      if (!save()) return;
       closeModal();
     }
 
@@ -250,7 +293,7 @@
         addAutoLore(text.trim());
         state.reflections.push({ id: uid(), type: 'evening', did, felt, next, at: Date.now() });
       }
-      save();
+      if (!save()) return;
       closeModal();
       renderLore();
       toast('Ритуал сохранён', 'success');
@@ -281,4 +324,4 @@
 Ты персональный наставник life-RPG. СНАЧАЛА проверь осмысленность цели. Если цель бессмысленна, непонятна, состоит из случайных символов, повторяющихся букв/звуков, бессвязного набора букв или по ней нельзя определить конкретную область развития (например: «ааааа», «Ааааа», «хз», «qwerty»), НЕ ПЫТАЙСЯ УГАДАТЬ СМЫСЛ и НЕ ПОДБИРАЙ УНИВЕРСАЛЬНУЮ ТЕМУ вроде общения, дисциплины или саморазвития. В таком случае ответь ТОЛЬКО JSON-объектом {"error":"Цель не распознана. Уточните запрос"} и НЕ создавай diagnosis, tree или quests. Не считай цель корректной только потому, что в ней есть гласные. Если цель понятна, не отклоняй её из-за краткости. Не давай банальные основы автоматически. Оцени фактический уровень только по описанию и предложи ближайший маршрут. Ответь ТОЛЬКО JSON-массивом из одного объекта: [{"diagnosis":"...","stage":"beginner|intermediate|advanced|expert","directionDescription":"...","tree":[{"name":"...","description":"...","children":[{"name":"...","description":"...","children":[]}]}],"quests":[{"title":"...","description":"...","completionCriteria":"...","minutes":20,"difficulty":1,"type":"SIDE","skillPath":"..."}]}]. Правила: не откатывай к уверенно освоенным основам; при нехватке данных скажи это и предложи проверочный квест; tree 3–5 корней, у каждого 2–4 поднавыка, максимум 3 уровня; дай 3–5 квестов только ближайшего этапа; каждый квест обязан иметь измеримый результат в completionCriteria; нельзя использовать критерии «посмотреть», «почитать», «позаниматься N минут», «попробовать»; не награждай бытовые действия, развлечения или открытие приложения; skillPath должен совпадать с tree; учитывай ${minutes} минут за подход и ${days} раз/неделю.`;const user=`Направление: ${goal}\nЖелаемый результат: ${outcome||'не указан'}\nУже умеет: ${current||'не указано'}\nЗатыки: ${weak||'не указаны'}\nВремя: ${minutes} минут, ${days} раз/неделю\nОграничения: ${limits||'нет'}`;try{const parsed=parseJsonFromAi(await callGroq(system,user));const data=Array.isArray(parsed)?parsed[0]:parsed;if(data&&data.error){document.getElementById('modalContent').innerHTML=`<h2>Цель не распознана</h2><p class="text-dim">${escapeHtml(data.error)}</p><div class="modal-actions"><button class="btn btn-primary" onclick="openAiMentor()">Уточнить цель</button><button class="btn btn-secondary" onclick="closeModal()">Закрыть</button></div>`;openModal();return}if(!data||!Array.isArray(data.tree)||!Array.isArray(data.quests))throw new Error('ИИ вернул неполную диагностику');showAiMentorDraft({...data,goal,outcome,current,weak,minutes,days,limits});}catch(e){document.getElementById('modalContent').innerHTML=`<h2>Диагностика не удалась</h2><p class="text-dim">${escapeHtml(e.message||'Ошибка ИИ')}</p><div class="modal-actions"><button class="btn btn-primary" onclick="openAiMentor()">Повторить</button><button class="btn btn-secondary" onclick="closeModal()">Закрыть</button></div>`;openModal();}}
     function mentorFlatten(nodes,parentPath,depth,out){(nodes||[]).forEach(n=>{const name=String(n.name||'').trim().slice(0,70);if(!name)return;const path=parentPath?parentPath+' → '+name:name;out.push({key:path,name,description:String(n.description||'').trim().slice(0,220),depth,parentPath:parentPath||null});if(Array.isArray(n.children))mentorFlatten(n.children,path,depth+1,out)});return out;}
     function showAiMentorDraft(d){const flat=mentorFlatten(d.tree,'',0,[]),quests=(d.quests||[]).slice(0,5).map(q=>({title:String(q.title||'').trim().slice(0,120),description:String(q.description||'').trim().slice(0,700),completionCriteria:String(q.completionCriteria||'').trim().slice(0,500),minutes:Math.max(5,Math.min(180,parseInt(q.minutes,10)||d.minutes||30)),difficulty:Math.max(1,Math.min(5,parseInt(q.difficulty,10)||2)),type:['SIDE','MAIN','BOSS'].includes(q.type)?q.type:'SIDE',skillPath:String(q.skillPath||'').trim()})).filter(q=>q.title&&q.completionCriteria);if(!flat.length||!quests.length)throw new Error('Нужно дерево и хотя бы один квест с измеримым критерием');window._mentorDraft={...d,flat,quests};document.getElementById('modalContent').innerHTML=`<h2>🧠 Предложение наставника</h2><div class="form-group"><label>Направление</label><input id="mentorName" value="${escapeHtml(d.goal)}" maxlength="60"></div><div class="form-group"><label>Диагноз</label><div class="mentor-diagnosis">${escapeHtml(d.diagnosis||'Без диагноза')}<br><span style="color:var(--gold)">Старт: ${escapeHtml(stageLabel(d.stage||'beginner'))}</span></div></div><div class="form-group"><label>Описание</label><textarea id="mentorDesc">${escapeHtml(d.directionDescription||'')}</textarea></div><div class="mentor-section-title">Дерево</div><div style="max-height:34vh;overflow:auto">${flat.map((n,i)=>`<label class="mentor-item" style="display:flex;gap:9px;cursor:pointer"><input type="checkbox" class="mentor-tree-check" data-i="${i}" checked style="width:18px;height:18px;margin-top:2px"><span style="padding-left:${n.depth*12}px"><span class="mi-title">${n.depth?'↳ ':''}${escapeHtml(n.name)}</span>${n.description?`<span class="mi-sub">${escapeHtml(n.description)}</span>`:''}</span></label>`).join('')}</div><div class="mentor-section-title" style="margin-top:12px">Ближайшие квесты</div><div style="max-height:32vh;overflow:auto">${quests.map((q,i)=>`<label class="mentor-quest" style="display:block;cursor:pointer"><div style="display:flex;gap:9px"><input type="checkbox" class="mentor-quest-check" data-i="${i}" checked style="width:18px;height:18px;margin-top:2px"><div><div class="mq-title">${escapeHtml(q.title)}</div><div class="mi-sub">${escapeHtml(q.description)}</div><div class="mq-criterion"><strong>Критерий:</strong> ${escapeHtml(q.completionCriteria)}</div><div class="mi-sub">~${q.minutes} мин · ${q.type==='MAIN'?'Основной':q.type==='BOSS'?'Босс':'Побочный'} · ${escapeHtml(q.skillPath||'без привязки')}</div></div></div></label>`).join('')}</div><div class="mentor-note">Ничего не записывается, пока ты не нажмёшь «Принять маршрут».</div><div class="modal-actions" style="flex-direction:column;gap:8px"><button class="btn btn-primary btn-block" onclick="acceptAiMentor()">Принять маршрут</button><button class="btn btn-secondary btn-block" onclick="openAiMentor()">Изменить диагностику</button><button class="btn btn-secondary btn-block" onclick="closeModal()">Отмена</button></div>`;openModal();}
-    function acceptAiMentor(){const d=window._mentorDraft;if(!d)return;const name=(document.getElementById('mentorName')?.value||'').trim().slice(0,60),desc=(document.getElementById('mentorDesc')?.value||'').trim().slice(0,700);if(!name){toast('Укажи название','error');return}const selectedTree=[];document.querySelectorAll('.mentor-tree-check:checked').forEach(e=>{const n=d.flat[parseInt(e.dataset.i,10)];if(n)selectedTree.push(n)});const selectedQuests=[];document.querySelectorAll('.mentor-quest-check:checked').forEach(e=>{const q=d.quests[parseInt(e.dataset.i,10)];if(q)selectedQuests.push(q)});if(!selectedTree.length||!selectedQuests.length){toast('Выбери хотя бы один навык и квест','error');return}const snap=snapshotState();let dir=state.directions.find(x=>x.name.trim().toLowerCase()===name.toLowerCase());if(!dir){dir={id:uid(),name,description:desc,stage:d.stage||'beginner',xp:0,nodes:[]};state.directions.push(dir);addAutoLore(`🧠 ИИ-наставник: создано направление «${name}» (${stageLabel(dir.stage)})`)}else{if(desc)dir.description=desc;dir.stage=d.stage||dir.stage||'beginner'}if(!Array.isArray(dir.nodes))dir.nodes=[];const pathToId={};dir.nodes.forEach(n=>pathToId[n.name]=n.id);const newIds={};[...selectedTree].sort((a,b)=>a.depth-b.depth).forEach(n=>{const parentId=n.parentPath?(newIds[n.parentPath]||pathToId[n.parentPath.split(' → ').pop()]||null):null;let node=dir.nodes.find(x=>x.name.trim().toLowerCase()===n.name.trim().toLowerCase()&&(x.parentId||null)===parentId);if(!node){node={id:uid(),name:n.name,description:n.description||'',parentId,xp:0};dir.nodes.push(node)}newIds[n.key]=node.id});const findSkillId=path=>{const p=String(path||'').toLowerCase();const exact=selectedTree.find(n=>n.key.toLowerCase()===p);if(exact&&newIds[exact.key])return newIds[exact.key];const last=p.split(' → ').pop().trim();const hit=dir.nodes.find(n=>n.name.toLowerCase()===last);if(hit)return hit.id;const partial=dir.nodes.find(n=>p.includes(n.name.toLowerCase()));return partial?partial.id:(dir.nodes[0]?.id||null)};selectedQuests.forEach(q=>{const skillId=findSkillId(q.skillPath),type=q.type||'SIDE',difficulty=q.difficulty||2;state.quests.push({id:uid(),title:q.title,type,difficulty,xp:QUEST_XP[type]?.[difficulty]||QUEST_XP.SIDE[difficulty]||25,description:q.description||'',completionCriteria:q.completionCriteria,minutes:q.minutes,targetType:skillId?'SKILL':'DIRECTION',targetId:skillId||dir.id,tags:['MENTOR'],done:false,createdAt:Date.now(),fromAi:true,fromMentor:true})});save();closeModal();pushUndo(snap,`ИИ-наставник: ${name}`);renderDirections();renderQuests();renderHero();toast(`Маршрут «${name}» принят`,'success');}
+    function acceptAiMentor(){const d=window._mentorDraft;if(!d)return;const name=(document.getElementById('mentorName')?.value||'').trim().slice(0,60),desc=(document.getElementById('mentorDesc')?.value||'').trim().slice(0,700);if(!name){toast('Укажи название','error');return}const selectedTree=[];document.querySelectorAll('.mentor-tree-check:checked').forEach(e=>{const n=d.flat[parseInt(e.dataset.i,10)];if(n)selectedTree.push(n)});const selectedQuests=[];document.querySelectorAll('.mentor-quest-check:checked').forEach(e=>{const q=d.quests[parseInt(e.dataset.i,10)];if(q)selectedQuests.push(q)});if(!selectedTree.length||!selectedQuests.length){toast('Выбери хотя бы один навык и квест','error');return}const snap=snapshotState();let dir=state.directions.find(x=>x.name.trim().toLowerCase()===name.toLowerCase());if(!dir){dir={id:uid(),name,description:desc,stage:d.stage||'beginner',xp:0,nodes:[]};state.directions.push(dir);addAutoLore(`🧠 ИИ-наставник: создано направление «${name}» (${stageLabel(dir.stage)})`)}else{if(desc)dir.description=desc;dir.stage=d.stage||dir.stage||'beginner'}if(!Array.isArray(dir.nodes))dir.nodes=[];const pathToId={};dir.nodes.forEach(n=>pathToId[n.name]=n.id);const newIds={};[...selectedTree].sort((a,b)=>a.depth-b.depth).forEach(n=>{const parentId=n.parentPath?(newIds[n.parentPath]||pathToId[n.parentPath.split(' → ').pop()]||null):null;let node=dir.nodes.find(x=>x.name.trim().toLowerCase()===n.name.trim().toLowerCase()&&(x.parentId||null)===parentId);if(!node){node={id:uid(),name:n.name,description:n.description||'',parentId,xp:0};dir.nodes.push(node)}newIds[n.key]=node.id});const findSkillId=path=>{const p=String(path||'').toLowerCase();const exact=selectedTree.find(n=>n.key.toLowerCase()===p);if(exact&&newIds[exact.key])return newIds[exact.key];const last=p.split(' → ').pop().trim();const hit=dir.nodes.find(n=>n.name.toLowerCase()===last);if(hit)return hit.id;const partial=dir.nodes.find(n=>p.includes(n.name.toLowerCase()));return partial?partial.id:(dir.nodes[0]?.id||null)};selectedQuests.forEach(q=>{const skillId=findSkillId(q.skillPath),type=q.type||'SIDE',difficulty=q.difficulty||2;state.quests.push({id:uid(),title:q.title,type,difficulty,xp:QUEST_XP[type]?.[difficulty]||QUEST_XP.SIDE[difficulty]||25,description:q.description||'',completionCriteria:q.completionCriteria,minutes:q.minutes,targetType:skillId?'SKILL':'DIRECTION',targetId:skillId||dir.id,tags:['MENTOR'],done:false,createdAt:Date.now(),fromAi:true,fromMentor:true})});if(!save()){replaceState(snap);renderAll();toast('Маршрут не принят: не удалось сохранить данные','error');return}closeModal();pushUndo(snap,`ИИ-наставник: ${name}`);renderDirections();renderQuests();renderHero();toast(`Маршрут «${name}» принят`,'success');}

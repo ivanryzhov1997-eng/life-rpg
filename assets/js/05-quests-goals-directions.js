@@ -40,7 +40,7 @@
       try {
         res = await fetch(url, {
           method: 'POST',
-          headers: aiAuthHeaders(),
+          headers: await aiAuthHeaders(),
           body: JSON.stringify({
             model: state.ai.model || 'openai/gpt-oss-20b',
             messages: [
@@ -257,8 +257,7 @@ ${rules.prompt}
       const cap = parseInt(document.getElementById('dailyCap')?.value || '60', 10);
       if (!state.ui) state.ui = {};
       state.ui.dailyCapacity = cap;
-      save();
-
+      if (!save()) return;
       toast('Собираю квесты на день…');
       document.getElementById('modalContent').innerHTML = `
         <h2>Квесты на день</h2>
@@ -450,7 +449,12 @@ ${rules.prompt}
         });
         added++;
       });
-      save();
+      if (!save()) {
+        replaceState(snap);
+        renderAll();
+        toast('AI-квесты не добавлены: не удалось сохранить данные', 'error');
+        return;
+      }
       closeModal();
       pushUndo(snap, `+${added} квестов на день`);
       renderQuests();
@@ -505,7 +509,12 @@ ${rules.prompt}
         state.ai.preferredDifficulty[q.type] = q.difficulty;
         added++;
       });
-      save();
+      if (!save()) {
+        replaceState(snap);
+        renderAll();
+        toast('AI-квесты не добавлены: не удалось сохранить данные', 'error');
+        return;
+      }
       closeModal();
       pushUndo(snap, `+${added} квестов`);
       renderQuests();
@@ -656,7 +665,7 @@ ${rules.prompt}
       const dir = state.directions.find(d => d.id === dirId);
       if (!dir) return;
       if (!dir.nodes) dir.nodes = [];
-      window._aiTreeSnap = snapshotState();
+      const snap = snapshotState();
       const drafts = window._aiTreeDrafts || [];
       const selected = [];
       document.querySelectorAll('.ai-tree-check:checked').forEach(ch => {
@@ -702,9 +711,15 @@ ${rules.prompt}
       if (added) {
         // undo was not snapshotted before loop — fix by snapshot at start
       }
-      save();
+      if (added && !save()) {
+        replaceState(snap);
+        renderAll();
+        toast('Дерево не изменено: не удалось сохранить данные', 'error');
+        return;
+      }
+      if (!added && !save()) return;
       closeModal();
-      if (added) pushUndo(window._aiTreeSnap || snapshotState(), `Дерево +${added}`);
+      if (added) pushUndo(snap, `Дерево +${added}`);
       else toast('Уже было в дереве', 'success');
       renderDirections();
       if (currentTreeDirId === dirId) renderTree(dirId);
@@ -760,7 +775,7 @@ ${rules.prompt}
       }
 
       checkTitlesAndAchievements();
-      save();
+      if (!save()) return;
     }
 
     // ===================== RENDER HELPERS =====================
@@ -779,7 +794,7 @@ ${rules.prompt}
 
     // ===================== WEEKLY PULSE =====================
     function localDayKey(date) {
-      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+      return localDateKey(date);
     }
 
     function renderWeeklyPulseBlock() {
@@ -823,7 +838,7 @@ ${rules.prompt}
       const nearMiss = prog.percent >= 85 && prog.level < MAX_LEVEL;
       const streak = state.streak || { current: 0, longest: 0 };
       const today = todayStr();
-      const doneToday = state.quests.filter(q => q.done && q.completedAt && new Date(q.completedAt).toISOString().slice(0,10) === today).length;
+      const doneToday = state.quests.filter(q => q.done && q.completedAt && localDateKey(new Date(q.completedAt)) === today).length;
       const active = state.quests.filter(q => !q.done);
       const todayPicks = active.slice().sort((a, b) => {
         const prio = { BOSS: 0, MAIN: 1, SIDE: 2 };
@@ -959,7 +974,7 @@ ${rules.prompt}
       const name = (document.getElementById('heroNameInput')?.value || '').trim();
       if (!name) { toast('Введи ник', 'error'); return; }
       state.hero.name = name.slice(0, 40);
-      save();
+      if (!save()) return;
       closeModal();
       renderHero();
       toast('Ник обновлён', 'success');
@@ -1179,7 +1194,7 @@ ${rules.prompt}
         createdAt: Date.now()
       });
       if (input) input.value = '';
-      save();
+      if (!save()) return;
       renderQuests();
       renderHero();
       toast('Квест добавлен', 'success');
@@ -1202,7 +1217,7 @@ ${rules.prompt}
         done: false,
         createdAt: Date.now()
       });
-      save();
+      if (!save()) return;
       renderQuests();
       toast('Квест скопирован', 'success');
     }
@@ -1419,7 +1434,7 @@ ${rules.prompt}
       ensureAi();
       if (!state.ai.preferredDifficulty) state.ai.preferredDifficulty = {};
       state.ai.preferredDifficulty[type] = difficulty;
-      save();
+      if (!save()) return;
       closeModal();
       renderQuests();
       renderHero();
@@ -1460,7 +1475,7 @@ ${rules.prompt}
     }
 
     function todayKey() {
-      return new Date().toISOString().slice(0, 10);
+      return todayStr();
     }
 
     function isHabitQuest(q) {
@@ -1469,7 +1484,7 @@ ${rules.prompt}
 
     function habitDoneToday(q) {
       if (!q || !q.done || !q.completedAt) return false;
-      return new Date(q.completedAt).toISOString().slice(0, 10) === todayKey();
+      return localDateKey(new Date(q.completedAt)) === todayKey();
     }
 
     function resetHabitsForToday() {
@@ -1481,7 +1496,12 @@ ${rules.prompt}
         q.type = 'HABIT';
         if (q.habitStreak == null) q.habitStreak = 0;
         if (q.habitBest == null) q.habitBest = 0;
-        const doneDay = q.completedAt ? new Date(q.completedAt).toISOString().slice(0, 10) : null;
+        if (q.habitStreakUndoDay && q.habitStreakUndoDay !== today) {
+          delete q.habitStreakBeforeUndo;
+          delete q.habitStreakUndoDay;
+          changed = true;
+        }
+        const doneDay = q.completedAt ? localDateKey(new Date(q.completedAt)) : null;
         if (q.done && doneDay && doneDay !== today) {
           q.done = false;
           changed = true;
@@ -1490,19 +1510,18 @@ ${rules.prompt}
           changed = true;
         }
       });
-      if (changed) save();
+      if (changed && !save()) return;
     }
 
     function uncompleteHabit(id) {
       const q = state.quests.find(x => x.id === id);
       if (!q || !isHabitQuest(q)) return;
       q.done = false;
-      if (q.lastHabitDay === todayKey()) {
-        q.habitStreak = Math.max(0, (q.habitStreak || 1) - 1);
-        q.lastHabitDay = null;
-      }
+      // Older saves may have the reward event ID but no daily idempotency field.
+      if (q.lastRewardEventId) q.lastHabitRewardDay = todayKey();
+      recordHabitStreakUndo(q, todayKey());
       delete q.completedAt;
-      save();
+      if (!save()) return;
       renderQuests();
       renderHero();
       toast('Снято на сегодня');
@@ -1512,6 +1531,8 @@ ${rules.prompt}
       const q = state.quests.find(x => x.id === id);
       if (!q || q.done) return;
       const isHabit = isHabitQuest(q);
+      const rewardAlreadyGrantedToday = isHabit
+        && hasHabitRewardForDay(q, state.rewardLedger, todayKey());
       q.done = true;
       q.completedAt = Date.now();
       if (!isHabit && result) q.result = result;
@@ -1527,18 +1548,34 @@ ${rules.prompt}
       } else {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        const yKey = yesterday.toISOString().slice(0, 10);
-        const last = q.lastHabitDay || null;
-        if (last === yKey) q.habitStreak = (q.habitStreak || 0) + 1;
-        else if (last !== todayKey()) q.habitStreak = 1;
-        q.lastHabitDay = todayKey();
-        q.habitBest = Math.max(q.habitBest || 0, q.habitStreak || 0);
-        state.stats.habitChecks = (state.stats.habitChecks || 0) + 1;
+        applyHabitStreakCompletion(
+          q,
+          todayKey(),
+          localDateKey(yesterday),
+          rewardAlreadyGrantedToday
+        );
+        if (!rewardAlreadyGrantedToday) {
+          state.stats.habitChecks = (state.stats.habitChecks || 0) + 1;
+        }
       }
       haptic();
 
       // Streak
       updateStreak();
+
+      // A habit may be unchecked and checked again on the same day. Its reward
+      // is still earned only once per day; toggling completion must not mint XP.
+      if (rewardAlreadyGrantedToday) {
+        q.lastHabitRewardDay = todayKey();
+        if (!save()) return;
+        renderQuests();
+        renderHero();
+        renderDirections();
+        if (currentTreeDirId) renderTree(currentTreeDirId);
+        toast('Привычка отмечена. XP за сегодня уже начислен.', 'success');
+        return;
+      }
+      if (isHabit) q.lastHabitRewardDay = todayKey();
 
       // Variable reward (luck)
       const luck = tryLuckBonus(q.xp);
@@ -1607,7 +1644,7 @@ ${rules.prompt}
       else addAutoLore(loreText, 'side');
 
       checkTitlesAndAchievements();
-      save();
+      if (!save()) return;
       renderQuests();
       renderHero();
       if (currentTreeDirId) renderTree(currentTreeDirId);
@@ -1633,7 +1670,7 @@ ${rules.prompt}
     function deleteQuest(id) {
       if (!confirm('Удалить квест?')) return;
       state.quests = state.quests.filter(x => x.id !== id);
-      save();
+      if (!save()) return;
       renderQuests();
       renderHero();
       toast('Квест удалён');
@@ -1862,7 +1899,7 @@ ${rules.prompt}
         });
         toast('Цель создана');
       }
-      save();
+      if (!save()) return;
       closeModal();
       renderGoals();
       renderHero();
@@ -1871,7 +1908,7 @@ ${rules.prompt}
     function nudgeGoal(id, delta) {
       const g = applyGoalProgress(id, delta);
       if (!g) return;
-      save();
+      if (!save()) return;
       renderGoals();
       renderHero();
       toast('+' + delta + ' · ' + g.metric.current + '/' + g.metric.target);
@@ -1884,7 +1921,7 @@ ${rules.prompt}
       g.status = 'done';
       g.completedAt = Date.now();
       addAutoLore('🎯 Цель достигнута: «' + g.title + '»', 'main');
-      save();
+      if (!save()) return;
       renderGoals();
       renderHero();
       toast('Цель закрыта', 'levelup');
@@ -1897,7 +1934,7 @@ ${rules.prompt}
       state.quests.forEach(q => {
         if (q.goalId === id) { q.goalId = null; q.goalUnits = 0; }
       });
-      save();
+      if (!save()) return;
       renderGoals();
       renderHero();
       toast('Цель удалена');

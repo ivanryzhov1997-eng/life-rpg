@@ -3,6 +3,15 @@
     let cloudSaveTimer = null;
     let cloudReady = false;
     let cloudLastError = '';
+    let cloudBaseUserId = null;
+    let cloudBaseUpdatedAt = null;
+    let cloudSaveQueue = Promise.resolve();
+    const LOCAL_CLOUD_OWNER_KEY = 'life_rpg_v5_cloud_owner';
+
+    function resetCloudBase() {
+      cloudBaseUserId = null;
+      cloudBaseUpdatedAt = null;
+    }
 
     function getSupabaseUrl() {
       // Облачный сейв — ТОЛЬКО если пользователь сам включил в Настройках.
@@ -45,6 +54,13 @@
     }
 
     function cloudConfigured() { return !!(isCloudEnabled() && supabaseClient && authUser); }
+    function getLocalCloudOwner() {
+      try { return localStorage.getItem(LOCAL_CLOUD_OWNER_KEY) || ''; } catch (e) { return ''; }
+    }
+    function setLocalCloudOwner(userId) {
+      try { localStorage.setItem(LOCAL_CLOUD_OWNER_KEY, String(userId)); return true; }
+      catch (e) { return false; }
+    }
 
     async function authRefreshUser() {
       if (!supabaseClient) return null;
@@ -67,7 +83,7 @@
       try {
         const {data,error}=await supabaseClient.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
         if(error) throw error;
-        if(data.session){authUser=data.user||data.session.user;setCloudEnabled(true);await afterAuthReady();toast('Аккаунт создан','success');}
+        if(data.session){const previousUserId=authUser&&authUser.id;authUser=data.user||data.session.user;if(previousUserId!==authUser?.id){cloudReady=false;resetCloudBase();cloudLastError='';clearTimeout(cloudSaveTimer);cloudSaveTimer=null;}setCloudEnabled(true);await afterAuthReady();toast('Аккаунт создан','success');}
         else {const el=document.getElementById('authStatus');if(el)el.textContent='Письмо отправлено на '+email+'. Подтверди email, затем войди.';toast('Проверь почту и подтверди регистрацию','success');}
       } catch(e){toast(e.message||'Ошибка регистрации','error');}
     }
@@ -75,25 +91,58 @@
       if(!supabaseClient){toast('Supabase Auth недоступен','error');return;}
       const email=(document.getElementById('authEmail')?.value||'').trim(), password=document.getElementById('authPassword')?.value||'';
       if(!email||!password){toast('Укажи email и пароль','error');return;}
-      try {const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;authUser=data.user||data.session?.user||null;setCloudEnabled(true);await afterAuthReady();toast('Вход выполнен','success');}
+      try {const {data,error}=await supabaseClient.auth.signInWithPassword({email,password});if(error)throw error;const previousUserId=authUser&&authUser.id;authUser=data.user||data.session?.user||null;if(previousUserId!==authUser?.id){cloudReady=false;resetCloudBase();cloudLastError='';clearTimeout(cloudSaveTimer);cloudSaveTimer=null;}setCloudEnabled(true);await afterAuthReady();toast('Вход выполнен','success');}
       catch(e){toast(e.message||'Ошибка входа','error');}
     }
     async function authSignOut() {
-      if(!supabaseClient)return;
-      try {await cloudSave(true);const {error}=await supabaseClient.auth.signOut();if(error)throw error;authUser=null;cloudReady=false;setCloudEnabled(false);updateAuthUI();toast('Вы вышли. Локальный прогресс сохранён.','success');}
-      catch(e){toast(e.message||'Не удалось выйти','error');}
+      if (!supabaseClient) return;
+      try {
+        const syncRequired = cloudConfigured();
+        const synced = syncRequired ? await cloudSave(true) : false;
+        if (syncRequired && !synced) {
+          const proceed = confirm(
+            'Не удалось обновить облачное сохранение. Локальная копия остаётся на этом устройстве. Выйти из аккаунта всё равно?'
+          );
+          if (!proceed) return;
+        }
+        const { error } = await supabaseClient.auth.signOut();
+        if (error) throw error;
+        authUser = null;
+        cloudReady = false;
+        resetCloudBase();
+        setCloudEnabled(false);
+        updateAuthUI();
+        toast(syncRequired && !synced
+          ? 'Вы вышли. Облако не обновлено; локальная копия сохранена.'
+          : 'Вы вышли. Локальный прогресс сохранён.', 'success');
+      } catch (e) {
+        toast(e.message || 'Не удалось выйти', 'error');
+      }
     }
     let authSyncPromise = null;
+    let authSyncUserId = null;
     async function afterAuthReady() {
-      if (authSyncPromise) return authSyncPromise;
-      authSyncPromise = (async () => {
+      const requestedUserId = authUser && authUser.id;
+      if (!requestedUserId) return false;
+      if (authSyncPromise && authSyncUserId === requestedUserId) return authSyncPromise;
+      const currentPromise = (async () => {
         updateAuthUI();
         // cloudLoad uploads local data only when the remote row is confirmed absent.
         // Never upload after a failed GET or an authentication/network error.
         await cloudLoad();
-        updateCloudStatusLine();
+        if (authUser && authUser.id === requestedUserId) updateCloudStatusLine();
       })();
-      try { await authSyncPromise; } finally { authSyncPromise = null; }
+      authSyncPromise = currentPromise;
+      authSyncUserId = requestedUserId;
+      try {
+        await currentPromise;
+        return true;
+      } finally {
+        if (authSyncPromise === currentPromise) {
+          authSyncPromise = null;
+          authSyncUserId = null;
+        }
+      }
     }
     function updateCloudStatusLine() {
       const el=document.getElementById('cloudStatus');if(!el)return;
@@ -104,11 +153,22 @@
     }
     function saveCloudSettings(){setCloudEnabled(true);if(authUser)syncCloudNow();else toast('Сначала войди в аккаунт','error');}
     function populateCloudSettings(){updateAuthUI();updateCloudStatusLine();}
-    async function cloudFetch(path,options) {
-      if(!supabaseClient||!authUser)throw new Error('Требуется вход в аккаунт');
-      const {data,error}=await supabaseClient.auth.getSession();if(error||!data.session)throw new Error('Сессия истекла. Войди снова.');
-      const opts=options||{},headers=Object.assign({'apikey':AUTH_SUPABASE_KEY,'Authorization':'Bearer '+data.session.access_token,'Content-Type':'application/json'},opts.headers||{});
-      return fetch(AUTH_SUPABASE_URL+path,Object.assign({},opts,{headers}));
+    async function cloudFetch(path, options, expectedUserId) {
+      const userId = expectedUserId || (authUser && authUser.id);
+      if (!supabaseClient || !userId || !authUser || authUser.id !== userId) {
+        throw new Error('Сессия аккаунта изменилась; облачная операция остановлена');
+      }
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error || !data.session || data.session.user?.id !== userId || !authUser || authUser.id !== userId) {
+        throw new Error('Сессия истекла или аккаунт изменился. Войди снова.');
+      }
+      const opts = options || {};
+      const headers = Object.assign({
+        'apikey': AUTH_SUPABASE_KEY,
+        'Authorization': 'Bearer ' + data.session.access_token,
+        'Content-Type': 'application/json'
+      }, opts.headers || {});
+      return fetch(AUTH_SUPABASE_URL + path, Object.assign({}, opts, { headers }));
     }
 
     function backupLocalBeforeCloudReplace() {
@@ -122,8 +182,7 @@
           const k = localStorage.key(i);
           if (k && k.startsWith(CLOUD_PRE_REPLACE_BACKUP_PREFIX)) keys.push(k);
         }
-        keys.sort().reverse();
-        keys.slice(5).forEach(k => localStorage.removeItem(k));
+        getBackupKeysToDelete(keys, CLOUD_PRE_REPLACE_BACKUP_PREFIX, 5).forEach(k => localStorage.removeItem(k));
       } catch (e) {
         // A backup failure must not silently authorize overwriting local progress.
         throw new Error('Не удалось создать резервную копию локального сохранения');
@@ -136,13 +195,23 @@
         updateCloudStatusLine();
         return false;
       }
+      // Freeze writes while reconciling and wait for any already-running save.
+      // The next write must use the exact server version observed by this load.
+      cloudReady = false;
+      resetCloudBase();
+      await cloudSaveQueue;
+      if (!authUser || authUser.id !== uid) return false;
       try {
         const res = await cloudFetch(
           '/rest/v1/' + CLOUD_TABLE + '?user_id=eq.' + encodeURIComponent(uid) + '&select=data,updated_at',
-          { method: 'GET' }
+          { method: 'GET' },
+          uid
         );
+        if (!authUser || authUser.id !== uid) return false;
         if (!res.ok) {
+          cloudReady = false;
           const t = await res.text().catch(() => '');
+          if (!authUser || authUser.id !== uid) return false;
           cloudLastError = 'load HTTP ' + res.status;
           if (res.status === 404 || /relation|does not exist/i.test(t)) {
             cloudLastError = 'нет таблицы life_rpg_saves';
@@ -151,109 +220,280 @@
           return false;
         }
         const rows = await res.json();
-        if (rows && rows[0] && rows[0].data) {
-          const row = rows[0];
-          const err = validateImport(row.data);
-          if (!err) {
-            // Compare timestamps before replacing local progress. Legacy local saves without
-            // metadata are treated as conflicts, not as permission to overwrite them.
-            let localRaw = null;
-            let localExists = false;
-            let localUpdatedAt = '';
-            try {
-              localRaw = localStorage.getItem(STORAGE_KEY);
-              localExists = !!localRaw && !validateImport(JSON.parse(localRaw));
-              localUpdatedAt = localStorage.getItem(LOCAL_UPDATED_AT_KEY) || '';
-            } catch (e) {}
-            const localMs = Date.parse(localUpdatedAt);
-            const cloudMs = Date.parse(row.updated_at || '');
-            const needsConflictChoice = localExists && (
-              !Number.isFinite(localMs) || !Number.isFinite(cloudMs) || localMs > cloudMs + 1000
-            );
-            if (needsConflictChoice && !forceCloudReplace) {
-              cloudReady = false;
-              cloudLastError = 'конфликт сохранений: локальные данные не заменены';
-              updateCloudStatusLine();
-              return false;
-            }
-            if (localExists) backupLocalBeforeCloudReplace();
-            state = migrateState(row.data);
-            // Mirror the accepted cloud version locally only after a backup was made.
-            const toSave = JSON.parse(JSON.stringify(state));
-            if (toSave.ai) delete toSave.ai.apiKey;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+        if (!authUser || authUser.id !== uid) return false;
+        const cloudResult = classifyCloudRows(rows, validateImport);
+        if (cloudResult.kind === 'invalid') {
+          cloudReady = false;
+          cloudLastError = 'повреждённое облачное сохранение: ' + cloudResult.error;
+          updateCloudStatusLine();
+          return false;
+        }
+        if (cloudResult.kind === 'record') {
+          const row = cloudResult.row;
+          if (!row.updated_at || !Number.isFinite(Date.parse(row.updated_at))) {
+            cloudReady = false;
+            cloudLastError = 'облачная запись не содержит корректную версию updated_at; безопасная синхронизация невозможна';
+            updateCloudStatusLine();
+            return false;
+          }
+          cloudBaseUserId = uid;
+          cloudBaseUpdatedAt = row.updated_at;
+          // Compare timestamps before replacing local progress. Legacy local saves without
+          // metadata are treated as conflicts, not as permission to overwrite them.
+          let localRaw = null;
+          let localExists = false;
+          let localUpdatedAt = '';
+          try {
+            localRaw = localStorage.getItem(STORAGE_KEY);
+            localUpdatedAt = localStorage.getItem(LOCAL_UPDATED_AT_KEY) || '';
+          } catch (e) {
+            cloudReady = false;
+            cloudLastError = 'не удалось прочитать локальное сохранение перед заменой';
+            updateCloudStatusLine();
+            return false;
+          }
+          const localInfo = inspectLocalSave(localRaw, localUpdatedAt, validateImport);
+          localExists = localInfo.isValid;
+          const hasLocalData = localInfo.hasData;
+          const ownerMismatch = isLocalSaveOwnedByAnotherAccount(getLocalCloudOwner(), uid, hasLocalData);
+          const needsConflictChoice = needsCloudConflictChoice(localInfo, row, getLocalCloudOwner(), uid);
+          if (needsConflictChoice && !forceCloudReplace) {
+            cloudReady = false;
+            cloudLastError = ownerMismatch
+              ? 'конфликт сохранений: локальная копия принадлежит другому аккаунту; в облаке уже есть другая версия'
+              : 'конфликт сохранений: локальные данные отличаются от облачной версии';
+            updateCloudStatusLine();
+            return false;
+          }
+          if (hasLocalData) backupLocalBeforeCloudReplace();
+
+          // Stage the cloud state without publishing it to the live application.
+          // A failed localStorage write must never leave memory on the cloud version
+          // while the device still contains the previous local save.
+          const nextState = migrateState(row.data);
+          const toSave = createPersistedState(nextState, SCHEMA_VERSION);
+          const serialized = JSON.stringify(toSave);
+          let previousRaw = null;
+          let previousTimestamp = null;
+          let previousOwner = null;
+          let ownerRead = false;
+          try {
+            previousRaw = localStorage.getItem(STORAGE_KEY);
+            previousTimestamp = localStorage.getItem(LOCAL_UPDATED_AT_KEY);
+            previousOwner = localStorage.getItem(LOCAL_CLOUD_OWNER_KEY);
+            ownerRead = true;
+            localStorage.setItem(STORAGE_KEY, serialized);
             if (row.updated_at) localStorage.setItem(LOCAL_UPDATED_AT_KEY, row.updated_at);
             else localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
-            cloudReady = true;
-            cloudLastError = '';
-            updateCloudStatusLine();
-            return true;
+            if (!setLocalCloudOwner(uid)) throw new Error('Не удалось закрепить владельца локального сохранения');
+          } catch (storageError) {
+            // Roll back the save, timestamp and owner marker together. The live
+            // state has not been replaced yet, so a partial mirror is not published.
+            try {
+              if (previousRaw === null) localStorage.removeItem(STORAGE_KEY);
+              else localStorage.setItem(STORAGE_KEY, previousRaw);
+              if (previousTimestamp === null) localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
+              else localStorage.setItem(LOCAL_UPDATED_AT_KEY, previousTimestamp);
+              if (ownerRead) {
+                if (previousOwner === null) localStorage.removeItem(LOCAL_CLOUD_OWNER_KEY);
+                else localStorage.setItem(LOCAL_CLOUD_OWNER_KEY, previousOwner);
+              }
+            } catch (rollbackError) {
+              console.error('Cloud mirror rollback failed', rollbackError);
+            }
+            throw new Error('Не удалось сохранить облачную версию и владельца на устройстве; локальный прогресс оставлен без изменений');
           }
+          if (!authUser || authUser.id !== uid) {
+            try {
+              if (previousRaw === null) localStorage.removeItem(STORAGE_KEY);
+              else localStorage.setItem(STORAGE_KEY, previousRaw);
+              if (previousTimestamp === null) localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
+              else localStorage.setItem(LOCAL_UPDATED_AT_KEY, previousTimestamp);
+              if (ownerRead) {
+                if (previousOwner === null) localStorage.removeItem(LOCAL_CLOUD_OWNER_KEY);
+                else localStorage.setItem(LOCAL_CLOUD_OWNER_KEY, previousOwner);
+              }
+            } catch (rollbackError) {
+              console.error('Cloud account-switch rollback failed', rollbackError);
+            }
+            return false;
+          }
+          if (localSaveWriteBlocked) {
+            localSaveWriteBlocked = false;
+            corruptLocalSaveRaw = null;
+            corruptSaveBlockNoticeShown = false;
+            updateCorruptSaveNotice();
+            toast('Повреждённая локальная версия сохранена в резервной копии; восстановлена версия из облака.', 'success');
+          }
+          replaceState(nextState);
+          lastPersistedStateSnapshot = snapshotState();
+          cloudReady = true;
+          cloudLastError = '';
+          updateCloudStatusLine();
+          return true;
         }
-        // no remote row yet — upload local
+        // The empty result establishes the initial insert version for this account.
+        cloudBaseUserId = uid;
+        cloudBaseUpdatedAt = null;
+        // An empty remote table does not authorize uploading the empty in-memory
+        // state when the device's existing save is corrupt and write-blocked.
+        if (localSaveWriteBlocked) {
+          cloudReady = false;
+          cloudLastError = 'повреждённое локальное сохранение: облачная запись заблокирована';
+          updateCloudStatusLine();
+          return false;
+        }
+        // A device save previously synced to another account is not guest data.
+        // Never copy it to a new empty account without explicit user confirmation.
+        let localRawForOwnerCheck = null;
+        try { localRawForOwnerCheck = localStorage.getItem(STORAGE_KEY); }
+        catch (storageError) {
+          cloudReady = false;
+          cloudLastError = 'не удалось проверить владельца локального сохранения';
+          updateCloudStatusLine();
+          return false;
+        }
+        const localInfoForOwnerCheck = inspectLocalSave(
+          localRawForOwnerCheck,
+          localStorage.getItem(LOCAL_UPDATED_AT_KEY) || '',
+          validateImport
+        );
+        if (isLocalSaveOwnedByAnotherAccount(getLocalCloudOwner(), uid, localInfoForOwnerCheck.hasData)) {
+          cloudReady = false;
+          cloudLastError = 'конфликт сохранений: локальная копия принадлежит другому аккаунту; облако пусто';
+          updateCloudStatusLine();
+          return false;
+        }
+        // An empty result is the only proof that no remote row exists.
         cloudReady = true;
         cloudLastError = '';
         await cloudSave(true);
         updateCloudStatusLine();
         return false;
       } catch (e) {
+        if (!authUser || authUser.id !== uid) return false;
+        cloudReady = false;
         cloudLastError = (e && e.message) || 'load fail';
         updateCloudStatusLine();
         return false;
       }
     }
 
-    async function cloudSave(force) {
+    // Serialize cloud writes within this tab. Cross-device writes use updated_at CAS.
+    function cloudSave(force) {
+      // Bind each queued write to the account that requested it. A pending write
+      // must never execute later under a different user's session.
+      const requestedUserId = authUser && authUser.id;
+      const run = () => {
+        if (!requestedUserId || !authUser || authUser.id !== requestedUserId) return false;
+        return performCloudSave(force, requestedUserId);
+      };
+      const queuedSave = cloudSaveQueue.then(run, run);
+      cloudSaveQueue = queuedSave.then(() => undefined, () => undefined);
+      return queuedSave;
+    }
+
+    async function performCloudSave(force, expectedUserId) {
       const uid = authUser && authUser.id;
-      if (!cloudConfigured() || !uid) return;
+      if (!cloudConfigured() || !uid || uid !== expectedUserId) return false;
+      // Do not upload in-memory data until this account's cloud state has been
+      // loaded or the server has confirmed that no cloud row exists.
+      if (!cloudReady) {
+        cloudLastError = cloudLastError || 'облачная версия ещё не загружена; запись заблокирована';
+        updateCloudStatusLine();
+        return false;
+      }
+      if (localSaveWriteBlocked) {
+        cloudReady = false;
+        cloudLastError = 'повреждённое локальное сохранение: облачная запись заблокирована';
+        updateCloudStatusLine();
+        return false;
+      }
+      if (cloudBaseUserId !== uid) {
+        cloudReady = false;
+        cloudLastError = 'облачная версия аккаунта ещё не загружена; запись заблокирована';
+        updateCloudStatusLine();
+        return false;
+      }
+      // Persist ownership before any network write. If this fails, the save
+      // must not be uploaded because a later account switch could misattribute it.
+      if (!setLocalCloudOwner(uid)) {
+        cloudReady = false;
+        cloudLastError = 'не удалось закрепить локальное сохранение за аккаунтом';
+        updateCloudStatusLine();
+        return false;
+      }
       try {
-        const payload = JSON.parse(JSON.stringify(state));
-        if (payload.ai) delete payload.ai.apiKey;
-        payload.schemaVersion = SCHEMA_VERSION;
-        const savedAt = new Date().toISOString();
-        const body = [{
-          user_id: uid,
-          data: payload,
-          updated_at: savedAt
-        }];
-        const res = await cloudFetch('/rest/v1/' + CLOUD_TABLE, {
-          method: 'POST',
-          headers: {
-            'Prefer': 'resolution=merge-duplicates,return=minimal'
-          },
-          body: JSON.stringify(body)
-        });
+        const persistedData = createPersistedState(state, SCHEMA_VERSION);
+        const persistedSnapshot = JSON.stringify(persistedData);
+        // life_rpg_saves has no updated_at trigger. Advance the version token
+        // explicitly and monotonically so a stale PATCH can never match again.
+        const nextUpdatedAt = nextCloudVersion(cloudBaseUpdatedAt);
+        const body = { user_id: uid, data: persistedData, updated_at: nextUpdatedAt };
+        const request = buildCloudWriteRequest(CLOUD_TABLE, uid, cloudBaseUpdatedAt, body);
+        const res = await cloudFetch(request.path, {
+          method: request.method,
+          headers: { 'Prefer': request.prefer },
+          body: JSON.stringify(request.body)
+        }, uid);
+        if (!authUser || authUser.id !== uid) return false;
+        const responseText = await res.text().catch(() => '');
         if (!res.ok) {
-          const t = await res.text().catch(() => '');
+          cloudReady = false;
+          if (!authUser || authUser.id !== uid) return false;
           cloudLastError = 'save HTTP ' + res.status;
-          if (/relation|does not exist/i.test(t)) cloudLastError = 'нет таблицы life_rpg_saves';
+          if (/relation|does not exist/i.test(responseText)) cloudLastError = 'нет таблицы life_rpg_saves';
           updateCloudStatusLine();
           if (force) toast('Облако: ' + cloudLastError, 'error');
-          return;
+          return false;
         }
+        let rows = [];
+        try { rows = responseText ? JSON.parse(responseText) : []; }
+        catch (parseError) { throw new Error('Некорректный ответ после облачной записи'); }
+        const writeResult = classifyCloudWriteRows(rows);
+        if (writeResult.kind === 'conflict') {
+          cloudReady = false;
+          cloudLastError = 'конфликт сохранений: облачная версия изменилась на другом устройстве';
+          updateCloudStatusLine();
+          if (force) toast('Облако: обнаружена более новая версия. Запусти синхронизацию и выбери нужную копию.', 'error');
+          return false;
+        }
+        if (writeResult.kind !== 'saved') {
+          throw new Error(writeResult.error || 'Некорректный ответ облачного сохранения');
+        }
+        cloudBaseUserId = uid;
+        cloudBaseUpdatedAt = writeResult.row.updated_at;
+        // Only mark the local snapshot as synced if it did not change while the
+        // network request was in flight. Use the server timestamp, not device time.
         try {
-          const currentLocalMs = Date.parse(localStorage.getItem(LOCAL_UPDATED_AT_KEY) || '');
-          const uploadedMs = Date.parse(savedAt);
-          // Do not let a slow cloud request mark newer local edits as already synced.
-          if (!Number.isFinite(currentLocalMs) || currentLocalMs <= uploadedMs) {
-            localStorage.setItem(LOCAL_UPDATED_AT_KEY, savedAt);
+          if (JSON.stringify(createPersistedState(state, SCHEMA_VERSION)) === persistedSnapshot) {
+            localStorage.setItem(LOCAL_UPDATED_AT_KEY, cloudBaseUpdatedAt);
           }
         } catch (e) {}
         cloudReady = true;
         cloudLastError = '';
         updateCloudStatusLine();
         if (force) toast('Сейв в облаке', 'success');
+        return true;
       } catch (e) {
+        if (!authUser || authUser.id !== uid) return false;
+        cloudReady = false;
         cloudLastError = (e && e.message) || 'save fail';
         updateCloudStatusLine();
         if (force) toast('Облако: ' + cloudLastError, 'error');
+        return false;
       }
     }
 
     function scheduleCloudSave() {
       if (!cloudConfigured() || !authUser) return;
+      const requestedUserId = authUser.id;
       clearTimeout(cloudSaveTimer);
-      cloudSaveTimer = setTimeout(() => { cloudSave(false); }, 1200);
+      cloudSaveTimer = setTimeout(() => {
+        cloudSaveTimer = null;
+        if (!authUser || authUser.id !== requestedUserId) return;
+        cloudSave(false);
+      }, 1200);
     }
 
     async function syncCloudNow() {
@@ -262,14 +502,43 @@
         return;
       }
       if (!authUser) { toast('Сначала войди в аккаунт', 'error'); return; }
+      const requestedUserId = authUser.id;
       toast('Синхронизация…');
       const loaded = await cloudLoad();
+      if (!authUser || authUser.id !== requestedUserId) return;
       if (loaded) {
         toast('Загружено из облака', 'success');
         renderAll();
         return;
       }
-      if (cloudLastError.startsWith('конфликт сохранений')) {
+      if (cloudLastError.includes('локальная копия принадлежит другому аккаунту; облако пусто')) {
+        const transfer = confirm(
+          'Локальное сохранение ранее синхронизировалось с другим аккаунтом. В облаке текущего аккаунта пока нет сохранения. Перенести локальный прогресс в этот аккаунт?'
+        );
+        if (!transfer) {
+          toast('Локальное сохранение не перенесено. Данные на устройстве не изменены.', 'error');
+          return;
+        }
+        cloudReady = true;
+        cloudLastError = '';
+        await cloudSave(true);
+        return;
+      }
+      const fallback = getCloudSyncFallback(cloudLastError);
+      if (fallback === 'conflict') {
+        // Refresh the server version before asking. This also handles the
+        // first-insert race where another device created the row after our GET.
+        const refreshed = await cloudLoad();
+        if (!authUser || authUser.id !== requestedUserId) return;
+        if (refreshed || (cloudReady && !cloudLastError)) {
+          renderAll();
+          toast('Облачная версия синхронизирована', 'success');
+          return;
+        }
+        if (cloudBaseUserId !== requestedUserId || !cloudBaseUpdatedAt) {
+          toast('Не удалось получить актуальную облачную версию. Повтори синхронизацию.', 'error');
+          return;
+        }
         const useCloud = confirm(
           'Найдены разные локальное и облачное сохранения. Перед заменой локальная версия будет сохранена в резервную копию.\n\n' +
           'ОК — загрузить облачную версию.\nОтмена — оставить локальный прогресс и записать его в облако.'
@@ -278,32 +547,99 @@
           const forced = await cloudLoad(true);
           if (forced) { renderAll(); toast('Загружено из облака', 'success'); }
         } else {
+          // The user explicitly chose the local copy after reviewing the conflict.
+          cloudReady = true;
+          cloudLastError = '';
           await cloudSave(true);
         }
         return;
       }
-      await cloudSave(true);
+      if (fallback === 'blocked') {
+        toast('Синхронизация остановлена: ' + cloudLastError, 'error');
+        return;
+      }
+      // cloudLoad already uploaded the local save when it confirmed an empty remote table.
+      toast('Локальное сохранение отправлено в облако', 'success');
+    }
+
+    // Last known durable state. Any failed save restores this baseline so
+    // callers that mutate first cannot leave unsaved changes visible in memory.
+    let lastPersistedStateSnapshot = snapshotState();
+    let localSaveWriteBlocked = false;
+    let corruptLocalSaveRaw = null;
+    let corruptSaveBlockNoticeShown = false;
+
+    function updateCorruptSaveNotice() {
+      const notice = document.getElementById('corruptSaveNotice');
+      if (notice) notice.style.display = localSaveWriteBlocked ? 'block' : 'none';
+    }
+
+    function markCorruptLocalSave(raw, reason) {
+      corruptLocalSaveRaw = raw;
+      localSaveWriteBlocked = true;
+      updateCorruptSaveNotice();
+      if (!corruptSaveBlockNoticeShown) {
+        toast('Локальное сохранение повреждено. Запись заблокирована, чтобы не затереть данные. Скачай исходный файл или импортируй резервную копию.', 'error');
+        corruptSaveBlockNoticeShown = true;
+      }
+      console.warn('Corrupt local save:', reason);
+    }
+
+    function resolveCorruptLocalSave(prefix) {
+      if (!localSaveWriteBlocked) return true;
+      try {
+        if (typeof corruptLocalSaveRaw !== 'string') throw new Error('Исходный повреждённый сейв недоступен');
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-') + '-' + uid();
+        backupRawSave(localStorage, corruptLocalSaveRaw, prefix, stamp, 5);
+        corruptLocalSaveRaw = null;
+        localSaveWriteBlocked = false;
+        corruptSaveBlockNoticeShown = false;
+        updateCorruptSaveNotice();
+        toast('Исходный повреждённый сейв сохранён в отдельной резервной копии.', 'success');
+        return true;
+      } catch (error) {
+        toast('Операция остановлена: не удалось сохранить исходный повреждённый сейв. Освободи место в хранилище и повтори.', 'error');
+        return false;
+      }
     }
 
     function save() {
+      if (localSaveWriteBlocked) {
+        if (lastPersistedStateSnapshot) replaceState(JSON.parse(JSON.stringify(lastPersistedStateSnapshot)));
+        if (!corruptSaveBlockNoticeShown) {
+          toast('Сохранение заблокировано до импорта резервной копии или полного сброса.', 'error');
+          corruptSaveBlockNoticeShown = true;
+        }
+        return false;
+      }
       try {
-        const toSave = JSON.parse(JSON.stringify(state));
-        if (toSave.ai) delete toSave.ai.apiKey;
-        toSave.schemaVersion = SCHEMA_VERSION;
-        const savedAt = new Date().toISOString();
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-        localStorage.setItem(LOCAL_UPDATED_AT_KEY, savedAt);
+        const toSave = persistStateSnapshot(
+          localStorage,
+          STORAGE_KEY,
+          LOCAL_UPDATED_AT_KEY,
+          state,
+          SCHEMA_VERSION,
+          'local:' + uid()
+        );
+        lastPersistedStateSnapshot = snapshotState();
         maybeDailyBackup(toSave);
-        scheduleCloudSave();
+        try { scheduleCloudSave(); } catch (cloudScheduleError) {
+          console.warn('Cloud save scheduling failed', cloudScheduleError);
+        }
+        return true;
       } catch (e) {
         console.warn('Save failed', e);
-        toast('Ошибка сохранения', 'error');
+        if (lastPersistedStateSnapshot) {
+          replaceState(JSON.parse(JSON.stringify(lastPersistedStateSnapshot)));
+        }
+        toast('Ошибка сохранения. Несохранённые изменения отменены.', 'error');
+        return false;
       }
     }
 
     function maybeDailyBackup(data) {
       try {
-        const key = 'life_rpg_v4_backup_' + todayStr().replace(/-/g, '');
+        const key = createDailyBackupKey(todayStr());
         if (!localStorage.getItem(key)) {
           localStorage.setItem(key, JSON.stringify(data));
         }
@@ -313,96 +649,42 @@
           const k = localStorage.key(i);
           if (k && k.startsWith('life_rpg_v4_backup_')) keys.push(k);
         }
-        keys.sort().reverse();
-        keys.slice(7).forEach(k => localStorage.removeItem(k));
+        getBackupKeysToDelete(keys, 'life_rpg_v4_backup_', 7).forEach(k => localStorage.removeItem(k));
       } catch(e) {}
     }
 
     function migrateState(data) {
-      const s = {
-        schemaVersion: SCHEMA_VERSION,
-        hero: Object.assign({ name: 'Безымянный герой', xp: 0, titleId: 'newbie' }, data.hero || {}),
-        directions: Array.isArray(data.directions) ? data.directions : [],
-        quests: Array.isArray(data.quests) ? data.quests : [],
-        goals: Array.isArray(data.goals) ? data.goals : [],
-        lore: Array.isArray(data.lore) ? data.lore : [],
-        activityLog: Array.isArray(data.activityLog) ? data.activityLog : [],
-        rewardLedger: Array.isArray(data.rewardLedger) ? data.rewardLedger : [],
-        stats: Object.assign({ completed: 0, totalXp: 0 }, data.stats || {}),
-        streak: Object.assign({ current: 0, longest: 0, lastDate: null }, data.streak || {}),
-        unlockedTitles: Array.isArray(data.unlockedTitles) ? data.unlockedTitles : ['newbie'],
-        unlockedAchievements: Array.isArray(data.unlockedAchievements) ? data.unlockedAchievements : [],
-        reflections: Array.isArray(data.reflections) ? data.reflections : [],
-        ai: Object.assign({
-          model: 'openai/gpt-oss-20b',
-          preferredDifficulty: { SIDE: 2, MAIN: 3, BOSS: 2 }
-        }, data.ai || {}),
-        ui: Object.assign({ lastEveningRitual: null, questSort: 'default', dailyCapacity: 60 }, data.ui || {})
-      };
-      // migrate api key out of state
-      if (s.ai.apiKey) {
-        if (!getApiKey()) setApiKey(s.ai.apiKey);
-        delete s.ai.apiKey;
+      const source = data && typeof data === 'object' ? data : {};
+      const legacyApiKey = source.ai && source.ai.apiKey;
+      const migrated = normalizeStateData(source, SCHEMA_VERSION, QUEST_XP);
+      if (legacyApiKey) {
+        if (!getApiKey()) setApiKey(legacyApiKey);
+        delete migrated.ai.apiKey;
       }
-      const deprecated = {
-        'llama-3.3-70b-versatile': 'openai/gpt-oss-120b',
-        'llama-3.1-8b-instant': 'openai/gpt-oss-20b',
-        'gemma2-9b-it': 'openai/gpt-oss-20b',
-        'llama-3.1-70b-versatile': 'openai/gpt-oss-120b'
-      };
-      if (deprecated[s.ai.model]) s.ai.model = deprecated[s.ai.model];
-      if (!s.ai.model) s.ai.model = 'openai/gpt-oss-20b';
-      if (!s.ai.preferredDifficulty) s.ai.preferredDifficulty = { SIDE: 2, MAIN: 3, BOSS: 2 };
-
-      s.directions.forEach(d => {
-        d.xp = d.xp || 0;
-        if (!d.stage) d.stage = 'beginner';
-        if (!Array.isArray(d.nodes)) d.nodes = [];
-        d.nodes.forEach(n => { n.xp = n.xp || 0; });
-      });
-      s.quests.forEach(q => {
-        if (typeof q.done !== 'boolean') q.done = !!q.done;
-        if (!q.type || !QUEST_XP[q.type]) q.type = q.habit ? 'HABIT' : 'SIDE';
-        if (q.type === 'HABIT') q.habit = true;
-        if (!(q.difficulty >= 1 && q.difficulty <= 5)) q.difficulty = 2;
-        if (!q.xp) q.xp = QUEST_XP[q.type]?.[q.difficulty] || 50;
-        if (q.goalId === undefined) q.goalId = null;
-        if (q.goalUnits == null) q.goalUnits = 0;
-      });
-      if (!Array.isArray(s.goals)) s.goals = [];
-      s.goals.forEach(g => {
-        if (!g.horizon || !['long','medium','short'].includes(g.horizon)) g.horizon = 'medium';
-        if (!g.status) g.status = 'active';
-        if (!g.metric) g.metric = { target: 1, current: 0, unitLabel: 'ед.' };
-        g.metric.target = Math.max(1, Number(g.metric.target) || 1);
-        g.metric.current = Math.max(0, Number(g.metric.current) || 0);
-        if (!g.metric.unitLabel) g.metric.unitLabel = 'ед.';
-      });
-      if (!Array.isArray(s.unlockedTitles) || !s.unlockedTitles.length) s.unlockedTitles = ['newbie'];
-      return s;
-    }
-
-    function validateImport(data) {
-      if (!data || typeof data !== 'object') return 'Не объект';
-      if (!data.hero || typeof data.hero !== 'object') return 'Нет hero';
-      if (data.hero.xp != null && typeof data.hero.xp !== 'number') return 'hero.xp не число';
-      if (data.directions && !Array.isArray(data.directions)) return 'directions не массив';
-      if (data.quests && !Array.isArray(data.quests)) return 'quests не массив';
-      if (data.lore && !Array.isArray(data.lore)) return 'lore не массив';
-      return null;
+      return migrated;
     }
 
     function load() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const data = JSON.parse(raw);
-          const err = validateImport(data);
-          if (!err) {
-            state = migrateState(data);
-          } else {
-            console.warn('Invalid save:', err);
-          }
+        if (!raw) return;
+        let data;
+        try {
+          data = JSON.parse(raw);
+        } catch (parseError) {
+          markCorruptLocalSave(raw, parseError.message || 'invalid JSON');
+          return;
+        }
+        const err = validateImport(data);
+        if (err) {
+          markCorruptLocalSave(raw, err);
+          return;
+        }
+        try {
+          replaceState(migrateState(data));
+          lastPersistedStateSnapshot = snapshotState();
+        } catch (migrationError) {
+          markCorruptLocalSave(raw, migrationError.message || 'migration failed');
         }
       } catch (e) {
         console.warn('Load failed', e);
@@ -477,11 +759,17 @@
     // Undo last AI batch (quests or skills)
     let undoTimer = null;
     function pushUndo(snapshot, label) {
-      window._undo = { snapshot, label, at: Date.now() };
+      // Keep both sides of the operation. A full-state undo is safe only while
+      // no other state change has happened since this operation completed.
+      window._undo = {
+        snapshot,
+        afterSnapshot: snapshotState(),
+        label,
+        at: Date.now()
+      };
       if (undoTimer) clearTimeout(undoTimer);
       undoTimer = setTimeout(() => { window._undo = null; }, 12000);
       toast(label + ' · Отменить?', 'success');
-      // show quick undo via second toast path - use confirm-less: dedicated toast button hard in pure DOM
       showUndoBar(label);
     }
     function showUndoBar(label) {
@@ -497,9 +785,31 @@
       bar.style.display = 'flex';
       document.getElementById('undoBtn').onclick = () => {
         if (!window._undo) return;
-        state = window._undo.snapshot;
+        // Never restore an old whole-app snapshot over unrelated user edits.
+        // If anything changed after the AI operation, refuse the destructive undo.
+        if (JSON.stringify(state) !== JSON.stringify(window._undo.afterSnapshot)) {
+          window._undo = null;
+          if (undoTimer) clearTimeout(undoTimer);
+          bar.style.display = 'none';
+          toast('Отмена недоступна: после операции состояние уже изменилось. Новые данные сохранены.', 'error');
+          return;
+        }
+        const undoEntry = window._undo;
+        const previous = undoEntry.snapshot;
+        const after = undoEntry.afterSnapshot;
         window._undo = null;
-        save();
+        if (undoTimer) clearTimeout(undoTimer);
+        replaceState(previous);
+        const persisted = save();
+        if (!persisted) {
+          // Restore the post-operation state if the undo itself could not be saved.
+          // This keeps the in-memory view consistent with the last known local save.
+          replaceState(after);
+          bar.style.display = 'none';
+          toast('Не удалось сохранить отмену', 'error');
+          renderAll();
+          return;
+        }
         renderAll();
         if (currentTreeDirId) renderTree(currentTreeDirId);
         bar.style.display = 'none';
@@ -682,7 +992,7 @@ ${dirs}`
       if (s.lastDate === today) return;
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      const yStr = yesterday.toISOString().slice(0, 10);
+      const yStr = localDateKey(yesterday);
       // rest day counts as continuity bridge
       const restBridge = s.restDate === yStr || s.restDate === today;
       if (s.lastDate === yStr || restBridge) {
@@ -712,7 +1022,7 @@ ${dirs}`
       if (state.streak.lastDate !== today) {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        const yStr = yesterday.toISOString().slice(0, 10);
+        const yStr = localDateKey(yesterday);
         if (state.streak.lastDate === yStr || state.streak.lastDate === today) {
           /* keep current */
         } else if (!state.streak.lastDate) {
@@ -726,7 +1036,7 @@ ${dirs}`
       if (!state.ui) state.ui = {};
       state.ui.lastRestWeek = isoWeekKey();
       addAutoLore('🛋 День отдыха. Серия сохранена.');
-      save();
+      if (!save()) { renderAll(); return; }
       renderHero();
       toast('День отдыха активирован', 'success');
     }
@@ -821,7 +1131,7 @@ ${dirs}`
         setTimeout(() => {
           if (state.ui.lastWeeklyReview === key) return;
           state.ui.lastWeeklyReview = key;
-          save();
+          if (!save()) return;
           showWeeklyReview();
         }, 1800);
       } catch(e) {}
@@ -965,8 +1275,8 @@ ${dirs}`
         checkTitlesAndAchievements();
       }
       pendingReflectionQuest = null;
+      if (!save()) { renderAll(); return; }
       closeModal();
-      save();
     }
 
     function openTitlePicker() {
@@ -995,7 +1305,7 @@ ${dirs}`
 
     function equipTitle(id) {
       state.hero.titleId = id;
-      save();
+      if (!save()) { renderHero(); return; }
       closeModal();
       renderHero();
       toast('Титул изменён');

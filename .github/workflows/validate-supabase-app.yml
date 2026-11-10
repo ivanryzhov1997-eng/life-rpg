@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - architecture/audit-and-modularization
     paths:
       - "index.html"
       - "assets/**"
@@ -31,8 +32,17 @@ jobs:
           const fs = require('node:fs');
           const html = fs.readFileSync('index.html', 'utf8');
           const expected = [
+            './assets/js/state/initial-state.js',
+            './assets/js/state/store.js',
+            './assets/js/state/serialization.js',
             './assets/js/01-core.js',
             './assets/js/02-cloud-auth.js',
+            './assets/js/state/tree-utils.js',
+            './assets/js/state/migrations.js',
+            './assets/js/state/cloud-response.js',
+            './assets/js/state/backup-utils.js',
+            './assets/js/state/merge.js',
+            './assets/js/state/reward-utils.js',
             './assets/js/03-state-and-systems.js',
             './assets/js/04-ai.js',
             './assets/js/05-quests-goals-directions.js',
@@ -49,14 +59,925 @@ jobs:
             if (position <= previous) throw new Error('Script order is incorrect at: ' + path);
             previous = position;
           }
+          if (!fs.existsSync('assets/js/state/initial-state.js')) throw new Error('Missing initial-state.js');
+          if (!fs.existsSync('assets/js/state/store.js')) throw new Error('Missing store.js');
+          if (!fs.existsSync('assets/js/state/serialization.js')) throw new Error('Missing serialization.js');
+          if (!fs.existsSync('assets/js/state/migrations.js')) throw new Error('Missing migrations.js');
+          if (!fs.existsSync('assets/js/state/cloud-response.js')) throw new Error('Missing cloud-response.js');
+          if (!fs.existsSync('assets/js/state/backup-utils.js')) throw new Error('Missing backup-utils.js');
+          if (!fs.existsSync('assets/js/state/tree-utils.js')) throw new Error('Missing tree-utils.js');
+          if ((html.match(/src="\.\/assets\/js\/state\/tree-utils\.js"/g) || []).length !== 1) {
+            throw new Error('tree-utils.js must be loaded exactly once');
+          }
           if (!fs.existsSync('assets/css/app.css')) throw new Error('Missing app.css');
           console.log('HTML references, files and script order: OK');
           NODE
 
+
+      - name: Test initial state factory
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/initial-state.js', 'utf8'), context);
+          const first = context.createInitialState(5);
+          const second = context.createInitialState(5);
+          assert.equal(first.schemaVersion, 5);
+          assert.equal(first.hero.xp, 0);
+          assert.deepEqual(Object.keys(first), ['schemaVersion','hero','directions','quests','goals','lore','activityLog','rewardLedger','stats','streak','unlockedTitles','unlockedAchievements','reflections','ai','ui']);
+          first.directions.push({ id: 'test' });
+          assert.equal(second.directions.length, 0, 'factory must return independent arrays');
+          console.log('Initial state factory: OK');
+          NODE
+
+      - name: Test state store replacement API
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/store.js', 'utf8'), context);
+          vm.runInNewContext('let state = { marker: "before" };', context);
+          assert.equal(context.getState().marker, 'before');
+          const next = { marker: 'after' };
+          assert.equal(context.replaceState(next), next);
+          assert.equal(context.getState(), next);
+          assert.throws(() => context.replaceState(null), error => error && error.name === 'TypeError');
+          console.log('State store replacement API: OK');
+          NODE
+
+      - name: Test state migrations and validation
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/tree-utils.js', 'utf8'), context);
+          vm.runInNewContext(fs.readFileSync('assets/js/state/migrations.js', 'utf8'), context);
+          const input = {
+            hero: { xp: 120 },
+            directions: [{ name: 'Python', nodes: [{}] }],
+            quests: [{ title: 'Test', difficulty: 2 }],
+            ai: { model: 'llama-3.3-70b-versatile' }
+          };
+          const xp = { SIDE: { 2: 50 }, HABIT: { 2: 30 } };
+          const migrated = context.normalizeStateData(input, 5, xp);
+          assert.equal(migrated.schemaVersion, 5);
+          assert.equal(migrated.hero.xp, 120);
+          assert.equal(migrated.quests[0].type, 'SIDE');
+          assert.equal(migrated.quests[0].xp, 50);
+          assert.equal(migrated.ai.model, 'openai/gpt-oss-120b');
+          assert.equal(input.directions[0].xp, undefined, 'migration must not mutate source data');
+          assert.equal(context.validateImport({ hero: { xp: 1 } }), null);
+          assert.equal(context.validateImport({ hero: { xp: 'bad' } }), 'hero.xp не число');
+          const cyclic = context.normalizeStateData({
+            hero: { xp: 0 },
+            directions: [{ id: 'd', nodes: [
+              { id: 'a', parentId: 'b' }, { id: 'b', parentId: 'a' },
+              { id: 'child', parentId: 'a' }, { id: 'orphan', parentId: 'missing' },
+              { id: 'self', parentId: 'self' }
+            ] }]
+          }, 5, { SIDE: { 2: 50 } });
+          const normalizedNodes = cyclic.directions[0].nodes;
+          assert.equal(normalizedNodes.find(n => n.id === 'b').parentId, null,
+            'cyclic parent chain must be broken into a reachable tree');
+          assert.equal(normalizedNodes.find(n => n.id === 'orphan').parentId, null,
+            'missing parent must be repaired to root');
+          assert.equal(normalizedNodes.find(n => n.id === 'self').parentId, null,
+            'self-parent must be repaired to root');
+          assert.equal(normalizedNodes.find(n => n.id === 'child').parentId, 'a');
+          console.log('State migrations and validation: OK');
+          NODE
+
+      - name: Test cycle-safe skill subtree traversal
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/tree-utils.js', 'utf8'), context);
+          const nodes = [
+            { id: 'a', parentId: 'b' },
+            { id: 'b', parentId: 'a' },
+            { id: 'child', parentId: 'a' },
+            { id: 'grandchild', parentId: 'child' },
+            { id: 'unrelated', parentId: null }
+          ];
+          const removed = context.collectSkillSubtreeIds(nodes, 'a');
+          assert.deepEqual([...removed].sort(), ['a', 'b', 'child', 'grandchild']);
+          assert.equal(removed.has('unrelated'), false);
+          console.log('Cycle-safe skill subtree traversal: OK');
+          NODE
+
+      - name: Test ID-mapped import merge
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/merge.js', 'utf8'), context);
+          const migrate = value => JSON.parse(JSON.stringify(value));
+          let nextId = 0;
+          const createId = () => 'generated-' + (++nextId);
+          const target = {
+            hero: { name: 'Local Hero', xp: 80, titleId: 'local-title' },
+            directions: [{ id: 'dir-local', name: 'Python', xp: 100, nodes: [{ id: 'skill-local', name: 'API', parentId: null, xp: 50 }] }],
+            goals: [{ id: 'goal-local', title: 'Build API', horizon: 'medium', directionId: 'dir-local', metric: { target: 10, current: 2, unitLabel: 'tasks' }, status: 'active' }],
+            quests: [
+              { id: 'quest-existing', title: 'Old task', type: 'SIDE', done: false },
+              { id: 'quest-same-title', title: 'Repeated title', type: 'SIDE', done: false }
+            ],
+            lore: [], reflections: [], activityLog: [], rewardLedger: [],
+            stats: { completed: 2 }, streak: { current: 1, longest: 2, lastDate: '2026-11-08' },
+            unlockedTitles: ['newbie'], unlockedAchievements: []
+          };
+          const incoming = {
+            hero: { name: 'Backup Hero', xp: 120, titleId: 'backup-title' },
+            directions: [{ id: 'dir-import', name: 'Python', xp: 180, nodes: [{ id: 'skill-import', name: 'API', parentId: null, xp: 90 }, { id: 'child-import', name: 'Auth', parentId: 'skill-import' }] }],
+            goals: [{ id: 'goal-import', title: 'Build API', horizon: 'medium', directionId: 'dir-import', metric: { target: 10, current: 7, unitLabel: 'tasks' }, status: 'active' }],
+            quests: [
+              { id: 'quest-import', title: 'Implement auth', type: 'SIDE', done: true, targetType: 'SKILL', targetId: 'child-import', goalId: 'goal-import', goalUnits: 2 },
+              { id: 'quest-existing', title: 'Old task', type: 'SIDE', done: true, completedAt: 200, result: 'completed in imported save' },
+              { id: 'quest-distinct', title: 'Repeated title', type: 'SIDE', done: false }
+            ],
+            rewardLedger: [{ eventId: 'event-import', questId: 'quest-import', xp: 40, at: 100 }],
+            activityLog: [{ id: 'event-import', questId: 'quest-import', goalId: 'goal-import', title: 'Implement auth', xp: 40, at: 100 }],
+            reflections: [{ id: 'reflection-import', questId: 'quest-import', text: 'Done' }],
+            lore: [{ text: 'Imported lore', date: '2026-11-09' }],
+            stats: { completed: 5 }, streak: { current: 3, longest: 4, lastDate: '2026-11-09' },
+            unlockedTitles: ['newbie', 'builder'], unlockedAchievements: ['first-quest']
+          };
+          const merged = context.mergeImportedStateData(incoming, target, migrate, createId);
+          const python = merged.directions.find(x => x.id === 'dir-local');
+          assert.equal(merged.directions.length, 1, 'same direction by name must merge');
+          assert.equal(python.nodes.length, 2, 'skill nodes must merge by mapped parent');
+          assert.equal(python.xp, 180, 'direction XP must not be lost');
+          assert.equal(python.nodes.find(x => x.name === 'API').xp, 90, 'skill XP must not be lost');
+          const auth = python.nodes.find(x => x.name === 'Auth');
+          assert.equal(merged.quests.find(x => x.id === 'quest-import').targetId, auth.id, 'quest skill target must be remapped');
+          assert.equal(merged.quests.find(x => x.id === 'quest-import').goalId, 'goal-local', 'quest goal must be remapped');
+          assert.equal(merged.quests.find(x => x.id === 'quest-existing').done, true, 'newer completion must update existing quest');
+          assert.equal(merged.goals[0].metric.current, 7, 'goal progress must retain the greater value');
+          assert.equal(merged.goals[0].directionId, 'dir-local', 'goal direction must be remapped');
+          assert.equal(merged.rewardLedger[0].questId, 'quest-import');
+          assert.equal(merged.activityLog[0].questId, 'quest-import');
+          assert.equal(merged.activityLog[0].goalId, 'goal-local');
+          assert.equal(merged.reflections[0].questId, 'quest-import');
+          assert.equal(merged.hero.xp, 120);
+          assert.equal(merged.hero.name, 'Local Hero', 'merge must preserve the local hero name');
+          assert.equal(merged.hero.titleId, 'local-title', 'merge must preserve the locally selected title');
+          assert.equal(merged.stats.completed, 5);
+          const repeated = context.mergeImportedStateData(incoming, merged, migrate, createId);
+          assert.equal(repeated.directions.length, 1, 'reimport must not duplicate directions');
+          assert.equal(repeated.quests.length, 4, 'reimport must not duplicate quests or collapse distinct same-title quests');
+          assert.equal(repeated.goals.length, 1, 'reimport must not duplicate goals');
+          assert.equal(repeated.rewardLedger.length, 1, 'reimport must not duplicate rewards');
+          assert.equal(repeated.activityLog.length, 1, 'reimport must not duplicate activity events');
+          assert.equal(repeated.reflections.length, 1, 'reimport must not duplicate reflections');
+          assert.equal(repeated.lore.length, 1, 'reimport must not duplicate lore');
+          assert.equal(target.directions[0].nodes.length, 1, 'merge must not mutate destination input');
+
+          // A partial backup may contain a child whose parent already exists
+          // locally but is not included in the imported subtree.
+          const partialTarget = {
+            hero: { name: 'Local', xp: 0 },
+            directions: [{ id: 'dir-local', name: 'Python', nodes: [
+              { id: 'parent-local', name: 'Existing parent', parentId: null, xp: 10 }
+            ] }],
+            goals: [], quests: [], lore: [], reflections: [], activityLog: [], rewardLedger: [],
+            stats: {}, streak: {}, unlockedTitles: ['newbie'], unlockedAchievements: []
+          };
+          const partialIncoming = {
+            hero: { name: 'Backup', xp: 0 },
+            directions: [{ id: 'dir-backup', name: 'Python', nodes: [
+              { id: 'child-backup', name: 'Imported child', parentId: 'parent-local', xp: 5 }
+            ] }],
+            goals: [], quests: [
+              { id: 'quest-child', title: 'Work on child', type: 'SIDE', done: false,
+                targetType: 'SKILL', targetId: 'child-backup' }
+            ],
+            lore: [], reflections: [], activityLog: [], rewardLedger: [],
+            stats: {}, streak: {}, unlockedTitles: ['newbie'], unlockedAchievements: []
+          };
+          const partial = context.mergeImportedStateData(partialIncoming, partialTarget, migrate, createId);
+          const importedChild = partial.directions[0].nodes.find(x => x.id !== 'parent-local');
+          assert.equal(importedChild.parentId, 'parent-local',
+            'existing destination parent links must survive partial subtree imports');
+          assert.equal(partial.quests.find(x => x.id === 'quest-child').targetId, importedChild.id,
+            'quest target must point to the imported child');
+
+          console.log('ID-mapped import merge: OK');
+          NODE
+
+      - name: Guard account-bound cloud operations
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const cloud = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const boot = fs.readFileSync('assets/js/08-theme-init.js', 'utf8');
+          const required = [
+            ['queued saves capture requesting account', /const requestedUserId = authUser && authUser\.id/],
+            ['cloud writes require loaded account state', /if \(!cloudReady\)[\s\S]{0,180}облачная версия ещё не загружена/],
+            ['cross-account local saves require explicit transfer', /isLocalSaveOwnedByAnotherAccount\(getLocalCloudOwner\(\), uid[\s\S]*локальная копия принадлежит другому аккаунту/],
+            ['manual transfer requires confirmation', /локальная копия принадлежит другому аккаунту[\s\S]*const transfer = confirm/],
+            ['manual local conflict choice explicitly unlocks write', /cloudReady = true;[\s\S]{0,100}await cloudSave\(true\)/],
+            ['queued saves reject account switches', /authUser\.id !== requestedUserId/],
+            ['cloud POST checks expected user', /performCloudSave\(force, expectedUserId\)/],
+            ['fetch validates session user', /data\.session\.user\?\.id !== userId/],
+            ['cloud load checks account after response', /if \(!authUser \|\| authUser\.id !== uid\) return false/],
+            ['manual sync is bound to initiating user', /const requestedUserId = authUser\.id/],
+            ['delayed save captures account ID', /function scheduleCloudSave\(\)[\s\S]*const requestedUserId = authUser\.id/],
+            ['delayed save rejects account switch', /authUser\.id !== requestedUserId/],
+            ['password sign-in resets cloud readiness on account switch', /previousUserId!==authUser\?\.id\)\{cloudReady=false/]
+          ];
+          for (const [label, pattern] of required) {
+            if (!pattern.test(cloud)) throw new Error('Missing cloud safety guard: ' + label);
+          }
+          if (!/if \(oldId !== newId\)[\s\S]*cloudReady = false/.test(boot)) {
+            throw new Error('Auth change must reset cloud-ready status');
+          }
+          console.log('Account-bound cloud operations: OK');
+          NODE
+
+      - name: Guard corrupt local save recovery
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const core = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const nav = fs.readFileSync('assets/js/07-navigation-mentor.js', 'utf8');
+          const html = fs.readFileSync('index.html', 'utf8');
+          if (!/function markCorruptLocalSave\(raw, reason\)/.test(core)) {
+            throw new Error('Invalid local save must be preserved as raw data');
+          }
+          if (!/function save\(\)[\s\S]*if \(localSaveWriteBlocked\)[\s\S]*return false/.test(core)) {
+            throw new Error('Writes must stop while a corrupt save is unresolved');
+          }
+          if (!/resolveCorruptLocalSave\(prefix\)/.test(core)) {
+            throw new Error('Recovery must back up the original raw save before unblocking writes');
+          }
+          if (!/if \(localSaveWriteBlocked\)[\s\S]*resolveCorruptLocalSave\('life_rpg_v5_preimport_'\)/.test(nav)
+              || !/resolveCorruptLocalSave\('life_rpg_v5_prereset_'\)/.test(nav)
+              || !/localSaveWriteBlocked && merge/.test(nav)) {
+            throw new Error('Import replace and reset must resolve corrupt saves with a backup; merge must be blocked');
+          }
+          if (!/id="corruptSaveNotice"/.test(html) || !/exportCorruptSave\(\)/.test(nav)) {
+            throw new Error('The user must be able to download the original corrupt save');
+          }
+          console.log('Corrupt local save recovery: OK');
+          NODE
+
+      - name: Guard corrupt-save cloud isolation
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const loadStart = source.indexOf('async function cloudLoad(');
+          const saveStart = source.indexOf('async function performCloudSave(', loadStart);
+          const saveEnd = source.indexOf('function scheduleCloudSave(', saveStart);
+          const cloudLoad = source.slice(loadStart, saveStart);
+          const cloudSave = source.slice(saveStart, saveEnd);
+          if (!/if \(localSaveWriteBlocked\)[\s\S]*cloudLastError = 'повреждённое локальное сохранение: облачная запись заблокирована'[\s\S]*return false/.test(cloudLoad)) {
+            throw new Error('An empty cloud row must not upload the initial state over a corrupt local save');
+          }
+          if (!/if \(localSaveWriteBlocked\)[\s\S]*cloudLastError = 'повреждённое локальное сохранение: облачная запись заблокирована'[\s\S]*return false/.test(cloudSave)) {
+            throw new Error('Cloud POST must be blocked while local recovery is unresolved');
+          }
+          if (!/if \(hasLocalData\) backupLocalBeforeCloudReplace\(\)[\s\S]*if \(localSaveWriteBlocked\)[\s\S]*localSaveWriteBlocked = false/.test(cloudLoad)) {
+            throw new Error('A valid cloud restore must back up existing local bytes before clearing the corrupt-save block');
+          }
+          console.log('Corrupt-save cloud isolation: OK');
+          NODE
+
+      - name: Guard direction deletion references
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const source = fs.readFileSync('assets/js/06-skills-lore-save.js', 'utf8');
+          const start = source.indexOf('function deleteDirection(id)');
+          const end = source.indexOf('// ===================== SKILL TREE', start);
+          if (start < 0 || end < 0) throw new Error('deleteDirection function not found');
+          const body = source.slice(start, end);
+          if (!/state\.goals\.forEach\(goal => \{[\s\S]*goal\.directionId === id[\s\S]*goal\.directionId = null/.test(body)) {
+            throw new Error('Deleting a direction must unlink goals that reference it');
+          }
+          console.log('Direction deletion references: OK');
+          NODE
+
+      - name: Test daily habit reward idempotency
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          // The app's day boundary follows the device's local calendar, not UTC.
+          process.env.TZ = 'Europe/Amsterdam';
+          const dateContext = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/02-cloud-auth.js', 'utf8'), dateContext);
+          assert.equal(dateContext.localDateKey(new Date(Date.UTC(2026, 10, 9, 23, 30))), '2026-11-10',
+            'local date helper must respect the device timezone');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/reward-utils.js', 'utf8'), context);
+          const quest = { id: 'habit-1' };
+          // 23:30 UTC on Nov 9 is 00:30 local time on Nov 10 in Amsterdam.
+          const ledger = [{ eventId: 'event-1', questId: 'habit-1', at: Date.UTC(2026, 10, 9, 23, 30), habit: true }];
+          assert.equal(context.hasHabitRewardForDay(quest, ledger, '2026-11-10'), true,
+            'late UTC event must count for the next local calendar day');
+          assert.equal(context.hasHabitRewardForDay(quest, ledger, '2026-11-09'), false,
+            'the UTC date must not be mistaken for the local reward day');
+          assert.equal(context.hasHabitRewardForDay(quest, ledger, '2026-11-11'), false);
+          assert.equal(context.hasHabitRewardForDay({ id: 'habit-1', lastHabitRewardDay: '2026-11-11' }, ledger, '2026-11-11'), true);
+          assert.equal(context.hasHabitRewardForDay({ id: 'habit-2' }, ledger, '2026-11-10'), false);
+          const streak = { habitStreak: 12, lastHabitDay: '2026-11-10', habitBest: 12 };
+          context.recordHabitStreakUndo(streak, '2026-11-10');
+          assert.equal(streak.habitStreak, 11);
+          assert.equal(streak.lastHabitDay, null);
+          context.applyHabitStreakCompletion(streak, '2026-11-10', '2026-11-09', true);
+          assert.equal(streak.habitStreak, 12, 'same-day recheck must restore the previous streak');
+          assert.equal(streak.lastHabitDay, '2026-11-10');
+          assert.equal(streak.habitStreakUndoDay, undefined);
+          const missed = { habitStreak: 12, lastHabitDay: '2026-11-10', habitBest: 12 };
+          context.recordHabitStreakUndo(missed, '2026-11-10');
+          context.applyHabitStreakCompletion(missed, '2026-11-11', '2026-11-10', false);
+          assert.equal(missed.habitStreak, 1, 'an undone day must break the streak');
+          assert.equal(missed.habitStreakUndoDay, undefined);
+          const quests = fs.readFileSync('assets/js/05-quests-goals-directions.js', 'utf8');
+          if (!/hasHabitRewardForDay\(q, state\.rewardLedger, todayKey\(\)\)/.test(quests)) {
+            throw new Error('Quest completion must consult the daily reward ledger');
+          }
+          if (!/if \(rewardAlreadyGrantedToday\)[\s\S]*Привычка отмечена\. XP за сегодня уже начислен\./.test(quests)) {
+            throw new Error('Repeated same-day habit completion must not issue another reward');
+          }
+          if (!/recordHabitStreakUndo\(q, todayKey\(\)\)/.test(quests) || !/applyHabitStreakCompletion\(/.test(quests)) {
+            throw new Error('Quest handlers must use tested habit streak transition helpers');
+          }
+          console.log('Daily habit reward idempotency: OK');
+          NODE
+
+      - name: Validate inline event handlers
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const files = [
+            'assets/js/01-core.js',
+            'assets/js/02-cloud-auth.js',
+            'assets/js/03-state-and-systems.js',
+            'assets/js/04-ai.js',
+            'assets/js/05-quests-goals-directions.js',
+            'assets/js/06-skills-lore-save.js',
+            'assets/js/07-navigation-mentor.js',
+            'assets/js/08-theme-init.js'
+          ];
+          const html = fs.readFileSync('index.html', 'utf8');
+          const source = files.map(file => fs.readFileSync(file, 'utf8')).join('\n');
+          const declared = new Set([...source.matchAll(/\bfunction\s+([A-Za-z_$][\w$]*)\s*\(/g)].map(match => match[1]));
+          const combined = html + '\n' + source;
+          const calls = new Set();
+          for (const match of combined.matchAll(/on(?:click|change|input|submit)\s*=\s*["']([^"']+)["']/g)) {
+            for (const call of match[1].matchAll(/(?:^|[;{}]\s*)([A-Za-z_$][\w$]*)\s*\(/g)) {
+              if (!['if','for','while','switch','confirm','alert','setTimeout','setInterval'].includes(call[1])) calls.add(call[1]);
+            }
+          }
+          const missing = [...calls].filter(name => !declared.has(name));
+          if (missing.length) throw new Error('Inline handlers reference missing functions: ' + missing.join(', '));
+          console.log('Inline event handlers: OK (' + calls.size + ' unique functions)');
+          NODE
+
+      - name: Enforce state replacement boundary
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const files = [
+            'assets/js/02-cloud-auth.js',
+            'assets/js/03-state-and-systems.js',
+            'assets/js/04-ai.js',
+            'assets/js/05-quests-goals-directions.js',
+            'assets/js/06-skills-lore-save.js',
+            'assets/js/07-navigation-mentor.js',
+            'assets/js/08-theme-init.js'
+          ];
+          const violations = [];
+          for (const file of files) {
+            const lines = fs.readFileSync(file, 'utf8').split('\n');
+            lines.forEach((line, index) => {
+              if (/\bstate\s*=(?!=|>)/.test(line)) violations.push(file + ':' + (index + 1) + ': ' + line.trim());
+            });
+          }
+          if (violations.length) throw new Error('Direct state replacement outside core:\n' + violations.join('\n'));
+          console.log('State replacement boundary: OK');
+          NODE
+
+      - name: Test state serialization
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/serialization.js', 'utf8'), context);
+          const source = { schemaVersion: 1, hero: { xp: 90 }, ai: { apiKey: 'secret', model: 'model-a' } };
+          const saved = context.createPersistedState(source, 5);
+          assert.equal(saved.schemaVersion, 5);
+          assert.equal(saved.hero.xp, 90);
+          assert.equal(saved.ai.apiKey, undefined);
+          assert.equal(saved.ai.model, 'model-a');
+          assert.equal(source.ai.apiKey, 'secret', 'serializer must not mutate live state');
+          saved.hero.xp = 0;
+          assert.equal(source.hero.xp, 90, 'snapshot must be detached');
+          console.log('State serialization: OK');
+          NODE
+
+      - name: Test cloud response classification
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/cloud-response.js', 'utf8'), context);
+          const validate = data => data && data.hero ? null : 'invalid payload';
+          assert.equal(context.classifyCloudRows([], validate).kind, 'empty');
+          assert.equal(context.classifyCloudRows([{ data: { hero: {} } }], validate).kind, 'record');
+          assert.equal(context.classifyCloudRows([{ data: { bad: true } }], validate).kind, 'invalid');
+          assert.equal(context.classifyCloudRows([{}], validate).kind, 'invalid');
+          assert.equal(context.classifyCloudRows({}, validate).kind, 'invalid');
+          assert.equal(context.classifyCloudRows([{ data: { hero: {} } }, { data: { hero: {} } }], validate).kind, 'invalid');
+          assert.equal(context.isLocalSaveOwnedByAnotherAccount('user-a', 'user-b', true), true);
+          assert.equal(context.isLocalSaveOwnedByAnotherAccount('user-a', 'user-a', true), false);
+          assert.equal(context.isLocalSaveOwnedByAnotherAccount('', 'user-b', true), false);
+          assert.equal(context.isLocalSaveOwnedByAnotherAccount('user-a', 'user-b', false), false);
+          const updateRequest = context.buildCloudWriteRequest(
+            'life_rpg_saves', 'user/123', '2026-11-10T10:00:00+00:00', { user_id: 'user/123', data: {} }
+          );
+          assert.equal(updateRequest.method, 'PATCH');
+          assert.equal(updateRequest.path,
+            '/rest/v1/life_rpg_saves?user_id=eq.user%2F123&updated_at=eq.2026-11-10T10%3A00%3A00%2B00%3A00');
+          assert.equal(updateRequest.prefer, 'return=representation');
+          const insertRequest = context.buildCloudWriteRequest(
+            'life_rpg_saves', 'user/123', null, { user_id: 'user/123', data: {} }
+          );
+          assert.equal(insertRequest.method, 'POST');
+          assert.equal(insertRequest.path, '/rest/v1/life_rpg_saves?on_conflict=user_id');
+          assert.equal(insertRequest.prefer, 'resolution=ignore-duplicates,return=representation');
+          assert.equal(context.classifyCloudWriteRows([{ updated_at: '2026-11-10T10:00:00Z' }]).kind, 'saved');
+          assert.equal(context.classifyCloudWriteRows([]).kind, 'conflict');
+          assert.equal(context.classifyCloudWriteRows([{}]).kind, 'invalid');
+          const baseMs = Date.parse('2026-11-10T10:00:00.999999Z');
+          assert.equal(Date.parse(context.nextCloudVersion('2026-11-10T10:00:00.999999Z', baseMs)), baseMs + 1,
+            'the next cloud version must advance even when the client clock has not advanced');
+          assert.equal(context.nextCloudVersion(null, 1234), '1970-01-01T00:00:01.234Z',
+            'the initial insert must receive a deterministic timestamp token');
+          assert.throws(() => context.nextCloudVersion('not-a-date', 1234),
+            'invalid base versions must be rejected');
+          assert.equal(context.needsCloudConflictChoice(
+            { hasData: true, isValid: true, updatedAt: 'v1' }, { updated_at: 'v1' }, 'user-a', 'user-a'
+          ), false, 'matching server version and owner is already synchronized');
+          assert.equal(context.needsCloudConflictChoice(
+            { hasData: true, isValid: true, updatedAt: 'v1' }, { updated_at: 'v2' }, 'user-a', 'user-a'
+          ), true, 'different server versions require an explicit conflict choice');
+          assert.equal(context.needsCloudConflictChoice(
+            { hasData: true, isValid: true, updatedAt: 'v1' }, { updated_at: 'v1' }, 'user-a', 'user-b'
+          ), true, 'a different account owner requires an explicit conflict choice');
+          assert.equal(context.needsCloudConflictChoice(
+            { hasData: true, isValid: false, updatedAt: 'v1' }, { updated_at: 'v2' }, 'user-a', 'user-b'
+          ), false, 'invalid local bytes are backed up before cloud recovery, not treated as a valid conflict');
+          assert.equal(context.getCloudSyncFallback(''), 'upload');
+          assert.equal(context.getCloudSyncFallback('конфликт сохранений: local/cloud'), 'conflict');
+          assert.equal(context.getCloudSyncFallback('HTTP 500'), 'blocked');
+          assert.deepEqual(
+            JSON.parse(JSON.stringify(context.inspectLocalSave(null, '', validate))),
+            { hasData: false, isValid: false, updatedAt: '' }
+          );
+          assert.deepEqual(
+            JSON.parse(JSON.stringify(context.inspectLocalSave('{"hero":{}}', '2026-11-09T10:00:00Z', validate))),
+            { hasData: true, isValid: true, updatedAt: '2026-11-09T10:00:00Z' }
+          );
+          assert.deepEqual(
+            JSON.parse(JSON.stringify(context.inspectLocalSave('not-json', '', validate))),
+            { hasData: true, isValid: false, updatedAt: '' }
+          );
+          assert.deepEqual(
+            JSON.parse(JSON.stringify(context.inspectLocalSave('{"bad":true}', '', validate))),
+            { hasData: true, isValid: false, updatedAt: '' }
+          );
+          console.log('Cloud response classification and sync fallback: OK');
+          NODE
+
+      - name: Guard compare-and-swap cloud persistence
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const loadStart = source.indexOf('async function cloudLoad(');
+          const queueStart = source.indexOf('function cloudSave(force)', loadStart);
+          const workerStart = source.indexOf('async function performCloudSave(', queueStart);
+          const syncStart = source.indexOf('async function syncCloudNow(', workerStart);
+          const cloudLoad = source.slice(loadStart, queueStart);
+          const worker = source.slice(workerStart, syncStart);
+          const sync = source.slice(syncStart, source.indexOf('function snapshotState(', syncStart));
+          assert.ok(cloudLoad.includes('cloudReady = false;') &&
+            cloudLoad.includes('resetCloudBase();') && cloudLoad.includes('await cloudSaveQueue;'),
+            'cloudLoad must freeze writes and drain the in-tab queue before reading a new base version');
+          assert.ok(cloudLoad.includes('cloudBaseUserId = uid;') &&
+            cloudLoad.includes('cloudBaseUpdatedAt = row.updated_at;') &&
+            cloudLoad.includes('needsCloudConflictChoice(localInfo, row, getLocalCloudOwner(), uid)'),
+            'cloudLoad must bind the server timestamp and detect local divergence without comparing device clocks');
+          assert.ok(worker.includes('buildCloudWriteRequest(CLOUD_TABLE, uid, cloudBaseUpdatedAt, body)') &&
+            worker.includes('classifyCloudWriteRows(rows)') &&
+            worker.includes('nextCloudVersion(cloudBaseUpdatedAt)') &&
+            worker.includes('updated_at: nextUpdatedAt'),
+            'cloud writes must use conditional requests and advance the version token');
+          assert.ok(worker.indexOf('cloudBaseUpdatedAt = writeResult.row.updated_at') >
+            worker.indexOf('classifyCloudWriteRows(rows)'),
+            'the next write base must come from the server representation');
+          assert.ok(sync.indexOf('const refreshed = await cloudLoad()') < sync.indexOf('const useCloud = confirm('),
+            'a conflict must refresh the server version before presenting overwrite choices');
+          console.log('Conditional cloud write guard: OK');
+          NODE
+
+      - name: Test backup utilities
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/backup-utils.js', 'utf8'), context);
+          assert.equal(context.createDailyBackupKey('2026-11-09'), 'life_rpg_v4_backup_20261109');
+          assert.deepEqual(
+            Array.from(context.getBackupKeysToDelete([
+              'life_rpg_v4_backup_20261101',
+              'other_key',
+              'life_rpg_v4_backup_20261103',
+              'life_rpg_v4_backup_20261102'
+            ], 'life_rpg_v4_backup_', 2)),
+            ['life_rpg_v4_backup_20261101']
+          );
+          assert.deepEqual(Array.from(context.getBackupKeysToDelete(['a','b'], 'x_', 7)), []);
+          assert.throws(() => context.createDailyBackupKey('09-11-2026'));
+          assert.throws(() => context.getBackupKeysToDelete([], 'x_', -1));
+          const values = new Map([
+            ['corrupt_20261101', 'old-1'],
+            ['corrupt_20261102', 'old-2'],
+            ['corrupt_20261103', 'old-3']
+          ]);
+          const storage = {
+            get length() { return values.size; },
+            key(index) { return Array.from(values.keys())[index] || null; },
+            setItem(key, value) { values.set(String(key), String(value)); },
+            removeItem(key) { values.delete(key); }
+          };
+          assert.equal(context.backupRawSave(storage, 'exact damaged bytes', 'corrupt_', '20261104', 2), 'corrupt_20261104');
+          assert.equal(values.get('corrupt_20261104'), 'exact damaged bytes');
+          assert.equal(values.has('corrupt_20261101'), false, 'old backups must be pruned');
+          assert.equal(values.has('corrupt_20261103'), true);
+          console.log('Backup utilities: OK');
+          NODE
+
+      - name: Guard cloud state replacement ordering
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const start = source.indexOf('async function cloudLoad(');
+          const end = source.indexOf('function cloudSave(', start);
+          assert.ok(start >= 0 && end > start, 'cloudLoad function must exist');
+          const cloudLoad = source.slice(start, end);
+          const stage = cloudLoad.indexOf('const nextState = migrateState(row.data)');
+          const persist = cloudLoad.indexOf('localStorage.setItem(STORAGE_KEY, serialized)', stage);
+          const publish = cloudLoad.indexOf('replaceState(nextState)', persist);
+          const rollback = cloudLoad.indexOf('localStorage.setItem(STORAGE_KEY, previousRaw)', persist);
+          const ownerWrite = cloudLoad.indexOf('setLocalCloudOwner(uid)', persist);
+          assert.ok(stage >= 0 && persist > stage && publish > persist,
+            'live state must be replaced only after the cloud snapshot is persisted locally');
+          assert.ok(rollback > persist && rollback < publish,
+            'failed local persistence must attempt rollback before publishing cloud state');
+          assert.ok(ownerWrite > persist && ownerWrite < publish,
+            'local owner metadata must be persisted before publishing the cloud state');
+          assert.ok(/if \(ownerRead\)[\s\S]*previousOwner/.test(cloudLoad),
+            'failed replacement must restore the previous local owner marker');
+          const workerStart = source.indexOf('async function performCloudSave(', end);
+          const scheduleStart = source.indexOf('function scheduleCloudSave(', workerStart);
+          const worker = source.slice(workerStart, scheduleStart);
+          assert.ok(worker.indexOf('if (!setLocalCloudOwner(uid))') < worker.indexOf('const res = await cloudFetch'),
+            'cloud POST must not start until local ownership is persisted');
+          console.log('Cloud state and owner replacement ordering: OK');
+          NODE
+
+      - name: Guard undo against overwriting later edits
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const pushStart = source.indexOf('function pushUndo(');
+          const clickStart = source.indexOf("document.getElementById('undoBtn').onclick");
+          const clickEnd = source.indexOf("setTimeout(() => { if (bar)", clickStart);
+          assert.ok(pushStart >= 0 && clickStart > pushStart && clickEnd > clickStart, 'undo implementation must exist');
+          const push = source.slice(pushStart, source.indexOf('function showUndoBar(', pushStart));
+          const click = source.slice(clickStart, clickEnd);
+          assert.ok(push.includes('afterSnapshot: snapshotState()'), 'undo must retain post-operation snapshot');
+          assert.ok(click.includes('JSON.stringify(state) !== JSON.stringify(window._undo.afterSnapshot)'),
+            'undo must refuse to overwrite state changed after the AI operation');
+          assert.ok(click.indexOf('const after = undoEntry.afterSnapshot') < click.indexOf('const persisted = save()'),
+            'undo must retain a rollback snapshot before persistence');
+          console.log('Undo overwrite guard: OK');
+          NODE
+
+      - name: Guard AI mutations when local save fails
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const quests = fs.readFileSync('assets/js/05-quests-goals-directions.js', 'utf8');
+          const mentor = fs.readFileSync('assets/js/07-navigation-mentor.js', 'utf8');
+          assert.ok((quests.match(/if \(!save\(\)\) \{/g) || []).length >= 2,
+            'AI quest acceptance flows must roll back when save fails');
+          assert.ok(quests.includes("if (added && !save())") && quests.includes('replaceState(snap)'),
+            'AI skill tree acceptance must roll back when save fails');
+          assert.ok(mentor.includes("if(!save()){replaceState(snap);renderAll();toast('Маршрут не принят:") ,
+            'AI mentor acceptance must roll back when save fails');
+          console.log('AI mutation persistence guards: OK');
+          NODE
+
+      - name: Test destructive backup helper
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const backupUtils = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/backup-utils.js', 'utf8'), backupUtils);
+          const source = fs.readFileSync('assets/js/07-navigation-mentor.js', 'utf8');
+          const start = source.indexOf('function backupCurrentSave(prefix)');
+          const end = source.indexOf('// ===================== SAVE / EXPORT / IMPORT', start);
+          assert.ok(start >= 0 && end > start, 'backup helper must be present');
+          const store = new Map([['life_rpg_v4', '{"hero":{"xp":42}}']]);
+          const localStorage = {
+            getItem: key => store.has(key) ? store.get(key) : null,
+            setItem: (key, value) => store.set(key, String(value)),
+            removeItem: key => store.delete(key),
+            get length() { return store.size; },
+            key: index => Array.from(store.keys())[index] ?? null
+          };
+          const context = { localStorage, STORAGE_KEY: 'life_rpg_v4', uid: () => 'test-id', getBackupKeysToDelete: backupUtils.getBackupKeysToDelete, backupRawSave: backupUtils.backupRawSave };
+          vm.runInNewContext(source.slice(start, end), context);
+          const created = context.backupCurrentSave('test_backup_');
+          assert.equal(created, true);
+          const keys = Array.from(store.keys()).filter(key => key.startsWith('test_backup_'));
+          assert.equal(keys.length, 1);
+          assert.equal(store.get(keys[0]), '{"hero":{"xp":42}}', 'backup must preserve exact raw save');
+          store.delete('life_rpg_v4');
+          assert.equal(context.backupCurrentSave('empty_backup_'), false, 'no save should not create an empty backup');
+          console.log('Destructive backup helper: OK');
+          NODE
+
+      - name: Guard destructive import and reset backups
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('assets/js/07-navigation-mentor.js', 'utf8');
+          const helperStart = source.indexOf('function backupCurrentSave(prefix)');
+          const importStart = source.indexOf('function importSave(');
+          const resetStart = source.indexOf('function resetAll(');
+          const modalStart = source.indexOf('// ===================== MODAL & NAV', resetStart);
+          assert.ok(helperStart >= 0 && importStart > helperStart && resetStart > importStart && modalStart > resetStart,
+            'backup helper, import and reset handlers must exist');
+          const helper = source.slice(helperStart, importStart);
+          const importer = source.slice(importStart, resetStart);
+          const reset = source.slice(resetStart, modalStart);
+          assert.ok(helper.includes('backupRawSave(localStorage, raw, prefix, stamp, 5)'),
+            'backup helper must delegate exact raw preservation and five-item retention to backupRawSave');
+          assert.ok(/else if \(!merge\) \{\s*backupCurrentSave\('life_rpg_v5_preimport_'\);/.test(importer),
+            'replace import must back up current save unless corrupt-save recovery already backed it up');
+          assert.ok(importer.indexOf("backupCurrentSave('life_rpg_v5_preimport_')") < importer.indexOf('replaceState(candidate)'),
+            'replace import backup must happen before publishing imported state');
+          assert.ok(reset.indexOf("backupCurrentSave('life_rpg_v5_prereset_')") < reset.indexOf('replaceState(migrateState('),
+            'reset must back up current save before replacing state');
+          console.log('Destructive import/reset backup guards: OK');
+          NODE
+
+      - name: Guard serialized cloud writes and checked local saves
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const queueStart = source.indexOf('let cloudSaveQueue = Promise.resolve()');
+          const wrapperStart = source.indexOf('function cloudSave(force)', queueStart);
+          const workerStart = source.indexOf('async function performCloudSave(force, expectedUserId)', wrapperStart);
+          assert.ok(queueStart >= 0 && wrapperStart > queueStart && workerStart > wrapperStart,
+            'cloud save must pass through a serialized queue');
+          const wrapper = source.slice(wrapperStart, workerStart);
+          assert.ok(wrapper.includes('cloudSaveQueue.then(') && wrapper.includes('cloudSaveQueue = queuedSave.then('),
+            'cloud save queue must serialize requests and recover after a rejected task');
+          const files = [
+            'assets/js/03-state-and-systems.js', 'assets/js/04-ai.js',
+            'assets/js/05-quests-goals-directions.js', 'assets/js/06-skills-lore-save.js',
+            'assets/js/07-navigation-mentor.js'
+          ];
+          const bareCalls = [];
+          for (const file of files) {
+            fs.readFileSync(file, 'utf8').split('\n').forEach((line, index) => {
+              if (/^\s*save\(\);\s*$/.test(line)) bareCalls.push(file + ':' + (index + 1));
+            });
+          }
+          assert.deepEqual(bareCalls, [], 'all standalone save calls must handle their result');
+          console.log('Serialized cloud writes and checked save calls: OK');
+          NODE
+
+      - name: Guard cloud status after failed sync
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const loadStart = source.indexOf('async function cloudLoad(');
+          const saveStart = source.indexOf('async function performCloudSave(', loadStart);
+          const scheduleStart = source.indexOf('function scheduleCloudSave(', saveStart);
+          const load = source.slice(loadStart, saveStart);
+          const save = source.slice(saveStart, scheduleStart);
+          assert.ok(load.includes("cloudReady = false;\n          const t = await res.text()"),
+            'failed cloud GET must clear cloudReady');
+          assert.ok(load.includes("cloudReady = false;\n        cloudLastError = (e && e.message) || 'load fail'"),
+            'cloud load exceptions must clear cloudReady');
+          assert.ok(save.includes('const responseText = await res.text()') &&
+            /if \(!res\.ok\) \{\s*cloudReady = false;/.test(save),
+            'failed conditional cloud write must clear cloudReady');
+          assert.ok(save.includes("cloudReady = false;\n        cloudLastError = (e && e.message) || 'save fail'"),
+            'cloud save exceptions must clear cloudReady');
+          console.log('Cloud status failure guards: OK');
+          NODE
+
+      - name: Test primary state persistence failures
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const serialization = fs.readFileSync('assets/js/state/serialization.js', 'utf8');
+          const persist = new Function(serialization + '\nreturn persistStateSnapshot;')();
+          const original = { hero: { xp: 10 }, ai: { apiKey: 'private', model: 'test' } };
+          const values = new Map();
+          const writeOrder = [];
+          const storage = { setItem(k, v) { writeOrder.push(k); values.set(k, String(v)); } };
+          const snapshot = persist(storage, 'save', 'timestamp', original, 5, 'local:test-id');
+          assert.equal(JSON.parse(values.get('save')).hero.xp, 10);
+          assert.equal(JSON.parse(values.get('save')).ai.apiKey, undefined);
+          assert.equal(snapshot.schemaVersion, 5);
+          assert.equal(original.ai.apiKey, 'private', 'serialization must not mutate live state');
+          assert.deepEqual(writeOrder.slice(0, 2), ['timestamp', 'save'],
+            'the dirty marker must be durable before the primary state write');
+          const failedPrimaryValues = new Map();
+          const failingPrimary = { setItem(k, v) { if (k === 'save') throw new Error('quota'); failedPrimaryValues.set(k, String(v)); } };
+          assert.throws(() => persist(failingPrimary, 'save', 'timestamp', original, 5, 'local:dirty'), /quota/);
+          assert.equal(failedPrimaryValues.get('timestamp'), 'local:dirty',
+            'a failed primary write must leave a dirty marker rather than appear synced');
+          assert.equal(failedPrimaryValues.has('save'), false);
+          const failedMetadataValues = new Map();
+          const failingMetadata = { setItem(k, v) { if (k === 'timestamp') throw new Error('metadata blocked'); failedMetadataValues.set(k, String(v)); } };
+          assert.throws(() => persist(failingMetadata, 'save2', 'timestamp', original, 5, 'local:dirty'), /metadata blocked/);
+          assert.equal(failedMetadataValues.has('save2'), false,
+            'primary state must not be written when the dirty marker cannot be persisted');
+          const app = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          assert.ok(app.includes('let lastPersistedStateSnapshot = snapshotState()'), 'durable baseline must be initialized');
+          assert.ok(app.includes('replaceState(JSON.parse(JSON.stringify(lastPersistedStateSnapshot)))'), 'failed save must restore durable baseline');
+          assert.ok(app.includes('lastPersistedStateSnapshot = snapshotState()'), 'successful loads/saves must refresh baseline');
+          console.log('Primary state persistence failure tests: OK');
+          NODE
+
+      - name: Guard unchecked save calls in feature modules
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const files = ['assets/js/03-state-and-systems.js', 'assets/js/04-ai.js',
+            'assets/js/05-quests-goals-directions.js', 'assets/js/06-skills-lore-save.js',
+            'assets/js/07-navigation-mentor.js'];
+          for (const file of files) {
+            const source = fs.readFileSync(file, 'utf8');
+            assert.ok(!/^\\s*save\\(\\);\\s*$/m.test(source),
+              file + ' contains a save() call whose result is ignored');
+          }
+          console.log('Unchecked save call guard: OK');
+          NODE
+
+      - name: Guard reflection deduplication during import merge
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const merge = fs.readFileSync('assets/js/state/merge.js', 'utf8');
+          assert.ok(/if \(!reflections\.some\(/.test(merge),
+            'merge must append a reflection only when no duplicate exists');
+          assert.ok(/reflection\.id && x\.id \? x\.id === reflection\.id/.test(merge),
+            'reflections with stable ids must be deduplicated by id');
+          assert.ok(/JSON\.stringify\(x\) === JSON\.stringify\(reflection\)/.test(merge),
+            'legacy reflections without ids must use exact equality fallback');
+          console.log('Reflection import deduplication guard: OK');
+          NODE
+
+      - name: Guard sign-out when cloud sync fails
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const queueStart = source.indexOf('function cloudSave(');
+          const workerStart = source.indexOf('async function performCloudSave(', queueStart);
+          const saveEnd = source.indexOf('function scheduleCloudSave(', workerStart);
+          const signOutStart = source.indexOf('async function authSignOut(');
+          const signOutEnd = source.indexOf('let authSyncPromise', signOutStart);
+          const queue = source.slice(queueStart, workerStart);
+          const worker = source.slice(workerStart, saveEnd);
+          const signOut = source.slice(signOutStart, signOutEnd);
+          assert.ok(queue.includes('return queuedSave'),
+            'cloudSave must return the queued operation result');
+          assert.ok(worker.includes('return true;') && worker.includes('return false;'),
+            'the queued cloud worker must report success/failure');
+          assert.ok(signOut.indexOf('if (syncRequired && !synced)') < signOut.indexOf('supabaseClient.auth.signOut()'),
+            'sign-out must ask before proceeding after failed cloud sync');
+          assert.ok(signOut.includes('Локальная копия остаётся на этом устройстве'),
+            'sign-out warning must explain local data remains on device');
+          console.log('Sign-out cloud sync guard: OK');
+          NODE
+
+      - name: Guard hardened database trigger migration
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const path = 'supabase/migrations/20261110131242_pin_set_updated_at_search_path.sql';
+          assert.ok(fs.existsSync(path), 'trigger hardening migration must be tracked');
+          const sql = fs.readFileSync(path, 'utf8');
+          assert.match(sql, /CREATE OR REPLACE FUNCTION public\.set_updated_at\(\)/i);
+          assert.match(sql, /SECURITY INVOKER/i, 'trigger must not become SECURITY DEFINER');
+          assert.match(sql, /SET search_path = pg_catalog/i, 'function search_path must be pinned');
+          assert.match(sql, /NEW\.updated_at = now\(\)/i, 'existing timestamp behavior must remain');
+          console.log('Trigger migration security guard: OK');
+          NODE
+
+      - name: Test AI proxy request validation and quota helpers
+        run: node --test tests/ai-proxy-security.test.mjs
+
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check Supabase AI Edge Function
+        run: deno check supabase/functions/Qroq-proxy/index.ts
+
+      - name: Guard AI proxy server-side protections
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const proxy = fs.readFileSync('supabase/functions/Qroq-proxy/index.ts', 'utf8');
+          const migration = fs.readFileSync('supabase/migrations/20261110131247_add_ai_proxy_rate_limits.sql', 'utf8');
+          const auth = fs.readFileSync('assets/js/02-cloud-auth.js', 'utf8');
+          const config = fs.readFileSync('supabase/config.toml', 'utf8');
+          assert.ok(proxy.includes('MAX_BODY_BYTES'), 'proxy must cap request body size');
+          assert.ok(proxy.includes('cf-connecting-ip'), 'guest quotas must use the gateway client IP');
+          assert.ok(proxy.includes('HMAC'), 'quota identities must be hashed with a server secret');
+          assert.ok(proxy.includes('consume_ai_proxy_rate_limit'), 'proxy must use persistent server-side quotas');
+          assert.ok(proxy.includes('Fail closed'), 'proxy must fail closed when quota enforcement fails');
+          assert.ok(proxy.includes('AbortSignal.timeout(GROQ_TIMEOUT_MS)'), 'Groq calls must have a timeout');
+          assert.ok(proxy.includes('SUPABASE_SECRET_KEYS') && proxy.includes('SUPABASE_PUBLISHABLE_KEYS'),
+            'proxy must support current Supabase secret/publishable key environment variables');
+          assert.match(config, /\[functions\."Qroq-proxy"\][\s\S]*verify_jwt = false/,
+            'guest-compatible AI proxy must keep platform JWT verification disabled and validate sessions itself');
+          assert.ok(auth.includes("if (accessToken) headers['Authorization'] = 'Bearer ' + accessToken;"),
+            'signed-in AI calls must send the user access token');
+          assert.ok(!auth.includes("headers['Authorization'] = 'Bearer ' + anon;"),
+            'guest AI calls must not send the publishable key as a bearer token');
+          assert.ok(migration.includes('ENABLE ROW LEVEL SECURITY'), 'quota table must enable RLS');
+          assert.ok(migration.includes('FROM PUBLIC, anon, authenticated'), 'quota table must be inaccessible to client roles');
+          assert.ok(migration.includes('TO service_role'), 'only service role may execute quota RPC');
+          assert.ok(migration.includes("SET search_path = ''"), 'SECURITY DEFINER quota RPC must pin search_path');
+          console.log('AI proxy server-side security guard: OK');
+          NODE
+
       - name: Check combined JavaScript syntax
         run: |
-          cat assets/js/01-core.js \
+          cat assets/js/state/initial-state.js \
+              assets/js/state/store.js \
+              assets/js/state/serialization.js \
+              assets/js/01-core.js \
               assets/js/02-cloud-auth.js \
+              assets/js/state/migrations.js \
+              assets/js/state/cloud-response.js \
+              assets/js/state/backup-utils.js \
+              assets/js/state/merge.js \
+              assets/js/state/reward-utils.js \
+              assets/js/state/tree-utils.js \
               assets/js/03-state-and-systems.js \
               assets/js/04-ai.js \
               assets/js/05-quests-goals-directions.js \

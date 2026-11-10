@@ -138,7 +138,7 @@
             nodes: [],
             createdAt: Date.now()
           });
-          save();
+          if (!save()) { renderAll(); return; }
           toast('Направление «' + name + '» создано', 'success');
         }
       }
@@ -225,7 +225,7 @@
       const node = (dir.nodes || []).find(n => n.id === nodeId);
       if (!node) return;
       node.isKey = !node.isKey;
-      save();
+      if (!save()) { renderTree(currentTreeDirId); return; }
       renderTree(currentTreeDirId);
       toast(node.isKey ? '★ Ключевой навык' : 'Метка снята');
     }

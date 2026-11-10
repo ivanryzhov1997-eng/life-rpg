@@ -1,8 +1,11 @@
 
     // ===================== PERSISTENCE =====================
+    function localDateKey(date = new Date()) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+
     function todayStr() {
-      const d = new Date();
-      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      return localDateKey(new Date());
     }
 
     function getApiKey() {
@@ -42,13 +45,28 @@
       return getProxyUrl() || '';
     }
 
-    function aiAuthHeaders() {
+    async function aiAuthHeaders() {
       const headers = { 'Content-Type': 'application/json' };
       const anon = getProxyAnon();
-      if (anon) {
-        headers['Authorization'] = 'Bearer ' + anon;
-        headers['apikey'] = anon;
+      if (anon) headers['apikey'] = anon;
+
+      // Use the real session token for account-aware server quotas. Guest mode
+      // continues to use the public key and is limited by the proxy per IP.
+      let accessToken = '';
+      try {
+        if (supabaseClient && supabaseClient.auth && supabaseClient.auth.getSession) {
+          const result = await supabaseClient.auth.getSession();
+          accessToken = result && result.data && result.data.session
+            ? result.data.session.access_token || ''
+            : '';
+        }
+      } catch (e) {
+        // Keep guest AI available if session restoration is temporarily unavailable.
       }
+
+      // Publishable keys belong in apikey only. Authorization is reserved for
+      // a real user access token; guests are identified by the proxy via IP.
+      if (accessToken) headers['Authorization'] = 'Bearer ' + accessToken;
       return headers;
     }
 

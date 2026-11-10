@@ -120,9 +120,20 @@
           if (supabaseClient) {
             const {data}=await supabaseClient.auth.getSession();
             authUser=data.session?.user||null;
-            supabaseClient.auth.onAuthStateChange((_event,session)=>{
-              const oldId=authUser&&authUser.id;authUser=session?.user||null;updateAuthUI();
-              if(authUser&&authUser.id!==oldId) setTimeout(() => afterAuthReady(), 0);
+            supabaseClient.auth.onAuthStateChange((_event, session) => {
+              const oldId = authUser && authUser.id;
+              authUser = session?.user || null;
+              const newId = authUser && authUser.id;
+              if (oldId !== newId) {
+                // Freeze writes while the newly selected account is being loaded.
+                clearTimeout(cloudSaveTimer);
+                cloudSaveTimer = null;
+                cloudReady = false;
+                resetCloudBase();
+                cloudLastError = '';
+                if (newId) setTimeout(() => afterAuthReady(), 0);
+              }
+              updateAuthUI();
             });
           }
           updateAuthUI();

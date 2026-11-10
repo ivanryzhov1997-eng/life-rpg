@@ -111,7 +111,7 @@
         toast('Направление создано');
         checkTitlesAndAchievements();
       }
-      save();
+      if (!save()) return;
       closeModal();
       renderDirections();
       renderHero();
@@ -135,8 +135,11 @@
         }
       });
 
+      state.goals.forEach(goal => {
+        if (goal.directionId === id) goal.directionId = null;
+      });
       state.directions = state.directions.filter(d => d.id !== id);
-      save();
+      if (!save()) return;
       if (currentTreeDirId === id) closeTreeView();
       renderDirections();
       renderHero();
@@ -644,7 +647,7 @@
         checkTitlesAndAchievements();
       }
 
-      save();
+      if (!save()) return;
       closeModal();
       renderTree(currentTreeDirId);
       renderHero();
@@ -655,22 +658,19 @@
       if (!dir) return;
       if (!confirm('Удалить навык и все дочерние ветки?\\nКвесты станут «Общий XP».')) return;
 
-      const toDelete = new Set();
-      function collect(nid) {
-        toDelete.add(nid);
-        (dir.nodes || []).filter(n => n.parentId === nid).forEach(c => collect(c.id));
-      }
-      collect(id);
+      // Imported/legacy saves can contain cyclic parent links. Use an iterative
+      // visited-set traversal so deleting a malformed tree cannot recurse forever.
+      const toDelete = collectSkillSubtreeIds(dir.nodes || [], id);
 
       state.quests.forEach(q => {
-        if (q.targetType === 'SKILL' && toDelete.has(q.targetId)) {
+        if (q.targetType === 'SKILL' && toDelete.has(String(q.targetId))) {
           q.targetType = 'GENERAL';
           q.targetId = null;
         }
       });
 
-      dir.nodes = (dir.nodes || []).filter(n => !toDelete.has(n.id));
-      save();
+      dir.nodes = (dir.nodes || []).filter(n => !toDelete.has(String(n.id)));
+      if (!save()) return;
       renderTree(currentTreeDirId);
       renderHero();
       toast('Удалено');
@@ -763,7 +763,7 @@
         state.lore.push({ id: uid(), date, text, createdAt: Date.now() });
         toast('Запись добавлена');
       }
-      save();
+      if (!save()) return;
       closeModal();
       renderLore();
     }
@@ -771,7 +771,7 @@
     function deleteLore(id) {
       if (!confirm('Удалить запись?')) return;
       state.lore = state.lore.filter(x => x.id !== id);
-      save();
+      if (!save()) return;
       renderLore();
       toast('Запись удалена');
     }

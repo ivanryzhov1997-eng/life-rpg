@@ -1,0 +1,4 @@
+project_id = "sghoucsrxbywiafpxxyw"
+
+[functions."Qroq-proxy"]
+verify_jwt = false

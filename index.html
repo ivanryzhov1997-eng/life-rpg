@@ -161,6 +161,11 @@
         </div>
         <div class="save-section">
           <h3>Данные</h3>
+          <div id="corruptSaveNotice" class="tip-box" style="display:none;margin-bottom:10px">
+            <strong>Повреждённое локальное сохранение</strong>
+            <p style="font-size:0.82rem;margin:6px 0 10px">Запись временно заблокирована, чтобы не затереть исходные данные. Скачай исходный файл, затем импортируй рабочую резервную копию или выполни полный сброс.</p>
+            <button class="btn btn-secondary btn-block" onclick="exportCorruptSave()">Скачать исходный файл</button>
+          </div>
           <button class="btn btn-secondary btn-block mb-8" onclick="switchScreen('lore')">Открыть лор</button>
           <button class="btn btn-primary btn-block mb-8" onclick="exportSave()">Экспорт JSON</button>
           <button class="btn btn-secondary btn-block mb-8" onclick="showActivityLog()">История действий</button>
@@ -252,8 +257,18 @@
     <div class="modal" id="modalContent"></div>
   </div>
 
+    <script src="./assets/js/state/initial-state.js"></script>
+    <script src="./assets/js/state/store.js"></script>
+<script src="./assets/js/state/serialization.js"></script>
     <script src="./assets/js/01-core.js"></script>
 <script src="./assets/js/02-cloud-auth.js"></script>
+<script src="./assets/js/state/tree-utils.js"></script>
+<script src="./assets/js/state/migrations.js"></script>
+<script src="./assets/js/state/cloud-response.js"></script>
+<script src="./assets/js/state/backup-utils.js"></script>
+<script src="./assets/js/state/merge.js"></script>
+<script src="./assets/js/state/reward-utils.js"></script>
+
 <script src="./assets/js/03-state-and-systems.js"></script>
 <script src="./assets/js/04-ai.js"></script>
 <script src="./assets/js/05-quests-goals-directions.js"></script>
