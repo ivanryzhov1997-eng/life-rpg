@@ -112,9 +112,12 @@ function mergeImportedStateData(incoming, target, migrate, createId) {
       // A newer backup may contain the completion of a quest that is still open locally.
       if (source.done && !dest.done) {
         ['done', 'completedAt', 'result', 'goalResultUnits', 'earnedXp', 'lastRewardEventId',
-          'habitStreak', 'habitBest', 'lastHabitDay', 'lastHabitRewardDay'].forEach(key => {
+          'habitStreak', 'habitBest', 'lastHabitDay'].forEach(key => {
           if (source[key] !== undefined) dest[key] = clone(source[key]);
         });
+      }
+      if (source.lastHabitRewardDay && (!dest.lastHabitRewardDay || source.lastHabitRewardDay > dest.lastHabitRewardDay)) {
+        dest.lastHabitRewardDay = source.lastHabitRewardDay;
       }
       return;
     }
