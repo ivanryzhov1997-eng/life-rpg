@@ -250,6 +250,13 @@ jobs:
           assert.equal(context.hasHabitRewardForDay(quest, ledger, '2026-11-11'), false);
           assert.equal(context.hasHabitRewardForDay({ id: 'habit-1', lastHabitRewardDay: '2026-11-11' }, ledger, '2026-11-11'), true);
           assert.equal(context.hasHabitRewardForDay({ id: 'habit-2' }, ledger, '2026-11-10'), false);
+          const quests = fs.readFileSync('assets/js/05-quests-goals-directions.js', 'utf8');
+          if (!/hasHabitRewardForDay\(q, state\.rewardLedger, todayKey\(\)\)/.test(quests)) {
+            throw new Error('Quest completion must consult the daily reward ledger');
+          }
+          if (!/if \(rewardAlreadyGrantedToday\)[\s\S]*Привычка отмечена\. XP за сегодня уже начислен\./.test(quests)) {
+            throw new Error('Repeated same-day habit completion must not issue another reward');
+          }
           console.log('Daily habit reward idempotency: OK');
           NODE
 
