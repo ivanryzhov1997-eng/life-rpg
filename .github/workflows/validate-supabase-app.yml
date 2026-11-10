@@ -241,9 +241,10 @@ jobs:
           if (!/resolveCorruptLocalSave\(prefix\)/.test(core)) {
             throw new Error('Recovery must back up the original raw save before unblocking writes');
           }
-          if (!/if \(localSaveWriteBlocked\)[\s\S]*resolveCorruptLocalSave\(prefix\)/.test(nav)
-              || !/resolveCorruptLocalSave\('life_rpg_v5_prereset_'\)/.test(nav)) {
-            throw new Error('Import and reset must resolve corrupt saves with a backup first');
+          if (!/if \(localSaveWriteBlocked\)[\s\S]*resolveCorruptLocalSave\('life_rpg_v5_preimport_'\)/.test(nav)
+              || !/resolveCorruptLocalSave\('life_rpg_v5_prereset_'\)/.test(nav)
+              || !/localSaveWriteBlocked && merge/.test(nav)) {
+            throw new Error('Import replace and reset must resolve corrupt saves with a backup; merge must be blocked');
           }
           if (!/id="corruptSaveNotice"/.test(html) || !/exportCorruptSave\(\)/.test(nav)) {
             throw new Error('The user must be able to download the original corrupt save');
