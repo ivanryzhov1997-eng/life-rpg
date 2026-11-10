@@ -744,14 +744,18 @@ jobs:
           const fs = require('node:fs');
           const assert = require('node:assert/strict');
           const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
-          const saveStart = source.indexOf('async function cloudSave(');
-          const saveEnd = source.indexOf('function scheduleCloudSave(', saveStart);
+          const queueStart = source.indexOf('function cloudSave(');
+          const workerStart = source.indexOf('async function performCloudSave(', queueStart);
+          const saveEnd = source.indexOf('function scheduleCloudSave(', workerStart);
           const signOutStart = source.indexOf('async function authSignOut(');
           const signOutEnd = source.indexOf('let authSyncPromise', signOutStart);
-          const save = source.slice(saveStart, saveEnd);
+          const queue = source.slice(queueStart, workerStart);
+          const worker = source.slice(workerStart, saveEnd);
           const signOut = source.slice(signOutStart, signOutEnd);
-          assert.ok(save.includes('return true;') && save.includes('return false;'),
-            'cloudSave must report success/failure');
+          assert.ok(queue.includes('return queuedSave'),
+            'cloudSave must return the queued operation result');
+          assert.ok(worker.includes('return true;') && worker.includes('return false;'),
+            'the queued cloud worker must report success/failure');
           assert.ok(signOut.indexOf('if (syncRequired && !synced)') < signOut.indexOf('supabaseClient.auth.signOut()'),
             'sign-out must ask before proceeding after failed cloud sync');
           assert.ok(signOut.includes('Локальная копия остаётся на этом устройстве'),
@@ -767,6 +771,10 @@ jobs:
               assets/js/01-core.js \
               assets/js/02-cloud-auth.js \
               assets/js/state/migrations.js \
+              assets/js/state/cloud-response.js \
+              assets/js/state/backup-utils.js \
+              assets/js/state/merge.js \
+              assets/js/state/reward-utils.js \
               assets/js/03-state-and-systems.js \
               assets/js/04-ai.js \
               assets/js/05-quests-goals-directions.js \
