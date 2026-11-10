@@ -217,6 +217,7 @@
             throw new Error('Не удалось сохранить облачную версию на устройстве; локальный прогресс оставлен без изменений');
           }
           replaceState(nextState);
+          lastPersistedStateSnapshot = snapshotState();
           cloudReady = true;
           cloudLastError = '';
           updateCloudStatusLine();
@@ -324,22 +325,32 @@
       toast('Локальное сохранение отправлено в облако', 'success');
     }
 
+    // Last known durable state. Any failed save restores this baseline so
+    // callers that mutate first cannot leave unsaved changes visible in memory.
+    let lastPersistedStateSnapshot = snapshotState();
+
     function save() {
       try {
-        const toSave = createPersistedState(state, SCHEMA_VERSION);
-        const savedAt = new Date().toISOString();
-        // Persist the primary record first. Metadata failure must not turn a
-        // successful primary write into a reported failure.
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-        try { localStorage.setItem(LOCAL_UPDATED_AT_KEY, savedAt); } catch (e) {
-          console.warn('Save timestamp failed', e);
-        }
+        const toSave = persistStateSnapshot(
+          localStorage,
+          STORAGE_KEY,
+          LOCAL_UPDATED_AT_KEY,
+          state,
+          SCHEMA_VERSION,
+          new Date().toISOString()
+        );
+        lastPersistedStateSnapshot = snapshotState();
         maybeDailyBackup(toSave);
-        scheduleCloudSave();
+        try { scheduleCloudSave(); } catch (cloudScheduleError) {
+          console.warn('Cloud save scheduling failed', cloudScheduleError);
+        }
         return true;
       } catch (e) {
         console.warn('Save failed', e);
-        toast('Ошибка сохранения', 'error');
+        if (lastPersistedStateSnapshot) {
+          replaceState(JSON.parse(JSON.stringify(lastPersistedStateSnapshot)));
+        }
+        toast('Ошибка сохранения. Несохранённые изменения отменены.', 'error');
         return false;
       }
     }
@@ -379,6 +390,7 @@
           const err = validateImport(data);
           if (!err) {
             replaceState(migrateState(data));
+            lastPersistedStateSnapshot = snapshotState();
           } else {
             console.warn('Invalid save:', err);
           }
