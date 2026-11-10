@@ -864,7 +864,7 @@ ${dirs}`
       if (s.lastDate === today) return;
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      const yStr = yesterday.toISOString().slice(0, 10);
+      const yStr = localDateKey(yesterday);
       // rest day counts as continuity bridge
       const restBridge = s.restDate === yStr || s.restDate === today;
       if (s.lastDate === yStr || restBridge) {
@@ -894,7 +894,7 @@ ${dirs}`
       if (state.streak.lastDate !== today) {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
-        const yStr = yesterday.toISOString().slice(0, 10);
+        const yStr = localDateKey(yesterday);
         if (state.streak.lastDate === yStr || state.streak.lastDate === today) {
           /* keep current */
         } else if (!state.streak.lastDate) {
