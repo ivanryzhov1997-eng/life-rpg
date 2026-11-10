@@ -620,8 +620,10 @@ jobs:
           const reset = source.slice(resetStart, modalStart);
           assert.ok(helper.includes('backupRawSave(localStorage, raw, prefix, stamp, 5)'),
             'backup helper must delegate exact raw preservation and five-item retention to backupRawSave');
-          assert.ok(importer.includes("if (!merge) backupCurrentSave('life_rpg_v5_preimport_')"),
-            'replace import must back up current save before publishing imported state');
+          assert.ok(/else if \(!merge\) \{\s*backupCurrentSave\('life_rpg_v5_preimport_'\);/.test(importer),
+            'replace import must back up current save unless corrupt-save recovery already backed it up');
+          assert.ok(importer.indexOf("backupCurrentSave('life_rpg_v5_preimport_')") < importer.indexOf('replaceState(candidate)'),
+            'replace import backup must happen before publishing imported state');
           assert.ok(reset.indexOf("backupCurrentSave('life_rpg_v5_prereset_')") < reset.indexOf('replaceState(migrateState('),
             'reset must back up current save before replacing state');
           console.log('Destructive import/reset backup guards: OK');
