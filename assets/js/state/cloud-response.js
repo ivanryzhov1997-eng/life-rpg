@@ -82,3 +82,13 @@ function classifyCloudWriteRows(rows) {
   }
   return { kind: 'saved', row };
 }
+ 
+// Timestamps are opaque server version tokens, not wall-clock comparisons.
+// Any local divergence requires an explicit choice; this avoids clock-skew loss.
+function needsCloudConflictChoice(localInfo, cloudRow, localOwner, userId) {
+  if (!localInfo || !localInfo.isValid) return false;
+  if (isLocalSaveOwnedByAnotherAccount(localOwner, userId, localInfo.hasData)) return true;
+  const localVersion = localInfo.updatedAt || '';
+  const cloudVersion = cloudRow && cloudRow.updated_at || '';
+  return !localVersion || !cloudVersion || localVersion !== cloudVersion;
+}
