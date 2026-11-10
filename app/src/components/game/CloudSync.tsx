@@ -25,12 +25,18 @@ export function CloudSync({ authenticated }: { authenticated: boolean }) {
   const cloudQuery = trpc.save.get.useQuery(undefined, { enabled: authenticated, retry: false });
   const syncMutation = trpc.save.sync.useMutation({
     onSuccess: (result) => {
+      if (result.status === "conflict") {
+        if (result.state && result.state.updatedAt > useGameStore.getState().updatedAt) {
+          skipNext.current = true;
+          importState(result.state);
+        }
+        // A conflict is not a successful sync. In particular, a null state
+        // means the server save disappeared after this device cached a revision.
+        setStatus("error");
+        return;
+      }
       revisionRef.current = result.revision;
       setRevision(result.revision);
-      if (result.status === "conflict" && result.state.updatedAt > useGameStore.getState().updatedAt) {
-        skipNext.current = true;
-        importState(result.state);
-      }
       setStatus("saved");
     },
     onError: () => setStatus("error"),
@@ -86,7 +92,7 @@ export function CloudSync({ authenticated }: { authenticated: boolean }) {
         <div className="flex items-center gap-2 text-sm"><Cloud size={17} aria-hidden="true" /><span>{status === "loading" ? "Синхронизация…" : status === "saved" ? `Облако · ревизия ${revision ?? 1}` : status === "error" ? "Не удалось синхронизировать" : "Облако готово"}</span></div>
         <button type="button" onClick={syncNow} disabled={status === "loading" || !initialized || cloudQuery.isError} className="quiet-button inline-flex items-center gap-2 rounded-lg px-3 text-xs disabled:opacity-50"><RefreshCw size={14} className={status === "loading" ? "animate-spin" : ""} aria-hidden="true" />Сейчас</button>
       </div>
-      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Изменения отправляются автоматически через 2 секунды. При конфликте побеждает более новый сейв; локальная офлайн-копия сохраняется.</p>
+      <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Изменения отправляются автоматически через 2 секунды. При конфликте синхронизация останавливается до повторного чтения облачной версии; локальная офлайн-копия сохраняется.</p>
       {status === "error" && <p role="alert" className="mt-2 text-xs text-foreground">Проверьте соединение. Локальный прогресс не потерян — повторите синхронизацию вручную.</p>}
     </div>
   );
