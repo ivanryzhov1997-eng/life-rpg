@@ -745,7 +745,7 @@ ${dirs}`
       if (!state.ui) state.ui = {};
       state.ui.lastRestWeek = isoWeekKey();
       addAutoLore('🛋 День отдыха. Серия сохранена.');
-      save();
+      if (!save()) { renderAll(); return; }
       renderHero();
       toast('День отдыха активирован', 'success');
     }
@@ -840,7 +840,7 @@ ${dirs}`
         setTimeout(() => {
           if (state.ui.lastWeeklyReview === key) return;
           state.ui.lastWeeklyReview = key;
-          save();
+          if (!save()) return;
           showWeeklyReview();
         }, 1800);
       } catch(e) {}
@@ -984,8 +984,8 @@ ${dirs}`
         checkTitlesAndAchievements();
       }
       pendingReflectionQuest = null;
+      if (!save()) { renderAll(); return; }
       closeModal();
-      save();
     }
 
     function openTitlePicker() {
@@ -1014,7 +1014,7 @@ ${dirs}`
 
     function equipTitle(id) {
       state.hero.titleId = id;
-      save();
+      if (!save()) { renderHero(); return; }
       closeModal();
       renderHero();
       toast('Титул изменён');
