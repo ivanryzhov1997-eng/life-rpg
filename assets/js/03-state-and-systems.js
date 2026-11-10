@@ -187,12 +187,35 @@
             return false;
           }
           if (hasLocalData) backupLocalBeforeCloudReplace();
-          replaceState(migrateState(row.data));
-          // Mirror the accepted cloud version locally only after a backup was made.
-          const toSave = createPersistedState(state, SCHEMA_VERSION);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
-          if (row.updated_at) localStorage.setItem(LOCAL_UPDATED_AT_KEY, row.updated_at);
-          else localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
+
+          // Stage the cloud state without publishing it to the live application.
+          // A failed localStorage write must never leave memory on the cloud version
+          // while the device still contains the previous local save.
+          const nextState = migrateState(row.data);
+          const toSave = createPersistedState(nextState, SCHEMA_VERSION);
+          const serialized = JSON.stringify(toSave);
+          let previousRaw = null;
+          let previousTimestamp = null;
+          try {
+            previousRaw = localStorage.getItem(STORAGE_KEY);
+            previousTimestamp = localStorage.getItem(LOCAL_UPDATED_AT_KEY);
+            localStorage.setItem(STORAGE_KEY, serialized);
+            if (row.updated_at) localStorage.setItem(LOCAL_UPDATED_AT_KEY, row.updated_at);
+            else localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
+          } catch (storageError) {
+            // Best-effort rollback of the two local records. The live state has
+            // not been replaced yet, so even a rollback failure cannot desync it.
+            try {
+              if (previousRaw === null) localStorage.removeItem(STORAGE_KEY);
+              else localStorage.setItem(STORAGE_KEY, previousRaw);
+              if (previousTimestamp === null) localStorage.removeItem(LOCAL_UPDATED_AT_KEY);
+              else localStorage.setItem(LOCAL_UPDATED_AT_KEY, previousTimestamp);
+            } catch (rollbackError) {
+              console.error('Cloud mirror rollback failed', rollbackError);
+            }
+            throw new Error('Не удалось сохранить облачную версию на устройстве; локальный прогресс оставлен без изменений');
+          }
+          replaceState(nextState);
           cloudReady = true;
           cloudLastError = '';
           updateCloudStatusLine();
