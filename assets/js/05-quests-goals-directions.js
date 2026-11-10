@@ -1512,6 +1512,8 @@ ${rules.prompt}
       const q = state.quests.find(x => x.id === id);
       if (!q || !isHabitQuest(q)) return;
       q.done = false;
+      // Older saves may have the reward event ID but no daily idempotency field.
+      if (q.lastRewardEventId) q.lastHabitRewardDay = todayKey();
       if (q.lastHabitDay === todayKey()) {
         q.habitStreakBeforeUndo = Math.max(0, Number(q.habitStreak) || 1);
         q.habitStreakUndoDay = todayKey();
