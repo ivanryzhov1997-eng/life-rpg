@@ -340,6 +340,22 @@ jobs:
           console.log('Primary state persistence failure tests: OK');
           NODE
 
+      - name: Guard unchecked save calls in feature modules
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const files = ['assets/js/03-state-and-systems.js', 'assets/js/04-ai.js',
+            'assets/js/05-quests-goals-directions.js', 'assets/js/06-skills-lore-save.js',
+            'assets/js/07-navigation-mentor.js'];
+          for (const file of files) {
+            const source = fs.readFileSync(file, 'utf8');
+            assert.ok(!/^\\s*save\\(\\);\\s*$/m.test(source),
+              file + ' contains a save() call whose result is ignored');
+          }
+          console.log('Unchecked save call guard: OK');
+          NODE
+
       - name: Check combined JavaScript syntax
         run: |
           cat assets/js/state/initial-state.js \
