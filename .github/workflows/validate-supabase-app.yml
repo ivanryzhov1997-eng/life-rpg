@@ -943,6 +943,7 @@ jobs:
           const proxy = fs.readFileSync('supabase/functions/Qroq-proxy/index.ts', 'utf8');
           const migration = fs.readFileSync('supabase/migrations/20261110154500_add_ai_proxy_rate_limits.sql', 'utf8');
           const auth = fs.readFileSync('assets/js/02-cloud-auth.js', 'utf8');
+          const config = fs.readFileSync('supabase/config.toml', 'utf8');
           assert.ok(proxy.includes('MAX_BODY_BYTES'), 'proxy must cap request body size');
           assert.ok(proxy.includes('cf-connecting-ip'), 'guest quotas must use the gateway client IP');
           assert.ok(proxy.includes('HMAC'), 'quota identities must be hashed with a server secret');
@@ -951,6 +952,8 @@ jobs:
           assert.ok(proxy.includes('AbortSignal.timeout(GROQ_TIMEOUT_MS)'), 'Groq calls must have a timeout');
           assert.ok(proxy.includes('SUPABASE_SECRET_KEYS') && proxy.includes('SUPABASE_PUBLISHABLE_KEYS'),
             'proxy must support current Supabase secret/publishable key environment variables');
+          assert.match(config, /\[functions\."Qroq-proxy"\][\s\S]*verify_jwt = false/,
+            'guest-compatible AI proxy must keep platform JWT verification disabled and validate sessions itself');
           assert.ok(auth.includes("if (accessToken) headers['Authorization'] = 'Bearer ' + accessToken;"),
             'signed-in AI calls must send the user access token');
           assert.ok(!auth.includes("headers['Authorization'] = 'Bearer ' + anon;"),
