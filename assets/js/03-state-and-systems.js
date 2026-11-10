@@ -426,15 +426,9 @@
       try {
         const persistedData = createPersistedState(state, SCHEMA_VERSION);
         const persistedSnapshot = JSON.stringify(persistedData);
-        const baseMs = cloudBaseUpdatedAt ? Date.parse(cloudBaseUpdatedAt) : NaN;
-        if (cloudBaseUpdatedAt && !Number.isFinite(baseMs)) {
-          throw new Error('Некорректная базовая версия облачного сохранения');
-        }
         // life_rpg_saves has no updated_at trigger. Advance the version token
         // explicitly and monotonically so a stale PATCH can never match again.
-        const nextUpdatedAt = cloudBaseUpdatedAt
-          ? new Date(Math.max(Date.now(), baseMs + 1)).toISOString()
-          : new Date().toISOString();
+        const nextUpdatedAt = nextCloudVersion(cloudBaseUpdatedAt);
         const body = { user_id: uid, data: persistedData, updated_at: nextUpdatedAt };
         const request = buildCloudWriteRequest(CLOUD_TABLE, uid, cloudBaseUpdatedAt, body);
         const res = await cloudFetch(request.path, {
