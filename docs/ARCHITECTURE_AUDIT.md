@@ -713,7 +713,7 @@ Merge-импорт перенесён в отдельный чистый helper 
 - В схеме `public` обнаружена одна функция — `set_updated_at()`; она SECURITY INVOKER, а её search_path закреплён за `pg_catalog`. Security Advisor ранее обнаружил mutable search_path; исправлено через `ALTER FUNCTION ... SET search_path = pg_catalog`. Конфигурация проверена запросом к pg_proc, предупреждение исчезло при повторном запуске Advisor.
 - Leaked Password Protection в Supabase Auth отключён. Не менялся, поскольку это настройка Auth, которая влияет на регистрацию и требует отдельного решения владельца проекта.
 - Performance Advisor показывает 4 неиндексированных внешних ключа и 12 неиспользуемых индексов на старых нормализованных таблицах. Индексы не удалялись и не добавлялись: текущий клиент использует одну JSON-таблицу `life_rpg_saves`, а изменение legacy-схемы без подтверждённого плана миграции не нужно.
-- История миграций production Supabase на момент аудита содержит одну применённую запись `20261107124407_create_authenticated_life_rpg_saves`. Исправление `search_path` уже применено к production-функции и теперь также зафиксировано в репозитории миграцией `20261110153500_pin_set_updated_at_search_path.sql`. Новая миграция намеренно не запускалась повторно в production; она нужна для воспроизводимого развёртывания на новом окружении.
+- История миграций production Supabase после завершения этапа содержит три записи: `20261107124407_create_authenticated_life_rpg_saves`, `20261110131242_pin_set_updated_at_search_path` и `20261110131247_add_ai_proxy_rate_limits`. Обе новые миграции применены через Supabase MCP; версии в именах файлов синхронизированы с remote history.
 
 ### Оставшийся критический риск AI proxy
 
@@ -797,7 +797,7 @@ Edge Function `Qroq-proxy` активна с `verify_jwt=false`. В исходн
 
 ## 36. Конфигурация trigger function зафиксирована миграцией (2026-11-10)
 
-Ранее безопасная конфигурация `public.set_updated_at()` была применена непосредственно в production: `SECURITY INVOKER`, `search_path = pg_catalog`, прежняя логика `NEW.updated_at = now()` сохранена. Теперь то же определение добавлено в репозиторий как `supabase/migrations/20261110153500_pin_set_updated_at_search_path.sql`.
+Ранее безопасная конфигурация `public.set_updated_at()` была применена непосредственно в production: `SECURITY INVOKER`, `search_path = pg_catalog`, прежняя логика `NEW.updated_at = now()` сохранена. Теперь то же определение добавлено в репозиторий как `supabase/migrations/20261110131242_pin_set_updated_at_search_path.sql` и применено через migration API.
 
 Миграция не запускалась повторно на production, поскольку функция уже имеет требуемую конфигурацию. Добавлена CI-проверка, которая требует наличия миграции и фиксирует три свойства: функция остаётся SECURITY INVOKER, search_path закреплён на pg_catalog, обновление updated_at не меняет поведение.
 
@@ -825,7 +825,7 @@ Edge Function `Qroq-proxy` активна с `verify_jwt=false`. В исходн
 
 ### Persistent rate limiting
 
-Добавлена миграция `20261110154500_add_ai_proxy_rate_limits.sql`:
+Добавлена и применена миграция `20261110131247_add_ai_proxy_rate_limits.sql`:
 - отдельная таблица с RLS enabled и без клиентских policies;
 - доступ к таблице отозван у PUBLIC, anon и authenticated;
 - атомарный RPC доступен только service_role;
