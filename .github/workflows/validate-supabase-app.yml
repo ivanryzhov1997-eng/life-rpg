@@ -241,7 +241,7 @@ jobs:
           const assert = require('node:assert/strict');
           const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
           const start = source.indexOf('async function cloudLoad(');
-          const end = source.indexOf('async function cloudSave(', start);
+          const end = source.indexOf('function cloudSave(', start);
           assert.ok(start >= 0 && end > start, 'cloudLoad function must exist');
           const cloudLoad = source.slice(start, end);
           const stage = cloudLoad.indexOf('const nextState = migrateState(row.data)');
@@ -291,6 +291,35 @@ jobs:
           console.log('AI mutation persistence guards: OK');
           NODE
 
+      - name: Guard serialized cloud writes and checked local saves
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const queueStart = source.indexOf('let cloudSaveQueue = Promise.resolve()');
+          const wrapperStart = source.indexOf('function cloudSave(force)', queueStart);
+          const workerStart = source.indexOf('async function performCloudSave(force)', wrapperStart);
+          assert.ok(queueStart >= 0 && wrapperStart > queueStart && workerStart > wrapperStart,
+            'cloud save must pass through a serialized queue');
+          const wrapper = source.slice(wrapperStart, workerStart);
+          assert.ok(wrapper.includes('cloudSaveQueue.then(') && wrapper.includes('cloudSaveQueue = queuedSave.then('),
+            'cloud save queue must serialize requests and recover after a rejected task');
+          const files = [
+            'assets/js/03-state-and-systems.js', 'assets/js/04-ai.js',
+            'assets/js/05-quests-goals-directions.js', 'assets/js/06-skills-lore-save.js',
+            'assets/js/07-navigation-mentor.js'
+          ];
+          const bareCalls = [];
+          for (const file of files) {
+            fs.readFileSync(file, 'utf8').split('\n').forEach((line, index) => {
+              if (/^\s*save\(\);\s*$/.test(line)) bareCalls.push(file + ':' + (index + 1));
+            });
+          }
+          assert.deepEqual(bareCalls, [], 'all standalone save calls must handle their result');
+          console.log('Serialized cloud writes and checked save calls: OK');
+          NODE
+
       - name: Guard cloud status after failed sync
         run: |
           node <<'NODE'
@@ -298,7 +327,7 @@ jobs:
           const assert = require('node:assert/strict');
           const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
           const loadStart = source.indexOf('async function cloudLoad(');
-          const saveStart = source.indexOf('async function cloudSave(', loadStart);
+          const saveStart = source.indexOf('async function performCloudSave(', loadStart);
           const scheduleStart = source.indexOf('function scheduleCloudSave(', saveStart);
           const load = source.slice(loadStart, saveStart);
           const save = source.slice(saveStart, scheduleStart);
