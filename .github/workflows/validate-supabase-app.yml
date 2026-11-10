@@ -298,8 +298,8 @@ jobs:
           if (!/if \(localSaveWriteBlocked\)[\s\S]*cloudLastError = 'повреждённое локальное сохранение: облачная запись заблокирована'[\s\S]*return false/.test(cloudSave)) {
             throw new Error('Cloud POST must be blocked while local recovery is unresolved');
           }
-          if (!/if \(localSaveWriteBlocked\)[\s\S]*backupLocalBeforeCloudReplace\(\)[\s\S]*localSaveWriteBlocked = false/.test(cloudLoad)) {
-            throw new Error('A valid cloud restore must back up the corrupt local bytes before clearing the block');
+          if (!/if \(hasLocalData\) backupLocalBeforeCloudReplace\(\)[\s\S]*if \(localSaveWriteBlocked\)[\s\S]*localSaveWriteBlocked = false/.test(cloudLoad)) {
+            throw new Error('A valid cloud restore must back up existing local bytes before clearing the corrupt-save block');
           }
           console.log('Corrupt-save cloud isolation: OK');
           NODE
