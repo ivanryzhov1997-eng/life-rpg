@@ -41,6 +41,7 @@ jobs:
             './assets/js/state/cloud-response.js',
             './assets/js/state/backup-utils.js',
             './assets/js/state/merge.js',
+            './assets/js/state/reward-utils.js',
             './assets/js/03-state-and-systems.js',
             './assets/js/04-ai.js',
             './assets/js/05-quests-goals-directions.js',
@@ -233,6 +234,23 @@ jobs:
             throw new Error('Deleting a direction must unlink goals that reference it');
           }
           console.log('Direction deletion references: OK');
+          NODE
+
+      - name: Test daily habit reward idempotency
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const assert = require('node:assert/strict');
+          const context = {};
+          vm.runInNewContext(fs.readFileSync('assets/js/state/reward-utils.js', 'utf8'), context);
+          const quest = { id: 'habit-1' };
+          const ledger = [{ eventId: 'event-1', questId: 'habit-1', at: Date.UTC(2026, 10, 10, 8), habit: true }];
+          assert.equal(context.hasHabitRewardForDay(quest, ledger, '2026-11-10'), true);
+          assert.equal(context.hasHabitRewardForDay(quest, ledger, '2026-11-11'), false);
+          assert.equal(context.hasHabitRewardForDay({ id: 'habit-1', lastHabitRewardDay: '2026-11-11' }, ledger, '2026-11-11'), true);
+          assert.equal(context.hasHabitRewardForDay({ id: 'habit-2' }, ledger, '2026-11-10'), false);
+          console.log('Daily habit reward idempotency: OK');
           NODE
 
       - name: Enforce state replacement boundary
