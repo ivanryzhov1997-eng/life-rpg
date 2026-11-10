@@ -52,20 +52,21 @@
 
       // Use the real session token for account-aware server quotas. Guest mode
       // continues to use the public key and is limited by the proxy per IP.
-      let bearer = anon;
+      let accessToken = '';
       try {
         if (supabaseClient && supabaseClient.auth && supabaseClient.auth.getSession) {
           const result = await supabaseClient.auth.getSession();
-          const accessToken = result && result.data && result.data.session
-            ? result.data.session.access_token
+          accessToken = result && result.data && result.data.session
+            ? result.data.session.access_token || ''
             : '';
-          if (accessToken) bearer = accessToken;
         }
       } catch (e) {
         // Keep guest AI available if session restoration is temporarily unavailable.
       }
 
-      if (bearer) headers['Authorization'] = 'Bearer ' + bearer;
+      // Publishable keys belong in apikey only. Authorization is reserved for
+      // a real user access token; guests are identified by the proxy via IP.
+      if (accessToken) headers['Authorization'] = 'Bearer ' + accessToken;
       return headers;
     }
 
