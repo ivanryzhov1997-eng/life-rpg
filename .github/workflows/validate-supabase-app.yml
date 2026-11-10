@@ -188,6 +188,29 @@ jobs:
           console.log('ID-mapped import merge: OK');
           NODE
 
+      - name: Guard account-bound cloud operations
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const cloud = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const boot = fs.readFileSync('assets/js/08-theme-init.js', 'utf8');
+          const required = [
+            ['queued saves capture requesting account', /const requestedUserId = authUser && authUser\.id/],
+            ['queued saves reject account switches', /authUser\.id !== requestedUserId/],
+            ['cloud POST checks expected user', /performCloudSave\(force, expectedUserId\)/],
+            ['fetch validates session user', /data\.session\.user\?\.id !== userId/],
+            ['cloud load checks account after response', /if \(!authUser \|\| authUser\.id !== uid\) return false/],
+            ['manual sync is bound to initiating user', /const requestedUserId = authUser\.id/]
+          ];
+          for (const [label, pattern] of required) {
+            if (!pattern.test(cloud)) throw new Error('Missing cloud safety guard: ' + label);
+          }
+          if (!/if \(oldId !== newId\)[\s\S]*cloudReady = false/.test(boot)) {
+            throw new Error('Auth change must reset cloud-ready status');
+          }
+          console.log('Account-bound cloud operations: OK');
+          NODE
+
       - name: Enforce state replacement boundary
         run: |
           node <<'NODE'
