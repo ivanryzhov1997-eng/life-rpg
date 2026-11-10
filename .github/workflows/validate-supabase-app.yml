@@ -255,6 +255,26 @@ jobs:
           console.log('Cloud state replacement ordering: OK');
           NODE
 
+      - name: Guard undo against overwriting later edits
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const source = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          const pushStart = source.indexOf('function pushUndo(');
+          const clickStart = source.indexOf("document.getElementById('undoBtn').onclick");
+          const clickEnd = source.indexOf("setTimeout(() => { if (bar)", clickStart);
+          assert.ok(pushStart >= 0 && clickStart > pushStart && clickEnd > clickStart, 'undo implementation must exist');
+          const push = source.slice(pushStart, source.indexOf('function showUndoBar(', pushStart));
+          const click = source.slice(clickStart, clickEnd);
+          assert.ok(push.includes('afterSnapshot: snapshotState()'), 'undo must retain post-operation snapshot');
+          assert.ok(click.includes('JSON.stringify(state) !== JSON.stringify(window._undo.afterSnapshot)'),
+            'undo must refuse to overwrite state changed after the AI operation');
+          assert.ok(click.indexOf('const after = undoEntry.afterSnapshot') < click.indexOf('const persisted = save()'),
+            'undo must retain a rollback snapshot before persistence');
+          console.log('Undo overwrite guard: OK');
+          NODE
+
       - name: Check combined JavaScript syntax
         run: |
           cat assets/js/state/initial-state.js \
