@@ -88,7 +88,10 @@ function mergeImportedStateData(incoming, target, migrate, createId) {
       a.target = Math.max(1, Number(a.target) || 1, Number(b.target) || 1);
       a.current = Math.min(a.target, Math.max(0, Number(a.current) || 0, Number(b.current) || 0));
       if (!a.unitLabel) a.unitLabel = b.unitLabel || 'ед.';
-      if (a.current >= a.target || source.status === 'done') dest.status = 'done';
+      if (a.current >= a.target || source.status === 'done') {
+        dest.status = 'done';
+        dest.completedAt = Math.max(Number(dest.completedAt) || 0, Number(source.completedAt) || 0) || dest.completedAt;
+      }
       if (source.id != null) goalMap.set(String(source.id), String(dest.id));
     } else {
       const goal = clone(source);
