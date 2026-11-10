@@ -313,6 +313,33 @@ jobs:
           console.log('Cloud status failure guards: OK');
           NODE
 
+      - name: Test primary state persistence failures
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const serialization = fs.readFileSync('assets/js/state/serialization.js', 'utf8');
+          const persist = new Function(serialization + '\nreturn persistStateSnapshot;')();
+          const original = { hero: { xp: 10 }, ai: { apiKey: 'private', model: 'test' } };
+          const values = new Map();
+          const storage = { setItem(k, v) { values.set(k, String(v)); } };
+          const snapshot = persist(storage, 'save', 'timestamp', original, 5, '2026-11-10T00:00:00.000Z');
+          assert.equal(JSON.parse(values.get('save')).hero.xp, 10);
+          assert.equal(JSON.parse(values.get('save')).ai.apiKey, undefined);
+          assert.equal(snapshot.schemaVersion, 5);
+          assert.equal(original.ai.apiKey, 'private', 'serialization must not mutate live state');
+          const failingPrimary = { setItem(k) { if (k === 'save') throw new Error('quota'); } };
+          assert.throws(() => persist(failingPrimary, 'save', 'timestamp', original, 5, 'now'), /quota/);
+          const failingMetadata = { setItem(k, v) { if (k === 'timestamp') throw new Error('metadata blocked'); values.set(k, String(v)); } };
+          assert.doesNotThrow(() => persist(failingMetadata, 'save2', 'timestamp', original, 5, 'now'));
+          assert.ok(values.has('save2'), 'primary save must succeed even when timestamp metadata fails');
+          const app = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
+          assert.ok(app.includes('let lastPersistedStateSnapshot = snapshotState()'), 'durable baseline must be initialized');
+          assert.ok(app.includes('replaceState(JSON.parse(JSON.stringify(lastPersistedStateSnapshot)))'), 'failed save must restore durable baseline');
+          assert.ok(app.includes('lastPersistedStateSnapshot = snapshotState()'), 'successful loads/saves must refresh baseline');
+          console.log('Primary state persistence failure tests: OK');
+          NODE
+
       - name: Check combined JavaScript syntax
         run: |
           cat assets/js/state/initial-state.js \
