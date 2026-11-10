@@ -264,6 +264,8 @@ jobs:
           const required = [
             ['queued saves capture requesting account', /const requestedUserId = authUser && authUser\.id/],
             ['cloud writes require loaded account state', /if \\(!cloudReady\\)[\\s\\S]{0,180}облачная версия ещё не загружена/],
+            ['cross-account local saves require explicit transfer', /isLocalSaveOwnedByAnotherAccount\\(getLocalCloudOwner\\(\\), uid[\\s\\S]*локальная копия принадлежит другому аккаунту/],
+            ['manual transfer requires confirmation', /локальная копия принадлежит другому аккаунту[\\s\\S]*const transfer = confirm/],
             ['manual local conflict choice explicitly unlocks write', /cloudReady = true;[\\s\\S]{0,100}await cloudSave\\(true\\)/],
             ['queued saves reject account switches', /authUser\.id !== requestedUserId/],
             ['cloud POST checks expected user', /performCloudSave\(force, expectedUserId\)/],
@@ -485,6 +487,10 @@ jobs:
           assert.equal(context.classifyCloudRows([{}], validate).kind, 'invalid');
           assert.equal(context.classifyCloudRows({}, validate).kind, 'invalid');
           assert.equal(context.classifyCloudRows([{ data: { hero: {} } }, { data: { hero: {} } }], validate).kind, 'invalid');
+          assert.equal(context.isLocalSaveOwnedByAnotherAccount('user-a', 'user-b', true), true);
+          assert.equal(context.isLocalSaveOwnedByAnotherAccount('user-a', 'user-a', true), false);
+          assert.equal(context.isLocalSaveOwnedByAnotherAccount('', 'user-b', true), false);
+          assert.equal(context.isLocalSaveOwnedByAnotherAccount('user-a', 'user-b', false), false);
           assert.equal(context.getCloudSyncFallback(''), 'upload');
           assert.equal(context.getCloudSyncFallback('конфликт сохранений: local/cloud'), 'conflict');
           assert.equal(context.getCloudSyncFallback('HTTP 500'), 'blocked');
