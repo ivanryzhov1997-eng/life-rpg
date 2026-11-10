@@ -826,17 +826,26 @@ jobs:
           const persist = new Function(serialization + '\nreturn persistStateSnapshot;')();
           const original = { hero: { xp: 10 }, ai: { apiKey: 'private', model: 'test' } };
           const values = new Map();
-          const storage = { setItem(k, v) { values.set(k, String(v)); } };
-          const snapshot = persist(storage, 'save', 'timestamp', original, 5, '2026-11-10T00:00:00.000Z');
+          const writeOrder = [];
+          const storage = { setItem(k, v) { writeOrder.push(k); values.set(k, String(v)); } };
+          const snapshot = persist(storage, 'save', 'timestamp', original, 5, 'local:test-id');
           assert.equal(JSON.parse(values.get('save')).hero.xp, 10);
           assert.equal(JSON.parse(values.get('save')).ai.apiKey, undefined);
           assert.equal(snapshot.schemaVersion, 5);
           assert.equal(original.ai.apiKey, 'private', 'serialization must not mutate live state');
-          const failingPrimary = { setItem(k) { if (k === 'save') throw new Error('quota'); } };
-          assert.throws(() => persist(failingPrimary, 'save', 'timestamp', original, 5, 'now'), /quota/);
-          const failingMetadata = { setItem(k, v) { if (k === 'timestamp') throw new Error('metadata blocked'); values.set(k, String(v)); } };
-          assert.doesNotThrow(() => persist(failingMetadata, 'save2', 'timestamp', original, 5, 'now'));
-          assert.ok(values.has('save2'), 'primary save must succeed even when timestamp metadata fails');
+          assert.deepEqual(writeOrder.slice(0, 2), ['timestamp', 'save'],
+            'the dirty marker must be durable before the primary state write');
+          const failedPrimaryValues = new Map();
+          const failingPrimary = { setItem(k, v) { if (k === 'save') throw new Error('quota'); failedPrimaryValues.set(k, String(v)); } };
+          assert.throws(() => persist(failingPrimary, 'save', 'timestamp', original, 5, 'local:dirty'), /quota/);
+          assert.equal(failedPrimaryValues.get('timestamp'), 'local:dirty',
+            'a failed primary write must leave a dirty marker rather than appear synced');
+          assert.equal(failedPrimaryValues.has('save'), false);
+          const failedMetadataValues = new Map();
+          const failingMetadata = { setItem(k, v) { if (k === 'timestamp') throw new Error('metadata blocked'); failedMetadataValues.set(k, String(v)); } };
+          assert.throws(() => persist(failingMetadata, 'save2', 'timestamp', original, 5, 'local:dirty'), /metadata blocked/);
+          assert.equal(failedMetadataValues.has('save2'), false,
+            'primary state must not be written when the dirty marker cannot be persisted');
           const app = fs.readFileSync('assets/js/03-state-and-systems.js', 'utf8');
           assert.ok(app.includes('let lastPersistedStateSnapshot = snapshotState()'), 'durable baseline must be initialized');
           assert.ok(app.includes('replaceState(JSON.parse(JSON.stringify(lastPersistedStateSnapshot)))'), 'failed save must restore durable baseline');
