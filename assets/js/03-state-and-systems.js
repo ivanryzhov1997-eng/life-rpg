@@ -275,12 +275,27 @@
             }
             return false;
           }
+          if (localSaveWriteBlocked) {
+            localSaveWriteBlocked = false;
+            corruptLocalSaveRaw = null;
+            corruptSaveBlockNoticeShown = false;
+            updateCorruptSaveNotice();
+            toast('Повреждённая локальная версия сохранена в резервной копии; восстановлена версия из облака.', 'success');
+          }
           replaceState(nextState);
           lastPersistedStateSnapshot = snapshotState();
           cloudReady = true;
           cloudLastError = '';
           updateCloudStatusLine();
           return true;
+        }
+        // An empty remote table does not authorize uploading the empty in-memory
+        // state when the device's existing save is corrupt and write-blocked.
+        if (localSaveWriteBlocked) {
+          cloudReady = false;
+          cloudLastError = 'повреждённое локальное сохранение: облачная запись заблокирована';
+          updateCloudStatusLine();
+          return false;
         }
         // An empty result is the only proof that no remote row exists.
         cloudReady = true;
@@ -316,6 +331,12 @@
     async function performCloudSave(force, expectedUserId) {
       const uid = authUser && authUser.id;
       if (!cloudConfigured() || !uid || uid !== expectedUserId) return false;
+      if (localSaveWriteBlocked) {
+        cloudReady = false;
+        cloudLastError = 'повреждённое локальное сохранение: облачная запись заблокирована';
+        updateCloudStatusLine();
+        return false;
+      }
       try {
         const payload = createPersistedState(state, SCHEMA_VERSION);
         const savedAt = new Date().toISOString();
