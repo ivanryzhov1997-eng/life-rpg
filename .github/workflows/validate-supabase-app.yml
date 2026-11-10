@@ -927,6 +927,14 @@ jobs:
       - name: Test AI proxy request validation and quota helpers
         run: node --test tests/ai-proxy-security.test.mjs
 
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check Supabase AI Edge Function
+        run: deno check supabase/functions/Qroq-proxy/index.ts
+
       - name: Guard AI proxy server-side protections
         run: |
           node <<'NODE'
