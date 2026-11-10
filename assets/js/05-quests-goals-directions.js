@@ -1496,6 +1496,11 @@ ${rules.prompt}
         q.type = 'HABIT';
         if (q.habitStreak == null) q.habitStreak = 0;
         if (q.habitBest == null) q.habitBest = 0;
+        if (q.habitStreakUndoDay && q.habitStreakUndoDay !== today) {
+          delete q.habitStreakBeforeUndo;
+          delete q.habitStreakUndoDay;
+          changed = true;
+        }
         const doneDay = q.completedAt ? new Date(q.completedAt).toISOString().slice(0, 10) : null;
         if (q.done && doneDay && doneDay !== today) {
           q.done = false;
