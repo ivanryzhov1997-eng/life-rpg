@@ -21,6 +21,25 @@ const corsHeaders = {
 
 class BodyTooLargeError extends Error {}
 
+function readDefaultKeyMap(name: string): string {
+  const raw = Deno.env.get(name) || "";
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw);
+    return typeof parsed.default === "string" ? parsed.default : "";
+  } catch {
+    return "";
+  }
+}
+
+function getPublishableKey(): string {
+  return Deno.env.get("SUPABASE_ANON_KEY") || readDefaultKeyMap("SUPABASE_PUBLISHABLE_KEYS");
+}
+
+function getServiceKey(): string {
+  return Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || readDefaultKeyMap("SUPABASE_SECRET_KEYS");
+}
+
 function jsonResponse(body: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
     status,
@@ -121,13 +140,17 @@ async function consumeQuota(
   windowSeconds: number,
 ): Promise<boolean> {
   const bucketKey = await hmacHex(serviceRoleKey, bucket);
+  const quotaHeaders: Record<string, string> = {
+    apikey: serviceRoleKey,
+    "Content-Type": "application/json",
+  };
+  // New Supabase secret keys are not JWTs: send them on apikey only.
+  if (!serviceRoleKey.startsWith("sb_secret_")) {
+    quotaHeaders.Authorization = "Bearer " + serviceRoleKey;
+  }
   const response = await fetch(supabaseUrl + "/rest/v1/rpc/consume_ai_proxy_rate_limit", {
     method: "POST",
-    headers: {
-      apikey: serviceRoleKey,
-      Authorization: "Bearer " + serviceRoleKey,
-      "Content-Type": "application/json",
-    },
+    headers: quotaHeaders,
     body: JSON.stringify({
       p_bucket_key: bucketKey,
       p_max_requests: maxRequests,
@@ -180,8 +203,8 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const anonKey = getPublishableKey();
+  const serviceRoleKey = getServiceKey();
   const groqKey = Deno.env.get("GROQ_API_KEY") || "";
 
   if (!supabaseUrl || !serviceRoleKey || !groqKey) {
