@@ -452,11 +452,17 @@
     // Undo last AI batch (quests or skills)
     let undoTimer = null;
     function pushUndo(snapshot, label) {
-      window._undo = { snapshot, label, at: Date.now() };
+      // Keep both sides of the operation. A full-state undo is safe only while
+      // no other state change has happened since this operation completed.
+      window._undo = {
+        snapshot,
+        afterSnapshot: snapshotState(),
+        label,
+        at: Date.now()
+      };
       if (undoTimer) clearTimeout(undoTimer);
       undoTimer = setTimeout(() => { window._undo = null; }, 12000);
       toast(label + ' · Отменить?', 'success');
-      // show quick undo via second toast path - use confirm-less: dedicated toast button hard in pure DOM
       showUndoBar(label);
     }
     function showUndoBar(label) {
@@ -472,9 +478,30 @@
       bar.style.display = 'flex';
       document.getElementById('undoBtn').onclick = () => {
         if (!window._undo) return;
-        replaceState(window._undo.snapshot);
+        // Never restore an old whole-app snapshot over unrelated user edits.
+        // If anything changed after the AI operation, refuse the destructive undo.
+        if (JSON.stringify(state) !== JSON.stringify(window._undo.afterSnapshot)) {
+          window._undo = null;
+          if (undoTimer) clearTimeout(undoTimer);
+          bar.style.display = 'none';
+          toast('Отмена недоступна: после операции состояние уже изменилось. Новые данные сохранены.', 'error');
+          return;
+        }
+        const previous = window._undo.snapshot;
         window._undo = null;
-        save();
+        if (undoTimer) clearTimeout(undoTimer);
+        replaceState(previous);
+        const persisted = save();
+        if (!persisted) {
+          // Restore the post-operation state if the undo itself could not be saved.
+          // This keeps the in-memory view consistent with the last known local save.
+          const currentAfter = window._undo?.afterSnapshot;
+          if (currentAfter) replaceState(currentAfter);
+          bar.style.display = 'none';
+          toast('Не удалось сохранить отмену', 'error');
+          renderAll();
+          return;
+        }
         renderAll();
         if (currentTreeDirId) renderTree(currentTreeDirId);
         bar.style.display = 'none';
