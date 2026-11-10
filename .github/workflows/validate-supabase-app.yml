@@ -146,7 +146,10 @@ jobs:
             hero: { name: 'Local', xp: 80 },
             directions: [{ id: 'dir-local', name: 'Python', xp: 100, nodes: [{ id: 'skill-local', name: 'API', parentId: null, xp: 50 }] }],
             goals: [{ id: 'goal-local', title: 'Build API', horizon: 'medium', directionId: 'dir-local', metric: { target: 10, current: 2, unitLabel: 'tasks' }, status: 'active' }],
-            quests: [{ id: 'quest-existing', title: 'Old task', type: 'SIDE', done: false }],
+            quests: [
+              { id: 'quest-existing', title: 'Old task', type: 'SIDE', done: false },
+              { id: 'quest-same-title', title: 'Repeated title', type: 'SIDE', done: false }
+            ],
             lore: [], reflections: [], activityLog: [], rewardLedger: [],
             stats: { completed: 2 }, streak: { current: 1, longest: 2, lastDate: '2026-11-08' },
             unlockedTitles: ['newbie'], unlockedAchievements: []
@@ -157,7 +160,8 @@ jobs:
             goals: [{ id: 'goal-import', title: 'Build API', horizon: 'medium', directionId: 'dir-import', metric: { target: 10, current: 7, unitLabel: 'tasks' }, status: 'active' }],
             quests: [
               { id: 'quest-import', title: 'Implement auth', type: 'SIDE', done: true, targetType: 'SKILL', targetId: 'child-import', goalId: 'goal-import', goalUnits: 2 },
-              { id: 'quest-existing', title: 'Old task', type: 'SIDE', done: true, completedAt: 200, result: 'completed in imported save' }
+              { id: 'quest-existing', title: 'Old task', type: 'SIDE', done: true, completedAt: 200, result: 'completed in imported save' },
+              { id: 'quest-distinct', title: 'Repeated title', type: 'SIDE', done: false }
             ],
             rewardLedger: [{ eventId: 'event-import', questId: 'quest-import', xp: 40, at: 100 }],
             activityLog: [{ id: 'event-import', questId: 'quest-import', goalId: 'goal-import', title: 'Implement auth', xp: 40, at: 100 }],
@@ -186,7 +190,7 @@ jobs:
           assert.equal(merged.stats.completed, 5);
           const repeated = context.mergeImportedStateData(incoming, merged, migrate, createId);
           assert.equal(repeated.directions.length, 1, 'reimport must not duplicate directions');
-          assert.equal(repeated.quests.length, 2, 'reimport must not duplicate quests');
+          assert.equal(repeated.quests.length, 4, 'reimport must not duplicate quests or collapse distinct same-title quests');
           assert.equal(repeated.goals.length, 1, 'reimport must not duplicate goals');
           assert.equal(repeated.rewardLedger.length, 1, 'reimport must not duplicate rewards');
           assert.equal(repeated.activityLog.length, 1, 'reimport must not duplicate activity events');
