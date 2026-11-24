@@ -106,3 +106,40 @@
         toast(e.message || 'Ошибка ИИ', 'error');
       }
     }
+
+
+    // ===================== TELEGRAM LINKING =====================
+    async function createTelegramLinkCode() {
+      const output = document.getElementById('telegramLinkStatus');
+      const button = document.getElementById('telegramLinkButton');
+      if (output) output.textContent = '';
+      if (!supabaseClient || !supabaseClient.auth) {
+        if (output) output.textContent = 'Supabase Auth недоступен.';
+        return;
+      }
+      try {
+        if (button) button.disabled = true;
+        const sessionResult = await supabaseClient.auth.getSession();
+        const session = sessionResult && sessionResult.data && sessionResult.data.session;
+        if (!session || !session.access_token) {
+          if (output) output.textContent = 'Сначала войди в аккаунт RPG-LIFE.';
+          return;
+        }
+        const response = await fetch((DEFAULT_SUPABASE_URL || '').replace(/\\/$/, '') + '/functions/v1/telegram-assistant', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': DEFAULT_SUPABASE_ANON_KEY,
+            'Authorization': 'Bearer ' + session.access_token
+          },
+          body: JSON.stringify({ action: 'create_link' })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.code) throw new Error(data.error || 'Не удалось создать код.');
+        if (output) output.textContent = 'Код: ' + data.code + ' · действует 10 минут. Отправь боту: /link ' + data.code;
+      } catch (error) {
+        if (output) output.textContent = error.message || 'Ошибка создания кода.';
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
