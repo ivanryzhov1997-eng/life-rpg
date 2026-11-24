@@ -1,0 +1,50 @@
+name: Telegram assistant validation
+
+on:
+  push:
+    branches:
+      - feature/telegram-daily-assistant
+    paths:
+      - 'supabase/functions/telegram-assistant/**'
+      - 'supabase/functions/_shared/telegram-utils.mjs'
+      - 'supabase/migrations/*telegram*'
+      - 'tests/telegram-utils.test.mjs'
+      - 'assets/js/02-cloud-auth.js'
+      - 'index.html'
+      - '.github/workflows/telegram-assistant-ci.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'supabase/functions/telegram-assistant/**'
+      - 'supabase/functions/_shared/telegram-utils.mjs'
+      - 'supabase/migrations/*telegram*'
+      - 'tests/telegram-utils.test.mjs'
+      - 'assets/js/02-cloud-auth.js'
+      - 'index.html'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run Telegram utility tests
+        run: node --test tests/telegram-utils.test.mjs
+      - name: Check browser JavaScript syntax
+        run: node --check assets/js/02-cloud-auth.js
+      - name: Check shared module syntax
+        run: node --check supabase/functions/_shared/telegram-utils.mjs
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check Telegram Edge Function
+        run: deno check --no-config supabase/functions/telegram-assistant/index.ts
