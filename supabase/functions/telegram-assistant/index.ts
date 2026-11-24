@@ -147,7 +147,7 @@ async function linkedAccount(telegramUserId: number, chatId: number) {
 }
 
 async function handleLink(message: any, chatId: number, telegramUserId: number, code: string) {
-  if (!/^\d{6}$/.test(code)) {
+  if (!isLinkCode(code)) {
     await sendMessage(chatId, "Код должен состоять из 12 символов. Получи новый код в настройках RPG-LIFE.");
     return;
   }
