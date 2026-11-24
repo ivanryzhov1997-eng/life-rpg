@@ -72,7 +72,7 @@ async function sha256(value: string): Promise<string> {
 
 function randomCode(): string {
   const bytes = crypto.getRandomValues(new Uint32Array(1));
-  return String(bytes[0] % 1000000).padStart(6, "0");
+  return Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 async function verifyAppUser(req: Request, supabaseUrl: string, anonKey: string) {
@@ -149,7 +149,7 @@ async function linkedAccount(telegramUserId: number, chatId: number) {
 
 async function handleLink(message: any, chatId: number, telegramUserId: number, code: string) {
   if (!/^\d{6}$/.test(code)) {
-    await sendMessage(chatId, "Код должен состоять из 6 цифр. Получи новый код в настройках RPG-LIFE.");
+    await sendMessage(chatId, "Код должен состоять из 12 символов. Получи новый код в настройках RPG-LIFE.");
     return;
   }
   const ok = await rest("rpc/link_telegram_account", {
