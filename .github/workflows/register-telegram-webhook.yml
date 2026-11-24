@@ -1,0 +1,48 @@
+name: Register Telegram webhook
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Register webhook with Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_WEBHOOK_SECRET: ${{ secrets.TELEGRAM_WEBHOOK_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${TELEGRAM_BOT_TOKEN}" || -z "${TELEGRAM_WEBHOOK_SECRET}" ]]; then
+            echo "::error::Add TELEGRAM_BOT_TOKEN and TELEGRAM_WEBHOOK_SECRET as GitHub Actions repository secrets."
+            exit 1
+          fi
+          if [[ ! "${TELEGRAM_WEBHOOK_SECRET}" =~ ^[A-Za-z0-9_-]{1,256}$ ]]; then
+            echo "::error::TELEGRAM_WEBHOOK_SECRET contains unsupported characters or has invalid length."
+            exit 1
+          fi
+          echo "::add-mask::${TELEGRAM_BOT_TOKEN}"
+          echo "::add-mask::${TELEGRAM_WEBHOOK_SECRET}"
+          WEBHOOK_URL="https://qkwysbwmyqtnkrbfwdkw.supabase.co/functions/v1/telegram-assistant"
+          SET_RESULT="$(curl --fail-with-body --silent --show-error --max-time 30 \
+            --request POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
+            --header "Content-Type: application/json" \
+            --data "$(jq -cn --arg url "${WEBHOOK_URL}" --arg secret "${TELEGRAM_WEBHOOK_SECRET}" '{url:$url,secret_token:$secret,allowed_updates:["message","callback_query"],drop_pending_updates:false}')")"
+          if [[ "$(jq -r '.ok // false' <<< "${SET_RESULT}")" != "true" || "$(jq -r '.result // false' <<< "${SET_RESULT}")" != "true" ]]; then
+            echo "::error::Telegram rejected setWebhook. Response description: $(jq -r '.description // "unknown error"' <<< "${SET_RESULT}")"
+            exit 1
+          fi
+          INFO="$(curl --fail-with-body --silent --show-error --max-time 30 \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getWebhookInfo")"
+          ACTUAL_URL="$(jq -r '.result.url // ""' <<< "${INFO}")"
+          if [[ "$(jq -r '.ok // false' <<< "${INFO}")" != "true" || "${ACTUAL_URL}" != "${WEBHOOK_URL}" ]]; then
+            echo "::error::Webhook registration could not be verified. Telegram returned a different webhook URL."
+            exit 1
+          fi
+          echo "Webhook registered and verified."
+          echo "Pending updates: $(jq -r '.result.pending_update_count // 0' <<< "${INFO}")"
+          echo "Allowed updates: $(jq -c '.result.allowed_updates // []' <<< "${INFO}")"
