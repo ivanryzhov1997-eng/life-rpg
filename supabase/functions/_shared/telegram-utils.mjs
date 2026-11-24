@@ -20,7 +20,9 @@ export function normalizeProposal(input) {
 export function parseAiJson(content) {
   if (typeof content !== 'string' || !content.trim()) throw new Error('Empty AI response');
   const cleaned = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
-  return normalizeProposal(JSON.parse(cleaned));
+  const parsed = JSON.parse(cleaned);
+  if (parsed && Array.isArray(parsed.activities) && parsed.activities.length === 0) return [];
+  return normalizeProposal(parsed);
 }
 
 export function constantTimeEqual(left, right) {
