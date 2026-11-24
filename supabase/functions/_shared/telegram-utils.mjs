@@ -44,3 +44,7 @@ export function formatProposal(activities) {
     return (index + 1) + '. ' + item.title + details + time + amount;
   }).join('\n');
 }
+
+export function isLinkCode(value) {
+  return typeof value === 'string' && /^[0-9a-f]{12}$/i.test(value);
+}
