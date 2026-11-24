@@ -125,7 +125,7 @@
           if (output) output.textContent = 'Сначала войди в аккаунт RPG-LIFE.';
           return;
         }
-        const response = await fetch((DEFAULT_SUPABASE_URL || '').replace(/\\/$/, '') + '/functions/v1/telegram-assistant', {
+        const response = await fetch((DEFAULT_SUPABASE_URL || '').replace(/\/$/, '') + '/functions/v1/telegram-assistant', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
