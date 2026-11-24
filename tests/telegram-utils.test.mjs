@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { constantTimeEqual, formatProposal, isUuid, normalizeProposal, parseAiJson } from '../supabase/functions/_shared/telegram-utils.mjs';
+import { constantTimeEqual, formatProposal, isLinkCode, isUuid, normalizeProposal, parseAiJson } from '../supabase/functions/_shared/telegram-utils.mjs';
 
 test('normalizes valid proposals and clamps numeric fields', () => {
   const [activity] = normalizeProposal({ activities: [{ title: ' Python practice ', description: 'Built a function', category: 'programming', duration_minutes: 9999, quantity: -3, unit: 'minutes' }] });
@@ -39,4 +39,10 @@ test('UUID validator rejects arbitrary callback data', () => {
 
 test('formats a compact confirmation preview', () => {
   assert.match(formatProposal([{ title: 'Study', description: 'Solved 2 problems', duration_minutes: 30 }]), /Study.*30 мин/);
+});
+
+test('link codes require 12 hexadecimal characters', () => {
+  assert.equal(isLinkCode('a1b2c3d4e5f6'), true);
+  assert.equal(isLinkCode('123456'), false);
+  assert.equal(isLinkCode('not-a-code-!'), false);
 });
