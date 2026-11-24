@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { constantTimeEqual, formatProposal, isUuid, parseAiJson } from "../_shared/telegram-utils.mjs";
+import { constantTimeEqual, formatProposal, isLinkCode, isUuid, parseAiJson } from "../_shared/telegram-utils.mjs";
 
 const MAX_BODY_BYTES = 64 * 1024;
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
@@ -71,7 +71,6 @@ async function sha256(value: string): Promise<string> {
 }
 
 function randomCode(): string {
-  const bytes = crypto.getRandomValues(new Uint32Array(1));
   return Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
