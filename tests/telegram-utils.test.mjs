@@ -22,6 +22,10 @@ test('parses fenced JSON and validates shape', () => {
   assert.equal(result[0].category, 'sport');
 });
 
+test('accepts an explicit empty extraction result', () => {
+  assert.deepEqual(parseAiJson('{"activities":[]}'), []);
+});
+
 test('constant-time comparator returns expected equality results', () => {
   assert.equal(constantTimeEqual('secret', 'secret'), true);
   assert.equal(constantTimeEqual('secret', 'secreT'), false);
