@@ -9,6 +9,20 @@ ALTER TABLE public.telegram_link_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.telegram_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.telegram_pending_actions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.telegram_webhook_updates ENABLE ROW LEVEL SECURITY;
+
+-- Explicit service-role-only policies; no client role receives access.
+CREATE POLICY telegram_link_codes_service_role
+  ON public.telegram_link_codes FOR ALL TO service_role
+  USING (true) WITH CHECK (true);
+CREATE POLICY telegram_accounts_service_role
+  ON public.telegram_accounts FOR ALL TO service_role
+  USING (true) WITH CHECK (true);
+CREATE POLICY telegram_pending_actions_service_role
+  ON public.telegram_pending_actions FOR ALL TO service_role
+  USING (true) WITH CHECK (true);
+CREATE POLICY telegram_webhook_updates_service_role
+  ON public.telegram_webhook_updates FOR ALL TO service_role
+  USING (true) WITH CHECK (true);
 REVOKE ALL ON public.telegram_link_codes, public.telegram_accounts, public.telegram_pending_actions, public.telegram_webhook_updates FROM PUBLIC, anon, authenticated;
 GRANT ALL ON public.telegram_link_codes, public.telegram_accounts, public.telegram_pending_actions, public.telegram_webhook_updates TO service_role;
 CREATE OR REPLACE FUNCTION public.link_telegram_account(p_code_hash text, p_telegram_user_id bigint, p_chat_id bigint, p_username text DEFAULT NULL, p_first_name text DEFAULT NULL, p_last_name text DEFAULT NULL) RETURNS boolean LANGUAGE plpgsql SECURITY DEFINER SET search_path = '' AS $function$ DECLARE v_user_id uuid; v_existing_user uuid; BEGIN IF p_code_hash IS NULL OR p_code_hash !~ '^[0-9a-f]{64}$' OR p_telegram_user_id IS NULL OR p_chat_id IS NULL THEN RETURN false; END IF; SELECT user_id INTO v_user_id FROM public.telegram_link_codes WHERE code_hash = p_code_hash AND used_at IS NULL AND expires_at > pg_catalog.now() FOR UPDATE; IF v_user_id IS NULL THEN RETURN false; END IF; SELECT user_id INTO v_existing_user FROM public.telegram_accounts WHERE telegram_user_id = p_telegram_user_id; IF v_existing_user IS NOT NULL AND v_existing_user <> v_user_id THEN RETURN false; END IF; INSERT INTO public.telegram_accounts(user_id,telegram_user_id,chat_id,username,first_name,last_name,linked_at) VALUES(v_user_id,p_telegram_user_id,p_chat_id,nullif(left(p_username,64),''),nullif(left(p_first_name,128),''),nullif(left(p_last_name,128),''),pg_catalog.now()) ON CONFLICT(user_id) DO UPDATE SET telegram_user_id=excluded.telegram_user_id,chat_id=excluded.chat_id,username=excluded.username,first_name=excluded.first_name,last_name=excluded.last_name,linked_at=pg_catalog.now(); UPDATE public.telegram_link_codes SET used_at=pg_catalog.now() WHERE code_hash=p_code_hash; DELETE FROM public.telegram_link_codes WHERE user_id=v_user_id AND used_at IS NULL; RETURN true; EXCEPTION WHEN unique_violation THEN RETURN false; END; $function$;
