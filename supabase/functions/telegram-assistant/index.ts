@@ -267,7 +267,7 @@ async function handleMessage(message: any) {
   }
   const command = text.split(/\s+/, 1)[0].split("@")[0].toLowerCase();
   if (command === "/start") {
-    await sendMessage(chatId, "Я помощник RPG-LIFE.\n1) Войди в RPG-LIFE.\n2) В настройках нажми «Подключить Telegram».\n3) Отправь мне /link и 6-значный код.\n\nПосле привязки просто пиши, что сделал за день. Я покажу предложение и дождусь подтверждения.\nКоманды: /today, /report, /cancel, /unlink.");
+    await sendMessage(chatId, "Я помощник RPG-LIFE.\n1) Войди в RPG-LIFE.\n2) В настройках нажми «Подключить Telegram».\n3) Отправь мне /link и 12-символьный код.\n\nПосле привязки просто пиши, что сделал за день. Я покажу предложение и дождусь подтверждения.\nКоманды: /today, /report, /cancel, /unlink.");
     return;
   }
   if (command === "/link") {
@@ -387,6 +387,14 @@ Deno.serve(async (req: Request) => {
     await processUpdate(body);
     return json({ ok: true });
   } catch (error) {
+    // Release the deduplication key on failure so Telegram can retry this update.
+    try {
+      await rest("telegram_webhook_updates?update_id=eq." + encodeURIComponent(String(body.update_id)), {
+        method: "DELETE"
+      });
+    } catch (cleanupError) {
+      console.error("Could not release failed Telegram update", cleanupError);
+    }
     console.error("Telegram update processing failed", error);
     return json({ ok: false }, 500);
   }
